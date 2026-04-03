@@ -6,9 +6,10 @@
   "next_action": "run /context-health in Claude Code",
   "compact_count": 0,
   "changed_files": [
-    "D:\\Projects\\context-engineering-kit\\.claude\\settings.json"
+    "D:\\Projects\\context-engineering-kit\\.claude\\settings.json",
+    "D:\\Projects\\context-engineering-kit\\session_handover.md"
   ],
-  "last_stop": "2026-04-03T11:49:35Z",
+  "last_stop": "2026-04-03T12:14:17Z",
   "last_stop_reason": "end_turn",
   "session_start_time": "2026-04-03T11:33:13Z"
 }
