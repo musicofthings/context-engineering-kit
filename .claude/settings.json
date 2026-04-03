@@ -207,9 +207,7 @@
     "CEK_SUBSCRIPTION_TIER": "pro"
   },
   "statusLine": {
-    "_comment": "Remove this block if you prefer the statusline in ~/.claude/settings.json (user scope). Change command path for Windows — see .claude/statusline-cek.ps1",
     "type": "command",
-    "command": "powershell.exe -NoProfile -File \"D:\\Projects\\context-engineering-kit\\.claude\\statusline-cek.ps1\"",
-    "padding": 1
+    "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/statusline-launcher.sh\""
   }
 }
