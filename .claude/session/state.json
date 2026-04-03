@@ -5,5 +5,7 @@
   "phase": "Phase 0 — Setup",
   "next_action": "run /context-health in Claude Code",
   "compact_count": 0,
-  "changed_files": []
+  "changed_files": [],
+  "last_stop": "2026-04-03T11:32:21Z",
+  "last_stop_reason": "end_turn"
 }
