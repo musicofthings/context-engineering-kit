@@ -6,6 +6,7 @@
   "next_action": "run /context-health in Claude Code",
   "compact_count": 0,
   "changed_files": [],
-  "last_stop": "2026-04-03T11:32:21Z",
-  "last_stop_reason": "end_turn"
+  "last_stop": "2026-04-03T11:34:21Z",
+  "last_stop_reason": "end_turn",
+  "session_start_time": "2026-04-03T11:33:13Z"
 }
