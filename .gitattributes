@@ -1,0 +1,12 @@
+# Enforce LF line endings for shell scripts and text files
+# This prevents CRLF corruption when files are edited on Windows
+*.sh     text eol=lf
+*.py     text eol=lf
+*.md     text eol=lf
+*.json   text eol=lf
+*.yml    text eol=lf
+*.yaml   text eol=lf
+# Windows scripts use CRLF
+*.ps1    text eol=crlf
+*.bat    text eol=crlf
+*.cmd    text eol=crlf

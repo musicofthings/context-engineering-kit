@@ -82,16 +82,6 @@
         "matcher": "",
         "hooks": [
           {
-            "type": "agent",
-            "model": "claude-haiku-4-5-20251001",
-            "prompt": "You are a task-state extractor running inside a Claude Code PreCompact hook.\nThe conversation context is about to be compacted. Your job is to extract\nthe current development state and save it so nothing is lost.\n\n## Your task\n\n1. Read the conversation that is about to be compacted\n2. Extract these fields:\n   - **active_task**: One clear sentence describing what is being built/fixed right now\n   - **phase**: Current phase name (e.g. \"Phase 2 — Compaction Engine\", \"debugging\", \"initial setup\")\n   - **next_action**: The single most important next step — specific enough to act on immediately\n   - **blockers**: Array of strings — anything currently blocking progress (empty array if none)\n   - **completed_items**: Array of strings — things finished this session (max 10 items)\n   - **key_files**: Array of file paths actively being modified\n\n3. Write the extracted state to `.claude/session/state.json` using the Write tool.\n   Preserve any existing fields not listed above (like `compact_count`, `saved_by`, etc.)\n   by reading the file first, merging your extracted fields, then writing back.\n\n## Output format for state.json (merge into existing, do not replace)\n\n```json\n{\n  \"active_task\": \"extracted task description\",\n  \"phase\": \"extracted phase\",\n  \"next_action\": \"extracted next action\",\n  \"blockers\": [\"blocker 1\", \"blocker 2\"],\n  \"completed_items\": [\"item 1\", \"item 2\"],\n  \"key_files\": [\"path/to/file1\", \"path/to/file2\"],\n  \"state_extracted_by\": \"agent-precompact-hook\",\n  \"state_extracted_at\": \"[current ISO timestamp]\"\n}\n```\n\n## Extraction heuristics\n\nLook for these signals in the conversation:\n\n**active_task**: The most recent substantive work description. Phrases like\n\"I'm working on...\", \"building...\", \"fixing...\", \"implementing...\", the subject\nof the most recent code edits.\n\n**phase**: Explicit phase names, or infer from context (\"Phase 1\", \"debugging\",\n\"testing\", \"initial setup\", \"refactoring\").\n\n**next_action**: The last thing Claude said it would do next. Look for:\n\"Next I'll...\", \"The next step is...\", \"TODO:\", \"Now I need to...\",\n\"After this...\", or the logical continuation of the last incomplete task.\n\n**blockers**: Anything described as failing, stuck, unresolved, awaiting\nexternal input, or flagged with \"blocked by\", \"waiting for\", \"can't proceed\nuntil\".\n\n**completed_items**: Tool calls that succeeded (files written, tests passed,\ncommands that returned exit 0), items marked done, phases that passed.\n\n## If extraction is ambiguous\n\nUse what you can determine with confidence. For any field where the conversation\nis unclear, use a short honest description like \"unclear — check conversation\"\nrather than guessing.\n\n## After writing state.json\n\nEcho a one-line confirmation to stdout:\n```\n[precompact-agent] State extracted: [active_task in 8 words or less]\n```\n\nThis output is injected into Claude's context and confirms the extraction happened."
-          }
-        ]
-      },
-      {
-        "matcher": "",
-        "hooks": [
-          {
             "type": "command",
             "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/pre-compact.sh"
           }
@@ -116,6 +106,16 @@
           {
             "type": "command",
             "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/extract-state-on-stop.sh",
+            "async": true
+          }
+        ]
+      },
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR\"/scripts/usage-tracker.py",
             "async": true
           }
         ]
@@ -198,7 +198,7 @@
     ]
   },
   "env": {
-    "CEK_VERSION": "2.2.0",
+    "CEK_VERSION": "2.4.0",
     "CEK_TOKEN_WARN_PCT": "70",
     "CEK_TOKEN_CRITICAL_PCT": "85",
     "CEK_MODEL_HAIKU": "claude-haiku-4-5-20251001",
@@ -208,6 +208,6 @@
   },
   "statusLine": {
     "type": "command",
-    "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/statusline-launcher.sh\""
+    "command": "bash .claude/statusline.sh"
   }
 }

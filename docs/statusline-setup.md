@@ -1,127 +1,65 @@
 # StatusLine Setup Guide
-_context-engineering-kit v2.3_
+_context-engineering-kit v2.4_
 
-The statusline is a persistent bar at the bottom of Claude Code that updates
+The statusline is a two-line bar at the bottom of Claude Code that updates
 after every assistant response. It shows context window usage, rate limit
-window consumption, session cost, git branch, and lines changed.
-
----
+window, session cost, git branch, and lines changed.
 
 ## What it looks like
 
 ```
-[Claude Sonnet 4.6]  ⎇ main*3  📁 context-engineering-kit  +42/-7
-████████████░░░░░░░░ 61%/200K  5h:34%  resets 2h18m  7d:12%  $0.0041  ⏱4m22s
+[Claude Sonnet 4.6]  ⎇ master  📁 context-engineering-kit  +3/-1
+🟢 ████░░░░░░░░░░░░░░░░ 18%/200K  5h:9%  rst:2h18m  $0.0020  ⏱12s
 ```
 
-Line 1: model name · git branch (dirty count) · directory · lines added/removed  
+Line 1: model · git branch (dirty count) · directory · lines changed
 Line 2: context bar · 5h rate limit · 7d rate limit · session cost · duration
 
----
+## Installation: automatic
 
-## Installation: Mac / Linux
-
-The statusline is pre-configured in `.claude/settings.json` to use
-`.claude/statusline-cek.sh`. It should work immediately after `bash setup.sh`.
-
-Verify it's running: look for the two-line bar at the bottom of Claude Code
-after your first exchange.
-
-**If it doesn't appear:** check that `jq` is installed:
-```bash
-which jq || brew install jq   # Mac
-which jq || apt install jq    # Linux
-```
-
----
-
-## Installation: Windows (PowerShell)
-
-Edit `.claude/settings.json` — change the `statusLine.command` to:
+The statusline is pre-configured in `.claude/settings.json`:
 ```json
-"statusLine": {
-  "type": "command",
-  "command": "powershell.exe -File \"%CLAUDE_PROJECT_DIR%\\.claude\\statusline-cek.ps1\"",
-  "padding": 1
-}
+"statusLine": { "type": "command", "command": "bash .claude/statusline.sh" }
 ```
 
-Or if using Git Bash, keep the bash version:
-```json
-"command": "bash.exe \"%CLAUDE_PROJECT_DIR%/.claude/statusline-cek.sh\""
-```
+Claude Code uses Git Bash (configured via `CLAUDE_CODE_GIT_BASH_PATH`) to run
+the script. It should appear automatically after `setup.sh` runs.
 
-Note: ANSI colour codes work in Windows Terminal and VS Code terminal but not
-in basic `cmd.exe`. The PowerShell version uses emoji status indicators instead.
+## Workspace trust required
 
----
+**If the statusline doesn't appear:** Claude Code requires workspace trust before
+running statusLine commands. When you open a new project directory for the first
+time, accept the trust dialog. If you missed it, restart `claude.cmd` and accept
+it at the prompt.
 
-## User-scope vs project-scope
+You'll see `statusline skipped · restart to fix` in the status area if trust
+hasn't been accepted.
 
-The statusline in `.claude/settings.json` (project scope) applies only to
-this project. To use it across all your projects, move the `statusLine` block
-to `~/.claude/settings.json` (user scope) and change the command path:
+## Troubleshooting
 
-```json
-"statusLine": {
-  "type": "command",
-  "command": "~/.claude/statusline-cek.sh"
-}
-```
-
-Then copy `.claude/statusline-cek.sh` to `~/.claude/statusline-cek.sh`:
+**Test the script directly (Git Bash):**
 ```bash
-cp .claude/statusline-cek.sh ~/.claude/statusline-cek.sh
-chmod +x ~/.claude/statusline-cek.sh
+echo '{"model":{"display_name":"Claude Sonnet 4.6"},"context_window":{"used_percentage":18,"context_window_size":200000},"cost":{"total_cost_usd":0.002,"total_duration_ms":12000},"rate_limits":{"five_hour":{"used_percentage":9,"resets_at":1780000000}},"workspace":{"current_dir":"D:/Projects/context-engineering-kit","project_dir":"D:/Projects/context-engineering-kit"}}' | bash .claude/statusline.sh
 ```
 
----
+Should output two lines. If it doesn't:
+- Check jq is installed: `jq --version`
+- Check the script has LF line endings: `file .claude/statusline.sh`
+- Fix CRLF if needed: `sed -i 's/\r//' .claude/statusline.sh`
 
-## What the rate limit numbers mean
+## Available data fields
 
-| Field | What it shows |
-|-------|--------------|
-| `5h: 34%` | 34% of your 5-hour rolling window is consumed |
-| `resets 2h18m` | Window resets in 2 hours 18 minutes |
-| `7d: 12%` | 12% of your 7-day window consumed |
-
-When `5h` hits ~80%+, the bar turns amber/red and Claude Code will start
-rate-limiting. Run `/compact-smart` to reduce context and extend the session.
-
-The statusline reads these values directly from Claude Code's internal data —
-this is real subscription window data, not an estimate.
-
----
-
-## Using `/statusline` to regenerate
-
-Claude Code has a built-in `/statusline` command that can regenerate the script:
+The script can use any of these JSON fields from Claude Code:
 ```
-/statusline show model, context bar, 5h rate limit with reset time, cost and git branch
-```
-
-This will overwrite `statusline-cek.sh`. Re-run `setup.sh` to restore the
-context-engineering-kit version if needed.
-
----
-
-## Customising the statusline
-
-Edit `.claude/statusline-cek.sh` directly. The JSON fields available are:
-
-```bash
-# All fields you can use:
-jq -r '.model.display_name'                      # model name
-jq -r '.context_window.used_percentage'          # context %
-jq -r '.context_window.context_window_size'      # 200000 or 1000000
-jq -r '.cost.total_cost_usd'                     # session cost
-jq -r '.cost.total_duration_ms'                  # elapsed ms
-jq -r '.cost.total_lines_added'                  # lines added
-jq -r '.cost.total_lines_removed'                # lines removed
-jq -r '.rate_limits.five_hour.used_percentage'   # 5h window %
-jq -r '.rate_limits.seven_day.used_percentage'   # 7d window %
-jq -r '.rate_limits.five_hour.resets_at'         # Unix epoch reset time
-jq -r '.workspace.current_dir'                   # working directory
-jq -r '.session_id'                              # session ID
-jq -r '.version'                                 # Claude Code version
+.model.display_name                      model name
+.context_window.used_percentage          context %
+.context_window.context_window_size      200000 or 1000000
+.cost.total_cost_usd                     session cost
+.cost.total_duration_ms                  elapsed ms
+.cost.total_lines_added/removed          lines changed
+.rate_limits.five_hour.used_percentage   5h window %
+.rate_limits.seven_day.used_percentage   7d window %
+.rate_limits.five_hour.resets_at         Unix epoch reset time
+.workspace.current_dir                   working directory
+.workspace.project_dir                   project root
 ```
