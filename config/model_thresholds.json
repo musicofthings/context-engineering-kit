@@ -1,0 +1,50 @@
+{
+  "_comment": "Model switching thresholds for context-engineering-kit",
+  "_doc": "Edit these to tune auto-switch behaviour. Restart Claude Code after changes.",
+
+  "context_thresholds": {
+    "warn_pct": 70,
+    "compact_pct": 85,
+    "critical_pct": 95
+  },
+
+  "model_selection": {
+    "default": "claude-sonnet-4-6",
+    "fast_edits": "claude-haiku-4-5-20251001",
+    "architecture": "claude-opus-4-6",
+
+    "auto_switch_rules": [
+      {
+        "condition": "task_type == 'formatting' OR task_type == 'linting'",
+        "model": "claude-haiku-4-5-20251001",
+        "rationale": "Simple deterministic tasks — Haiku is 3–5× cheaper"
+      },
+      {
+        "condition": "context_pct > 80 AND task_is_continuable",
+        "model": "claude-haiku-4-5-20251001",
+        "flag": "fast",
+        "rationale": "High context — switch to fast model to finish the turn"
+      },
+      {
+        "condition": "task_type == 'architecture' OR task_type == 'security_review'",
+        "model": "claude-opus-4-6",
+        "rationale": "Complex reasoning — Opus only when genuinely needed"
+      }
+    ]
+  },
+
+  "task_type_keywords": {
+    "formatting": ["prettier", "format", "indent", "lint", "style", "whitespace"],
+    "linting":    ["eslint", "pylint", "mypy", "type-check", "ruff"],
+    "fast_edits": ["rename", "typo", "comment", "docstring", "variable name"],
+    "architecture": ["design", "architecture", "refactor", "system design", "database schema"],
+    "security_review": ["security", "auth", "vulnerability", "CVE", "ACMG", "clinical"],
+    "genomics": ["VCF", "FASTA", "BAM", "NGS", "variant", "pipeline", "Nextflow", "germline", "somatic"]
+  },
+
+  "fast_mode": {
+    "enabled_for_models": ["claude-opus-4-6"],
+    "speed_multiplier": 2.5,
+    "use_when": "Opus is needed but context is > 70% or task requires quick turnaround"
+  }
+}

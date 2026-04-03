@@ -1,0 +1,59 @@
+{
+  "_comment": "Token budgets, rate limits, and subscription tier config",
+  "_edit": "Change subscription_tier to match your plan: pro | max | api",
+
+  "subscription_tier": "pro",
+
+  "token_budgets": {
+    "claude_haiku": {
+      "context_window": 200000,
+      "warn_at_pct": 70,
+      "compact_at_pct": 85
+    },
+    "claude_sonnet": {
+      "context_window": 200000,
+      "warn_at_pct": 70,
+      "compact_at_pct": 85
+    },
+    "claude_opus": {
+      "context_window": 200000,
+      "warn_at_pct": 65,
+      "compact_at_pct": 80
+    }
+  },
+
+  "subscription_limits": {
+    "pro": {
+      "daily_cost_warn_usd": 0.50,
+      "daily_cost_critical_usd": 0.90,
+      "session_window_hours": 5,
+      "note": "5-hour rolling window. Compact proactively to stay within window."
+    },
+    "max": {
+      "daily_cost_warn_usd": 2.00,
+      "daily_cost_critical_usd": 4.00,
+      "session_window_hours": 5,
+      "note": "5x Pro limits — more headroom but same rolling window model."
+    },
+    "api": {
+      "daily_cost_warn_usd": 5.00,
+      "daily_cost_critical_usd": 9.00,
+      "session_window_hours": null,
+      "note": "Pure token billing. Cost is real. Monitor with /usage-forecast."
+    }
+  },
+
+  "auto_compact_at_turns_remaining": 10,
+  "warn_at_turns_remaining": 20,
+
+  "session_handover_max_tokens": 3000,
+  "compact_instruction_max_tokens": 500,
+
+  "genomics_burn_rate_notes": {
+    "vcf_per_variant_tokens": 50,
+    "fasta_per_100bp_tokens": 30,
+    "pipeline_log_per_line_tokens": 10,
+    "acmg_per_variant_tokens": 800,
+    "recommendation": "Use @file references. Never paste VCF/FASTA content inline."
+  }
+}

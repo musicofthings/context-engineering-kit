@@ -1,0 +1,36 @@
+{
+  "_comment": "API documentation sources — fetched weekly by GitHub Actions",
+  "_usage": "Edit to add/remove APIs. Sections are extracted keywords from the docs.",
+
+  "apis": [
+    {
+      "name": "anthropic-claude-code",
+      "description": "Claude Code hooks, skills, slash commands, subagents",
+      "base_url": "https://code.claude.com/docs/en/hooks",
+      "extract_sections": ["Hook events", "SessionStart", "PreCompact", "PostCompact", "Stop", "SessionEnd"],
+      "update_frequency": "weekly",
+      "cache_ttl_hours": 168
+    },
+    {
+      "name": "anthropic-api",
+      "description": "Claude API messages, models, pricing",
+      "base_url": "https://docs.anthropic.com/en/api/getting-started",
+      "extract_sections": ["models", "rate limits", "pricing", "messages"],
+      "update_frequency": "weekly",
+      "cache_ttl_hours": 168
+    },
+    {
+      "name": "cloudflare-workers",
+      "description": "Cloudflare Workers API for edge deployment",
+      "base_url": "https://developers.cloudflare.com/workers/",
+      "extract_sections": ["Workers", "KV", "R2", "Durable Objects", "Pages"],
+      "update_frequency": "weekly",
+      "cache_ttl_hours": 168
+    }
+  ],
+
+  "_add_more": [
+    "Copy one of the above blocks and adjust name/base_url/extract_sections",
+    "Common additions: GitHub API, PubMed E-utilities, gnomAD GraphQL, ClinVar API"
+  ]
+}

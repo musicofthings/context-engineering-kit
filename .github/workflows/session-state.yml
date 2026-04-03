@@ -1,0 +1,57 @@
+name: Verify Session State
+
+on:
+  push:
+    paths:
+      - '.claude/session/**'
+      - 'session_handover.md'
+      - 'CLAUDE.md'
+  workflow_dispatch:
+
+jobs:
+  validate-context-files:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check session state JSON is valid
+        run: |
+          if [ -f .claude/session/state.json ]; then
+            python3 -c "import json,sys; json.load(open('.claude/session/state.json')); print('state.json: valid JSON')"
+          else
+            echo "state.json: not present yet (OK for new repos)"
+          fi
+
+      - name: Check session_handover.md has required sections
+        run: |
+          REQUIRED=("Active Task" "Completed" "Remaining Work" "Commands to Resume")
+          MISSING=()
+          for section in "${REQUIRED[@]}"; do
+            if ! grep -q "$section" session_handover.md 2>/dev/null; then
+              MISSING+=("$section")
+            fi
+          done
+          if [ ${#MISSING[@]} -gt 0 ]; then
+            echo "⚠️  session_handover.md missing sections: ${MISSING[*]}"
+            echo "Run /handover in Claude Code to regenerate"
+            exit 0   # Warn only, don't fail — handover may be mid-update
+          else
+            echo "✅ session_handover.md has all required sections"
+          fi
+
+      - name: Check CLAUDE.md exists and has content
+        run: |
+          if [ -f CLAUDE.md ] && [ -s CLAUDE.md ]; then
+            echo "✅ CLAUDE.md present ($(wc -l < CLAUDE.md) lines)"
+          else
+            echo "❌ CLAUDE.md missing or empty"
+            exit 1
+          fi
+
+      - name: Report
+        run: |
+          echo "Context engineering kit CI passed"
+          echo "Branch: ${{ github.ref_name }}"
+          echo "Commit: ${{ github.sha }}"

@@ -1,0 +1,38 @@
+name: Weekly API Docs Refresh
+
+on:
+  schedule:
+    - cron: '0 2 * * 0'   # Sundays at 02:00 UTC
+  workflow_dispatch:        # Allow manual trigger
+
+jobs:
+  refresh-api-docs:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Fetch API documentation
+        run: python scripts/fetch_api_docs.py
+        env:
+          CLAUDE_PROJECT_DIR: ${{ github.workspace }}
+
+      - name: Commit updated docs
+        run: |
+          git config user.name  "api-doc-bot"
+          git config user.email "bot@context-engineering-kit"
+          git add api_docs.md
+          if git diff --cached --quiet; then
+            echo "No doc changes — nothing to commit"
+          else
+            git commit -m "chore(docs): refresh API documentation [skip ci] $(date -u +%Y-%m-%d)"
+            git push
+          fi

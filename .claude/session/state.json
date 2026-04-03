@@ -1,0 +1,9 @@
+{
+  "last_updated": "2026-04-03T00:00:00Z",
+  "initialized_by": "setup",
+  "active_task": "initial setup",
+  "phase": "Phase 0 — Setup",
+  "next_action": "run /context-health in Claude Code",
+  "compact_count": 0,
+  "changed_files": []
+}

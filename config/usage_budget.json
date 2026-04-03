@@ -1,0 +1,53 @@
+{
+  "_doc": "Configure your Claude subscription type and daily limits. The usage-sentinel hook reads this.",
+
+  "subscription_type": "pro",
+
+  "subscriptions": {
+    "pro": {
+      "window_type": "time",
+      "window_minutes": 300,
+      "note": "Pro: 5-hour usage window. Resets after 5 hours from first message."
+    },
+    "max": {
+      "window_type": "time",
+      "window_minutes": 300,
+      "note": "Max: 5× Pro limit. Same 5-hour window structure."
+    },
+    "api": {
+      "window_type": "cost",
+      "daily_budget_usd": 10.00,
+      "note": "API billing: set your daily cost limit here."
+    },
+    "team": {
+      "window_type": "time",
+      "window_minutes": 300,
+      "note": "Team: per-seat limits, same window as Pro."
+    }
+  },
+
+  "thresholds": {
+    "warn_pct": 70,
+    "pre_save_pct": 80,
+    "auto_save_pct": 85,
+    "critical_pct": 92
+  },
+
+  "actions": {
+    "at_warn": "inject_warning",
+    "at_pre_save": "inject_save_reminder",
+    "at_auto_save": "inject_save_directive",
+    "at_critical": "inject_save_directive_urgent"
+  },
+
+  "ccusage_path": "~/.claude/projects",
+  "session_state_file": ".claude/session/state.json",
+  "usage_log_file": ".claude/session/usage.jsonl",
+
+  "_sentinel_notes": [
+    "usage-sentinel.sh reads this file on every UserPromptSubmit",
+    "Change subscription_type to match your account",
+    "For API billing, set daily_budget_usd to your comfort limit",
+    "Set warn_pct / auto_save_pct to tune when saves are triggered"
+  ]
+}

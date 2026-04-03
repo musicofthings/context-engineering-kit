@@ -1,0 +1,32 @@
+{
+  "_instructions": "Copy this file to .claude/settings.local.json on Windows machines. It is gitignored. Adjust bash_path if Git Bash is in a non-standard location.",
+
+  "bash_path": "C:\\Program Files\\Git\\bin\\bash.exe",
+
+  "permissions": {
+    "allow": [
+      "Write(session_handover.md)",
+      "Edit(session_handover.md)",
+      "Write(CLAUDE.md)",
+      "Edit(CLAUDE.md)",
+      "Write(.claude/session/state.json)",
+      "Write(.claude/session/history.jsonl)",
+      "Write(.claude/session/turn-ledger.jsonl)",
+      "Write(.claude/session/usage.jsonl)",
+      "Bash(python3 scripts/generate_session_handover.py*)",
+      "Bash(bash scripts/session_sync.sh*)",
+      "Bash(bash .claude/hooks/*.sh*)",
+      "Bash(git add .claude/session/*)",
+      "Bash(git add session_handover.md)",
+      "Bash(git commit -m chore*)"
+    ]
+  },
+
+  "_windows_notes": [
+    "Use claude.cmd not claude (avoids Desktop app PATH conflict)",
+    "If hooks fail: check bash_path points to Git Bash exe",
+    "To find Git Bash path: where bash.exe in PowerShell",
+    "Common paths: C:\\Program Files\\Git\\bin\\bash.exe",
+    "              C:\\Users\\<user>\\AppData\\Local\\Programs\\Git\\bin\\bash.exe"
+  ]
+}

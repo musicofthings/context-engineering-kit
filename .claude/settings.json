@@ -1,0 +1,214 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "model": "claude-sonnet-4-6",
+  "bash_path": "bash",
+  "permissions": {
+    "allow": [
+      "Write(session_handover.md)",
+      "Edit(session_handover.md)",
+      "Write(CLAUDE.md)",
+      "Edit(CLAUDE.md)",
+      "Write(agents.md)",
+      "Edit(agents.md)",
+      "Write(.claude/session/state.json)",
+      "Write(.claude/session/history.jsonl)",
+      "Write(.claude/session/turn-ledger.jsonl)",
+      "Write(.claude/session/usage.jsonl)",
+      "Write(.claude/compact-audit.log)",
+      "Write(.claude/config-audit.log)",
+      "Bash(python3 scripts/generate_session_handover.py*)",
+      "Bash(python3 scripts/update_context_files.py*)",
+      "Bash(python3 scripts/usage_report.py*)",
+      "Bash(bash scripts/session_sync.sh*)",
+      "Bash(bash .claude/hooks/*.sh*)",
+      "Bash(git add .claude/session/* session_handover.md CLAUDE.md)",
+      "Bash(git commit -m chore(context)*)"
+    ],
+    "deny": [
+      "Read(.env)",
+      "Read(.env.*)",
+      "Write(.env)",
+      "Write(.env.*)",
+      "Write(production.*)",
+      "Bash(rm -rf *)"
+    ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/session-start.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/post-compact.sh"
+          }
+        ]
+      }
+    ],
+    "PermissionRequest": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/auto-approve-writes.sh"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/usage-sentinel.sh",
+            "async": false
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "agent",
+            "model": "claude-haiku-4-5-20251001",
+            "prompt_file": ".claude/hooks/precompact-extract-agent.md"
+          }
+        ]
+      },
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/pre-compact.sh"
+          }
+        ]
+      }
+    ],
+    "PostCompact": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/post-compact.sh"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/extract-state-on-stop.sh",
+            "async": true
+          }
+        ]
+      },
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/stop.sh"
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/session-end.sh"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/guard-dangerous.sh"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/track-changes.sh"
+          }
+        ]
+      }
+    ],
+    "InstructionsLoaded": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '[context-kit] Ready. /token-status /handover /context-health'"
+          }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/notify.sh"
+          }
+        ]
+      }
+    ],
+    "ConfigChange": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "jq -c '{ts: now|todate, file: .file_path}' >> \"$CLAUDE_PROJECT_DIR\"/.claude/config-audit.log 2>/dev/null || true"
+          }
+        ]
+      }
+    ]
+  },
+  "env": {
+    "CEK_VERSION": "2.2.0",
+    "CEK_TOKEN_WARN_PCT": "70",
+    "CEK_TOKEN_CRITICAL_PCT": "85",
+    "CEK_MODEL_HAIKU": "claude-haiku-4-5-20251001",
+    "CEK_MODEL_SONNET": "claude-sonnet-4-6",
+    "CEK_MODEL_OPUS": "claude-opus-4-6"
+  },
+  "statusLine": {
+    "_comment": "Remove this block if you prefer the statusline in ~/.claude/settings.json (user scope). Change command path for Windows \u2014 see .claude/statusline-cek.ps1",
+    "type": "command",
+    "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/statusline-cek.sh",
+    "padding": 1
+  }
+}
