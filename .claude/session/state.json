@@ -11,5 +11,8 @@
   ],
   "last_stop": "2026-04-03T12:14:17Z",
   "last_stop_reason": "end_turn",
-  "session_start_time": "2026-04-03T11:33:13Z"
+  "session_start_time": "2026-04-03T11:33:13Z",
+  "saved_by": "CON1282-Shibi",
+  "saved_platform": "windows",
+  "last_save": "2026-04-04T04:20:03Z"
 }
