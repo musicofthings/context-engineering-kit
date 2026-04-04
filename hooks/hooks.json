@@ -6,6 +6,15 @@
         "hooks": [
           {
             "type": "command",
+            "command": "chmod +x ${CLAUDE_PLUGIN_ROOT}/.claude/hooks/*.sh ${CLAUDE_PLUGIN_ROOT}/scripts/*.sh 2>/dev/null || true"
+          }
+        ]
+      },
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
             "command": "bash ${CLAUDE_PLUGIN_ROOT}/.claude/hooks/session-start.sh"
           }
         ]
