@@ -26,17 +26,24 @@ The checks differ between modes. Apply the correct checks for the detected mode.
 ## Checks to perform
 
 ### 1. CLAUDE.md
-- Does it exist in the project directory or plugin root? ✅/❌
-- Is the "Active work context" section populated (not just template placeholders)? ✅/❌
-- When was it last modified? (warn if > 24 hours ago during active development)
+
+First, determine if we're inside a git-tracked project:
+```bash
+git -C "${CLAUDE_PROJECT_DIR:-$(pwd)}" rev-parse --is-inside-work-tree 2>/dev/null && echo "in_git_repo" || echo "no_git_repo"
+```
+
+- In a git repo: check for CLAUDE.md in project dir — missing = ❌
+- **Not in a git repo**: missing CLAUDE.md = ⚠️ with note "(expected outside a project — open a project folder)"
+- If found: is the "Active work context" section populated (not template placeholders)? ✅/⚠️
+- When was it last modified? (warn if > 24 hours during active development)
 
 ### 2. session_handover.md
-Run: `ls -la session_handover.md 2>/dev/null || echo "missing"`
-- Does it exist in the current project directory? ✅/❌
-- Is the active task field populated? ✅/❌
-- Is next action specified? ✅/❌
+Run: `ls -la "${CLAUDE_PROJECT_DIR:-$(pwd)}/session_handover.md" 2>/dev/null || echo "missing"`
+- **Not in a git repo**: missing or empty = ⚠️ "(expected outside a project — run /handover inside a project)"
+- In a git repo: missing = ❌; empty (0 bytes) = ❌; populated = ✅
+- Is the active task field populated (not template text)? ✅/⚠️
 - Age: when was it last updated? (warn if > 4 hours during active dev)
-- Does it have a "Commands to Resume" section? ✅/❌
+- Does it have a "Commands to Resume" section? ✅/⚠️
 
 ### 3. Hook wiring
 
@@ -87,14 +94,15 @@ Run:
 STATE="${CLAUDE_PROJECT_DIR:-$(pwd)}/.claude/session/state.json"
 if [ -f "$STATE" ]; then
   echo "found: $STATE"
-  cat "$STATE" | python3 -c "import sys,json; d=json.load(sys.stdin); print('task:', d.get('active_task','?')); print('updated:', d.get('last_activity','?'))"
+  python3 -c "import sys,json; d=json.load(open('$STATE')); print('task:', d.get('active_task','?')); print('updated:', d.get('last_activity') or d.get('last_stop','?'))"
 else
   echo "missing: $STATE"
 fi
 ```
-- state.json exists? ✅/❌
+- state.json exists? ✅/⚠️ (absent = expected outside a project)
+- `active_task = "unknown"` when no project is open → ⚠️ "(hooks firing but no project task yet — expected)"
+- `active_task` is set → ✅
 - Last updated timestamp
-- Active task captured
 
 Note: state.json is written to the **current project directory** (not the plugin directory). It will be absent until the first session-start hook fires in a project directory.
 
@@ -156,7 +164,7 @@ For `CEK_SUBSCRIPTION_TIER`:
 ║  Context Health Report — YYYY-MM-DD    ║
 ╚════════════════════════════════════════╝
 
-Install mode       : plugin (context-engineering-kit v2.4.0)
+Install mode       : plugin (context-engineering-kit v2.4.1)
                      Plugin root: ~/.claude/plugins/cache/...
 
 CLAUDE.md          ✅ fresh (2h ago)
@@ -174,4 +182,10 @@ Overall: ✅ HEALTHY
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
-After the report, suggest the top 1–2 actionable fixes. Do not flag "session state missing" or "git sync unavailable" as critical errors when running outside a project directory — these are expected until a project is opened.
+After the report, suggest the top 1–2 actionable fixes.
+
+**Outside a git project directory** (the most common case after fresh install): CLAUDE.md missing,
+session_handover.md empty, active_task "unknown", and git sync unavailable are ALL expected —
+downgrade these to ⚠️ and note "open a project folder to enable". The overall status should be
+✅ HEALTHY (not DEGRADED) when the only issues are these project-context items combined with
+✅ hooks, scripts, skills, and config.

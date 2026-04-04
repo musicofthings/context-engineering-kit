@@ -1,6 +1,6 @@
 {
   "name": "context-engineering-kit",
-  "version": "2.4.0",
+  "version": "2.4.1",
   "description": "Automated context preservation for Claude Code across sessions, devices, and subscriptions. Hooks, skills, and scripts to keep your context alive through compaction, device switches, and subscription changes.",
   "author": {
     "name": "musicofthings",
