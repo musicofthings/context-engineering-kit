@@ -43,7 +43,83 @@ State lives in:
 
 ---
 
-## Requirements
+## Install as a Claude Code plugin (recommended)
+
+The kit is packaged as a Claude Code plugin. This is the recommended way to use it — hooks, skills, and agents load automatically without any manual file copying.
+
+### Prerequisites
+
+- Claude Code latest: `npm install -g @anthropic-ai/claude-code`
+- `jq`, `python3`, `bash`, `git` (same as standalone)
+- `feedparser` for morning-brief: `pip install feedparser`
+
+### Option A — Load locally with `--plugin-dir`
+
+Test or use the plugin without installing it globally:
+
+```bash
+git clone https://github.com/musicofthings/context-engineering-kit.git
+claude --plugin-dir ./context-engineering-kit
+```
+
+All hooks fire automatically. Skills are available as:
+
+```
+/context-engineering-kit:handover
+/context-engineering-kit:token-status
+/context-engineering-kit:compact-smart
+/context-engineering-kit:model-switch
+/context-engineering-kit:session-sync
+/context-engineering-kit:context-health
+/context-engineering-kit:usage-forecast
+/context-engineering-kit:morning-brief
+```
+
+### Option B — Install to user scope (available in all projects)
+
+```bash
+claude plugin install context-engineering-kit@your-marketplace
+```
+
+Or install directly from a local directory:
+
+```bash
+claude plugin install --scope user --plugin-dir ./context-engineering-kit
+```
+
+### Option C — Install to project scope (shared with team via git)
+
+```bash
+claude plugin install context-engineering-kit@your-marketplace --scope project
+```
+
+This writes to `.claude/settings.json` — commit it and everyone who clones the repo gets the plugin.
+
+### Verify the plugin loaded
+
+```
+/context-engineering-kit:context-health
+```
+
+### Configure subscription type after install
+
+Edit `config/usage_budget.json` inside the plugin directory, or set the environment variable:
+
+```bash
+export CEK_SUBSCRIPTION_TIER=max   # pro | max | api | team
+```
+
+### Skill namespacing
+
+Plugin skills are prefixed with `context-engineering-kit:` to avoid conflicts with other plugins. If you prefer short names (`/handover`, `/token-status`), use the **standalone** install below instead.
+
+---
+
+## Standalone install (single project, short skill names)
+
+Use this if you want `/handover` instead of `/context-engineering-kit:handover`, or if you're customising the kit for a specific project.
+
+### Requirements
 
 - [Claude Code](https://docs.anthropic.com/claude-code) (latest) — `npm install -g @anthropic-ai/claude-code`
 - `bash` — built into Mac/Linux; use Git Bash on Windows
@@ -461,14 +537,31 @@ Set in `.claude/settings.json` under `"env"`, or export in your shell:
 ## File structure
 
 ```
-context-engineering-kit/
+context-engineering-kit/             ← plugin root
+├── .claude-plugin/
+│   └── plugin.json                  ← plugin manifest (name, version, metadata)
+├── hooks/
+│   └── hooks.json                   ← plugin hook wiring (uses ${CLAUDE_PLUGIN_ROOT})
+├── skills/                          ← plugin-format skills (namespaced as context-engineering-kit:*)
+│   ├── token-status/SKILL.md
+│   ├── handover/SKILL.md
+│   ├── compact-smart/SKILL.md
+│   ├── model-switch/SKILL.md
+│   ├── session-sync/SKILL.md
+│   ├── context-health/SKILL.md
+│   ├── usage-forecast/SKILL.md
+│   └── morning-brief/SKILL.md
+├── agents/                          ← plugin-format agents
+│   ├── context-updater.md
+│   └── session-scribe.md
+│
 ├── CLAUDE.md                        ← living context doc (auto-maintained)
 ├── session_handover.md              ← live task state (auto-generated)
 ├── agents.md                        ← subagent role definitions
-├── setup.sh                         ← one-command setup
+├── setup.sh                         ← one-command standalone setup
 │
-├── .claude/
-│   ├── settings.json                ← all hooks wired here + env config
+├── .claude/                         ← standalone config (also used by plugin hook scripts)
+│   ├── settings.json                ← standalone hook wiring + env config
 │   ├── statusline.sh                ← status bar rendered each turn
 │   ├── hooks/                       ← event-driven scripts
 │   │   ├── pre-compact.sh           ← ⭐ updates all context before compaction
