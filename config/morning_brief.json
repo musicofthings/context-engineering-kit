@@ -1,0 +1,49 @@
+{
+  "_comment": "AI morning brief — RSS feeds pulled by scripts/morning_brief.py",
+  "max_items_per_feed": 3,
+  "max_age_hours": 24,
+  "output_file": "briefs/morning_brief.md",
+
+  "feeds": [
+    {
+      "name": "The Rundown AI",
+      "url": "https://www.therundown.ai/rss",
+      "emoji": "📰"
+    },
+    {
+      "name": "VentureBeat AI",
+      "url": "https://venturebeat.com/category/ai/feed/",
+      "emoji": "💼"
+    },
+    {
+      "name": "MIT Tech Review AI",
+      "url": "https://www.technologyreview.com/topic/artificial-intelligence/feed",
+      "emoji": "🎓"
+    },
+    {
+      "name": "Ars Technica AI",
+      "url": "https://feeds.arstechnica.com/arstechnica/technology-lab",
+      "emoji": "🔬"
+    },
+    {
+      "name": "Google DeepMind Blog",
+      "url": "https://deepmind.google/blog/rss.xml",
+      "emoji": "🤖"
+    },
+    {
+      "name": "Anthropic News",
+      "url": "https://www.anthropic.com/rss.xml",
+      "emoji": "🧠"
+    },
+    {
+      "name": "OpenAI Blog",
+      "url": "https://openai.com/blog/rss.xml",
+      "emoji": "✨"
+    },
+    {
+      "name": "Import AI (Jack Clark)",
+      "url": "https://importai.substack.com/feed",
+      "emoji": "📡"
+    }
+  ]
+}
