@@ -119,9 +119,14 @@ def generate(args) -> str:
         + [f for f in git["modified_files"].split("\n") if f]
         + [f for f in git["staged_files"].split("\n") if f]
     ))
-    modified_table = "\n".join(
-        f"| `{f}` | modified |" for f in all_modified[:15]
-    ) if all_modified else "| (none tracked yet) | — |"
+    MAX_FILES = 15
+    if all_modified:
+        table_files = all_modified[:MAX_FILES]
+        modified_table = "\n".join(f"| `{f}` | modified |" for f in table_files)
+        if len(all_modified) > MAX_FILES:
+            modified_table += f"\n| _(+{len(all_modified) - MAX_FILES} more files not shown)_ | — |"
+    else:
+        modified_table = "| (none tracked yet) | — |"
 
     # Preserve existing sections or use defaults
     completed_section = existing.get("completed", "- [ ] (track completed items here)")

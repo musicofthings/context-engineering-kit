@@ -75,6 +75,14 @@ parse_epoch() {
 }
 
 START_EPOCH=$(parse_epoch "$SESSION_START")
+
+# If all parse methods failed, epoch is "0" which would make elapsed = NOW (~1.7B sec)
+# and immediately trigger a false critical alert — exit cleanly instead
+if [ "$START_EPOCH" = "0" ] || [ -z "$START_EPOCH" ]; then
+  echo "[usage-sentinel] Warning: could not parse session start time '$SESSION_START', skipping usage check." >&2
+  exit 0
+fi
+
 ELAPSED_SEC=$(( NOW - START_EPOCH ))
 ELAPSED_MIN=$(( ELAPSED_SEC / 60 ))
 

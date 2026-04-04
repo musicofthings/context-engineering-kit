@@ -33,9 +33,9 @@ TURN_COUNT=$(echo "$INPUT" | jq -r '.turn_count // 0' 2>/dev/null || echo "0")
 NEXT_ACTION=""
 
 # Priority 1: explicit "next" statements at end of response
-if echo "$RESPONSE" | grep -qiE "(next (i'll|i will|step|we'll|we will)|now (i'll|i will|let's)|after this)"; then
+if echo "$RESPONSE" | grep -qiE "(next[: ](i'll|i will|step|we'll|we will|is|are|up)|now (i'll|i will|let's|i'm going to)|after this|going to |i'm going to |will now |let me )"; then
   NEXT_ACTION=$(echo "$RESPONSE" \
-    | grep -iEo "(next (i'll|i will|step|we'll|we will|is|are|up)[^.!?\n]{5,80}|now (i'll|i will|let's)[^.!?\n]{5,80}|after this[^.!?\n]{5,60})" \
+    | grep -iEo "(next[: ](i'll|i will|step|we'll|we will|is|are|up)[^.!?\n]{5,80}|now (i'll|i will|let's|i'm going to)[^.!?\n]{5,80}|after this[^.!?\n]{5,60}|going to [^.!?\n]{5,60}|i'm going to [^.!?\n]{5,60}|will now [^.!?\n]{5,60}|let me [^.!?\n]{5,60})" \
     | head -1 \
     | sed 's/^[[:space:]]*//' \
     | cut -c1-120 \
@@ -101,61 +101,55 @@ fi
 # Only write fields we actually extracted — don't clobber existing good data
 if [ -f "$STATE_FILE" ]; then
   CURRENT=$(cat "$STATE_FILE")
+  CURRENT_TASK=$(echo "$CURRENT" | jq -r '.active_task // ""' 2>/dev/null || echo "")
+  CURRENT_PHASE=$(echo "$CURRENT" | jq -r '.phase // ""' 2>/dev/null || echo "")
 
-  # Build jq update expression based on what we found
-  JQ_ARGS=""
-  JQ_EXPR="."
-
-  JQ_EXPR="$JQ_EXPR | .last_stop_turn = $TURN_COUNT"
-  JQ_EXPR="$JQ_EXPR | .last_activity = \"$TIMESTAMP\""
-
-  if [ -n "$NEXT_ACTION" ]; then
-    # Escape for jq
-    NEXT_ACTION_ESCAPED=$(echo "$NEXT_ACTION" | sed 's/"/\\"/g' | tr -d '\n')
-    JQ_EXPR="$JQ_EXPR | .next_action = \"$NEXT_ACTION_ESCAPED\""
-  fi
-
-  if [ -n "$ACTIVE_TASK_HINT" ]; then
-    CURRENT_TASK=$(echo "$CURRENT" | jq -r '.active_task // ""' 2>/dev/null || echo "")
-    # Only update if current task is generic/unknown
-    if [ "$CURRENT_TASK" = "unknown" ] || [ "$CURRENT_TASK" = "" ] || [ "$CURRENT_TASK" = "initial setup" ]; then
-      HINT_ESCAPED=$(echo "$ACTIVE_TASK_HINT" | sed 's/"/\\"/g' | tr -d '\n')
-      JQ_EXPR="$JQ_EXPR | .active_task = \"$HINT_ESCAPED\""
-    fi
-  fi
-
-  if [ -n "$PHASE_HINT" ]; then
-    CURRENT_PHASE=$(echo "$CURRENT" | jq -r '.phase // ""' 2>/dev/null || echo "")
-    if [ "$CURRENT_PHASE" = "unknown" ] || [ "$CURRENT_PHASE" = "" ]; then
-      PHASE_ESCAPED=$(echo "$PHASE_HINT" | sed 's/"/\\"/g' | tr -d '\n')
-      JQ_EXPR="$JQ_EXPR | .phase = \"$PHASE_ESCAPED\""
-    fi
-  fi
-
-  # Apply update
-  echo "$CURRENT" | jq "$JQ_EXPR" > "$STATE_FILE.tmp" \
+  # Use --arg / --argjson to safely pass strings into jq (avoids sed-based escaping)
+  echo "$CURRENT" | jq \
+    --argjson turn "$TURN_COUNT" \
+    --arg ts "$TIMESTAMP" \
+    --arg next_action "$NEXT_ACTION" \
+    --arg active_task_hint "$ACTIVE_TASK_HINT" \
+    --arg current_task "$CURRENT_TASK" \
+    --arg phase_hint "$PHASE_HINT" \
+    --arg current_phase "$CURRENT_PHASE" \
+    '.last_stop_turn = $turn
+    | .last_activity = $ts
+    | if $next_action != "" then .next_action = $next_action else . end
+    | if ($active_task_hint != "" and ($current_task == "unknown" or $current_task == "" or $current_task == "initial setup")) then .active_task = $active_task_hint else . end
+    | if ($phase_hint != "" and ($current_phase == "unknown" or $current_phase == "")) then .phase = $phase_hint else . end' \
+    > "$STATE_FILE.tmp" \
     && mv "$STATE_FILE.tmp" "$STATE_FILE" \
     || true
 
 else
-  # No state file yet — create minimal one
-  cat > "$STATE_FILE" <<EOF
-{
-  "last_activity": "$TIMESTAMP",
-  "last_stop_turn": $TURN_COUNT,
-  "next_action": "${NEXT_ACTION:-"check session_handover.md"}",
-  "active_task": "${ACTIVE_TASK_HINT:-"unknown"}",
-  "phase": "${PHASE_HINT:-"unknown"}",
-  "compact_count": 0,
-  "state_source": "stop-hook-heuristic"
-}
-EOF
+  # No state file yet — create minimal one using jq for safe string encoding
+  jq -n \
+    --arg ts "$TIMESTAMP" \
+    --argjson turn "$TURN_COUNT" \
+    --arg next_action "${NEXT_ACTION:-check session_handover.md}" \
+    --arg active_task "${ACTIVE_TASK_HINT:-unknown}" \
+    --arg phase "${PHASE_HINT:-unknown}" \
+    '{
+      "last_activity": $ts,
+      "last_stop_turn": $turn,
+      "next_action": $next_action,
+      "active_task": $active_task,
+      "phase": $phase,
+      "compact_count": 0,
+      "state_source": "stop-hook-heuristic"
+    }' > "$STATE_FILE"
 fi
 
 # ── Append to session ledger (lightweight turn log) ──────────────────────────
 LEDGER="$PROJECT_DIR/.claude/session/turn-ledger.jsonl"
 if [ -n "$NEXT_ACTION" ] || [ -n "$ACTIVE_TASK_HINT" ]; then
-  echo "{\"ts\":\"$TIMESTAMP\",\"turn\":$TURN_COUNT,\"next_action\":\"$(echo "$NEXT_ACTION" | sed 's/"/\\"/g' | tr -d '\n')\",\"task_hint\":\"$(echo "$ACTIVE_TASK_HINT" | sed 's/"/\\"/g' | tr -d '\n')\"}" \
+  jq -n \
+    --arg ts "$TIMESTAMP" \
+    --argjson turn "$TURN_COUNT" \
+    --arg next_action "$NEXT_ACTION" \
+    --arg task_hint "$ACTIVE_TASK_HINT" \
+    '{"ts":$ts,"turn":$turn,"next_action":$next_action,"task_hint":$task_hint}' \
     >> "$LEDGER" 2>/dev/null || true
 fi
 
