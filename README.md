@@ -240,13 +240,71 @@ Detailed daily usage burn rate, cost tracking, and predicted time to subscriptio
 
 ### `/morning-brief`
 
-Fetches today's AI/ML news from configured RSS feeds and presents a brief digest.
+Fetches today's AI/ML news from configured RSS feeds and presents a digest in the terminal. Also saves the brief to `briefs/YYYY-MM-DD.md`.
+
+**Auto-enabled:** the brief is generated automatically on your first session start each day. Claude will notify you it's ready — just type `/morning-brief` to read it. If a brief for today already exists, the hook skips silently.
 
 ```bash
-/morning-brief    # summarise today's AI news at session start
+/morning-brief                                      # display today's brief
+python scripts/morning_brief.py                     # run directly (terminal output only)
+python scripts/morning_brief.py --save              # run and save to briefs/YYYY-MM-DD.md
+python scripts/morning_brief.py --quiet             # generate file silently (used by auto hook)
 ```
 
-Configure feeds in `config/morning_brief.json`.
+**Example output:**
+
+```
+════════════════════════════════════════════════════════════
+  AI Morning Brief — Friday, 04 April 2026 at 07:12 UTC
+  Window: last 24h
+════════════════════════════════════════════════════════════
+
+  📰  The Rundown AI
+  ──────────────────────────────────────────────────
+  • Claude 4 Opus sets new reasoning benchmark
+    https://...
+    Anthropic released... [09:30 UTC]
+
+  💼  VentureBeat AI
+  ──────────────────────────────────────────────────
+  • OpenAI expands o3 access to Plus users
+    https://...
+
+════════════════════════════════════════════════════════════
+  12 stories across 5 sources
+════════════════════════════════════════════════════════════
+```
+
+**Adding or removing RSS feeds** — edit `config/morning_brief.json`:
+
+```json
+{
+  "feeds": [
+    { "name": "My Feed",  "url": "https://example.com/rss", "emoji": "🔗" }
+  ],
+  "max_items_per_feed": 3,
+  "max_age_hours": 24,
+  "fallback_max_age_hours": 120,
+  "fallback_threshold": 3
+}
+```
+
+| Field | Default | Description |
+|-------|---------|-------------|
+| `max_items_per_feed` | `3` | Max stories per source |
+| `max_age_hours` | `24` | Only show stories from the last N hours |
+| `fallback_max_age_hours` | `120` | Extend window to N hours if fewer than `fallback_threshold` stories found |
+| `fallback_threshold` | `3` | Min stories before triggering the extended window |
+
+**Included feeds by default:**
+The Rundown AI · VentureBeat AI · MIT Tech Review AI · Ars Technica · Google DeepMind Blog · Anthropic News · OpenAI Blog · Import AI (Jack Clark)
+
+**Dependency:** requires `feedparser` — install once:
+```bash
+pip install feedparser
+```
+
+If `feedparser` is not installed, the auto hook skips silently and prints a one-line install hint to stderr.
 
 ---
 
@@ -257,6 +315,7 @@ All hooks are wired in `.claude/settings.json` and fire automatically — you ne
 | Hook event | Script | When it fires | What it does |
 |------------|--------|--------------|--------------|
 | `SessionStart` | `session-start.sh` | Every new session | Injects current date, git branch, task summary, budget window status |
+| `SessionStart` | `morning-brief-auto.sh` | First session of each day | Generates today's AI news brief silently; notifies Claude it's ready |
 | `SessionStart` (compact) | `post-compact.sh` | When resuming a compacted session | Re-injects critical context so Claude knows where it left off |
 | `UserPromptSubmit` | `usage-sentinel.sh` | Before every prompt | Tracks time/cost elapsed; injects warnings at 70%, 80%, 85%, 92% of limit |
 | `PreCompact` | `pre-compact.sh` | Before any compaction | Generates `session_handover.md`, updates `CLAUDE.md`, appends compact audit log |
@@ -421,6 +480,7 @@ context-engineering-kit/
 │   │   ├── usage-sentinel.sh        ← usage tracking + auto-save directives
 │   │   ├── guard-dangerous.sh       ← blocks destructive bash commands
 │   │   ├── track-changes.sh         ← logs file edits to state.json
+│   │   ├── morning-brief-auto.sh    ← auto-generates daily brief on session start
 │   │   ├── auto-approve-permissions.sh ← auto-approves safe file writes
 │   │   └── notify.sh                ← cross-platform desktop notifications
 │   ├── skills/                      ← slash commands
@@ -458,6 +518,9 @@ context-engineering-kit/
 │   ├── rate_limits.json             ← per-model token budgets
 │   ├── api_sources.json             ← API doc sources (weekly CI)
 │   └── morning_brief.json           ← RSS feeds for morning-brief
+│
+├── briefs/                          ← daily morning briefs (gitignored, local only)
+│   └── YYYY-MM-DD.md
 │
 ├── examples/
 │   └── bioinformatics-ngs/CLAUDE.md ← NGS/VariantGPT example config

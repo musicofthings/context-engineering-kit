@@ -10,6 +10,7 @@
       "Edit(CLAUDE.md)",
       "Write(agents.md)",
       "Edit(agents.md)",
+      "Write(briefs/*.md)",
       "Write(.claude/session/state.json)",
       "Write(.claude/session/history.jsonl)",
       "Write(.claude/session/turn-ledger.jsonl)",
@@ -41,6 +42,16 @@
           {
             "type": "command",
             "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/session-start.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/morning-brief-auto.sh",
+            "async": true
           }
         ]
       },
