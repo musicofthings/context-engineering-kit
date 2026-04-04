@@ -33,31 +33,46 @@ GIT_STATUS=$(git -C "$PROJECT_DIR" status --short 2>/dev/null | head -10 || echo
 MODIFIED_FILES=$(git -C "$PROJECT_DIR" diff --name-only 2>/dev/null | head -10 || echo "")
 
 # ── Update session state JSON ────────────────────────────────────────────────
+PREV_COMPACT_COUNT=0
+ACTIVE_TASK="unknown"
+PHASE="unknown"
+NEXT_ACTION="unknown"
+
 if [ -f "$STATE_FILE" ]; then
   PREV_STATE=$(cat "$STATE_FILE")
   ACTIVE_TASK=$(echo "$PREV_STATE" | jq -r '.active_task // "unknown"' 2>/dev/null || echo "unknown")
   PHASE=$(echo "$PREV_STATE" | jq -r '.phase // "unknown"' 2>/dev/null || echo "unknown")
   NEXT_ACTION=$(echo "$PREV_STATE" | jq -r '.next_action // "unknown"' 2>/dev/null || echo "unknown")
-else
-  ACTIVE_TASK="unknown"
-  PHASE="unknown"
-  NEXT_ACTION="unknown"
+  PREV_COMPACT_COUNT=$(echo "$PREV_STATE" | jq -r '.compact_count // 0' 2>/dev/null || echo "0")
 fi
 
-cat > "$STATE_FILE" <<EOF
-{
-  "last_updated": "$TIMESTAMP",
-  "trigger": "$TRIGGER",
-  "context_pct_at_compact": "$CONTEXT_PCT",
-  "git_branch": "$GIT_BRANCH",
-  "git_last_commit": "$GIT_COMMIT",
-  "active_task": "$ACTIVE_TASK",
-  "phase": "$PHASE",
-  "next_action": "$NEXT_ACTION",
-  "modified_files": $(echo "$MODIFIED_FILES" | jq -R -s 'split("\n") | map(select(. != ""))' 2>/dev/null || echo "[]"),
-  "compact_count": $(cat "$STATE_FILE" 2>/dev/null | jq -r '.compact_count // 0' | awk '{print $1+1}' 2>/dev/null || echo 1)
-}
-EOF
+COMPACT_COUNT=$(( PREV_COMPACT_COUNT + 1 ))
+MODIFIED_FILES_JSON=$(echo "$MODIFIED_FILES" | jq -R -s 'split("\n") | map(select(. != ""))' 2>/dev/null || echo "[]")
+
+# Use jq --arg for all string values to avoid JSON injection
+jq -n \
+  --arg ts "$TIMESTAMP" \
+  --arg trigger "$TRIGGER" \
+  --arg ctx "$CONTEXT_PCT" \
+  --arg branch "$GIT_BRANCH" \
+  --arg commit "$GIT_COMMIT" \
+  --arg task "$ACTIVE_TASK" \
+  --arg phase "$PHASE" \
+  --arg next "$NEXT_ACTION" \
+  --argjson files "$MODIFIED_FILES_JSON" \
+  --argjson count "$COMPACT_COUNT" \
+  '{
+    last_updated: $ts,
+    trigger: $trigger,
+    context_pct_at_compact: $ctx,
+    git_branch: $branch,
+    git_last_commit: $commit,
+    active_task: $task,
+    phase: $phase,
+    next_action: $next,
+    modified_files: $files,
+    compact_count: $count
+  }' > "$STATE_FILE.tmp" && mv "$STATE_FILE.tmp" "$STATE_FILE" || true
 
 # ── Generate/update session_handover.md ─────────────────────────────────────
 python3 "$PROJECT_DIR/scripts/generate_session_handover.py" \

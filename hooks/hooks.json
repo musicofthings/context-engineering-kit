@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "chmod +x ${CLAUDE_PLUGIN_ROOT}/.claude/hooks/*.sh ${CLAUDE_PLUGIN_ROOT}/scripts/*.sh 2>/dev/null || true"
+            "command": "chmod +x \"${CLAUDE_PLUGIN_ROOT}\"/.claude/hooks/*.sh \"${CLAUDE_PLUGIN_ROOT}\"/scripts/*.sh 2>/dev/null || true"
           }
         ]
       },
@@ -26,15 +26,6 @@
             "type": "command",
             "command": "bash ${CLAUDE_PLUGIN_ROOT}/.claude/hooks/morning-brief-auto.sh",
             "async": true
-          }
-        ]
-      },
-      {
-        "matcher": "compact",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/.claude/hooks/post-compact.sh"
           }
         ]
       }

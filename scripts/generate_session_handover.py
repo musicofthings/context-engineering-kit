@@ -50,8 +50,9 @@ def load_existing_handover(project_dir: Path) -> dict:
         sections["active_task_section"] = content[start:end].strip() if end > 0 else content[start:].strip()
 
     # Extract completed items
-    if "## ✅ Completed" in content:
-        start = content.find("## ✅ Completed") + len("## ✅ Completed This Session")
+    _completed_header = "## ✅ Completed This Session"
+    if _completed_header in content:
+        start = content.find(_completed_header) + len(_completed_header)
         end = content.find("\n## ", start + 1)
         sections["completed"] = content[start:end].strip() if end > 0 else content[start:].strip()
 
@@ -62,8 +63,9 @@ def load_existing_handover(project_dir: Path) -> dict:
         sections["remaining"] = content[start:end].strip() if end > 0 else content[start:].strip()
 
     # Extract architecture decisions table
-    if "## 🏗 Architecture Decisions" in content:
-        start = content.find("## 🏗 Architecture Decisions") + len("## 🏗 Architecture Decisions Made")
+    _decisions_header = "## 🏗 Architecture Decisions Made"
+    if _decisions_header in content:
+        start = content.find(_decisions_header) + len(_decisions_header)
         end = content.find("\n## ", start)
         sections["decisions"] = content[start:end].strip() if end > 0 else content[start:].strip()
 
@@ -74,8 +76,9 @@ def load_existing_handover(project_dir: Path) -> dict:
         sections["rules"] = content[start:end].strip() if end > 0 else content[start:].strip()
 
     # Extract bioinfo context
-    if "## 🧬 Bioinformatics" in content:
-        start = content.find("## 🧬 Bioinformatics") + len("## 🧬 Bioinformatics Context (if applicable)")
+    _bioinfo_header = "## 🧬 Bioinformatics Context (if applicable)"
+    if _bioinfo_header in content:
+        start = content.find(_bioinfo_header) + len(_bioinfo_header)
         sections["bioinfo"] = content[start:].split("---")[0].strip()
 
     return sections

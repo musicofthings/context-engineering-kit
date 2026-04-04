@@ -191,7 +191,10 @@ def main():
     terminal_text, md_text = build_brief(config)
 
     if not args.quiet:
-        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        try:
+            sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        except AttributeError:
+            pass
         print(terminal_text)
 
     if args.save:
