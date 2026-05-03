@@ -15,6 +15,8 @@
       "Write(.claude/session/history.jsonl)",
       "Write(.claude/session/turn-ledger.jsonl)",
       "Write(.claude/session/usage.jsonl)",
+      "Write(.claude/session/tool-failures.jsonl)",
+      "Write(.claude/session/subagents.jsonl)",
       "Write(.claude/compact-audit.log)",
       "Write(.claude/config-audit.log)",
       "Bash(python3 scripts/generate_session_handover.py*)",
@@ -67,11 +69,11 @@
     ],
     "PermissionRequest": [
       {
-        "matcher": "Write|Edit",
+        "matcher": "",
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/auto-approve-writes.sh"
+            "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/auto-approve-permissions.sh"
           }
         ]
       }
@@ -170,6 +172,42 @@
           {
             "type": "command",
             "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/track-changes.sh"
+          }
+        ]
+      }
+    ],
+    "PostToolUseFailure": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/post-tool-failure.sh",
+            "async": true
+          }
+        ]
+      }
+    ],
+    "SubagentStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "CLAUDE_HOOK_EVENT=SubagentStart bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/subagent-lifecycle.sh",
+            "async": true
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "CLAUDE_HOOK_EVENT=SubagentStop bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/subagent-lifecycle.sh",
+            "async": true
           }
         ]
       }
