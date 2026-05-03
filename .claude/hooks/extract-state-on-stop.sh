@@ -105,6 +105,7 @@ if [ -f "$STATE_FILE" ]; then
   CURRENT_PHASE=$(echo "$CURRENT" | jq -r '.phase // ""' 2>/dev/null || echo "")
 
   # Use --arg / --argjson to safely pass strings into jq (avoids sed-based escaping)
+  STATE_TMP=$(mktemp "${STATE_FILE}.XXXXXX")
   echo "$CURRENT" | jq \
     --argjson turn "$TURN_COUNT" \
     --arg ts "$TIMESTAMP" \
@@ -118,9 +119,9 @@ if [ -f "$STATE_FILE" ]; then
     | if $next_action != "" then .next_action = $next_action else . end
     | if ($active_task_hint != "" and ($current_task == "unknown" or $current_task == "" or $current_task == "initial setup")) then .active_task = $active_task_hint else . end
     | if ($phase_hint != "" and ($current_phase == "unknown" or $current_phase == "")) then .phase = $phase_hint else . end' \
-    > "$STATE_FILE.tmp" \
-    && mv "$STATE_FILE.tmp" "$STATE_FILE" \
-    || true
+    > "$STATE_TMP" \
+    && mv "$STATE_TMP" "$STATE_FILE" \
+    || rm -f "$STATE_TMP"
 
 else
   # No state file yet — create minimal one using jq for safe string encoding

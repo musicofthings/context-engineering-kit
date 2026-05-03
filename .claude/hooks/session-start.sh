@@ -30,8 +30,9 @@ if [ -f "$STATE_FILE" ]; then
   # Check if this is a genuine new session (not a compact resume)
   EXISTING_START=$(jq -r '.session_start_time // ""' "$STATE_FILE" 2>/dev/null || echo "")
   if [ -z "$EXISTING_START" ]; then
-    jq --arg ts "$TIMESTAMP" '.session_start_time = $ts' "$STATE_FILE" > "$STATE_FILE.tmp" \
-      && mv "$STATE_FILE.tmp" "$STATE_FILE" 2>/dev/null || true
+    STATE_TMP=$(mktemp "${STATE_FILE}.XXXXXX")
+    jq --arg ts "$TIMESTAMP" '.session_start_time = $ts' "$STATE_FILE" > "$STATE_TMP" \
+      && mv "$STATE_TMP" "$STATE_FILE" 2>/dev/null || rm -f "$STATE_TMP"
   fi
 else
   cat > "$STATE_FILE" << STATEOF
