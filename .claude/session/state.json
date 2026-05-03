@@ -12,17 +12,17 @@
     "D:\\Projects\\context-engineering-kit\\scripts\\morning_brief.py",
     "D:\\Projects\\context-engineering-kit\\scripts\\schedule_morning_brief.ps1",
     "D:\\Projects\\context-engineering-kit\\.claude\\skills\\morning-brief\\skill.md",
-    "/Users/theranosis_dx/projects/context-engineering-kit/.github/workflows/sync-api-docs.yml",
-    "/Users/theranosis_dx/projects/context-engineering-kit/.github/workflows/session-state.yml",
-    "/Users/theranosis_dx/projects/context-engineering-kit/.claude/settings.json",
-    "/Users/theranosis_dx/projects/context-engineering-kit/.claude/hooks/session-start.sh",
-    "/Users/theranosis_dx/projects/context-engineering-kit/.claude/hooks/post-tool-failure.sh",
-    "/Users/theranosis_dx/projects/context-engineering-kit/.claude/hooks/subagent-lifecycle.sh"
+    "/Users/theranosis_dx/projects/context-engineering-kit/README.md"
   ],
-  "last_stop": "2026-05-03T13:27:57Z",
+  "last_stop": "2026-05-03T13:35:39Z",
   "last_stop_reason": "end_turn",
   "session_start_time": "2026-04-03T11:33:13Z",
   "saved_by": "oncophenomics.local",
   "saved_platform": "mac",
-  "last_save": "2026-05-03T13:28:39Z"
+  "last_save": "2026-05-03T13:18:58Z",
+  "last_tool_failure": {
+    "ts": "2026-05-03T13:35:10Z",
+    "tool": "Bash",
+    "error": "Exit code 1\nerror: Your local changes to the following files would be overwritten by checkout:\n\t.claude/session/state.json\nPlease commit your changes or stash them before you switch branches.\nAborting"
+  }
 }
