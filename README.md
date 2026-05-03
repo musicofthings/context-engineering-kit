@@ -284,8 +284,11 @@ All hooks fire automatically — you never call them manually.
 | `SessionEnd` | `session-end.sh` | When Claude Code closes | Git commits all session state files |
 | `PreToolUse` (Bash) | `guard-dangerous.sh` | Before any bash command | Blocks `rm -rf /`, production config writes |
 | `PostToolUse` (Edit/Write) | `track-changes.sh` | After every file edit | Logs modified files to `state.json` |
+| `PostToolUseFailure` | `post-tool-failure.sh` | When any tool call fails | Logs error to `tool-failures.jsonl` + `last_tool_failure` in `state.json` |
+| `SubagentStart` | `subagent-lifecycle.sh` | When a subagent starts | Logs invocation to `subagents.jsonl`, increments `subagents_started` |
+| `SubagentStop` | `subagent-lifecycle.sh` | When a subagent finishes | Logs completion to `subagents.jsonl` |
 | `Notification` | `notify.sh` | On notifications | Cross-platform desktop notification (macOS/Linux/Windows) |
-| `PermissionRequest` | `auto-approve-permissions.sh` | Before permission dialogs | Auto-approves safe context file writes |
+| `PermissionRequest` | `auto-approve-permissions.sh` | Before permission dialogs | Auto-approves safe context file writes and context-kit Bash scripts |
 
 ### Usage sentinel — auto-save escalation
 
@@ -371,6 +374,9 @@ Set in Claude Code settings under `"env"`, or export in your shell:
 | `.claude/session/state.json` | Active task, phase, next action, changed files | Yes |
 | `.claude/session/daily-usage.json` | Per-day cost, tokens, turns, peak % | Yes |
 | `.claude/session/usage-forecast.json` | Latest forecast: status, turns-to-warn, ETA | Yes |
+| `.claude/session/turn-ledger.jsonl` | Per-turn log of extracted next_action and task hints | No |
+| `.claude/session/tool-failures.jsonl` | Log of failed tool calls (tool name, error, path, timestamp) | No |
+| `.claude/session/subagents.jsonl` | Log of subagent invocations (type, description, start/stop) | No |
 | `session_handover.md` | Structured task handover (human-readable) | Yes |
 | `CLAUDE.md` | Living project context document | Yes |
 
@@ -489,4 +495,4 @@ Pre-configured for: VCF/FASTA token hygiene, ACMG criteria, NGS pipeline stages,
 
 ---
 
-*context-engineering-kit v2.4.1 — Built for multi-device, multi-subscription Claude Code workflows.*
+*context-engineering-kit v2.4.2 — Built for multi-device, multi-subscription Claude Code workflows.*
