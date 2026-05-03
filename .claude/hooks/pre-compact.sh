@@ -72,7 +72,8 @@ jq -n \
     next_action: $next,
     modified_files: $files,
     compact_count: $count
-  }' > "$STATE_FILE.tmp" && mv "$STATE_FILE.tmp" "$STATE_FILE" || true
+  }' > "${STATE_FILE}.precompact.$$" \
+  && mv "${STATE_FILE}.precompact.$$" "$STATE_FILE" || rm -f "${STATE_FILE}.precompact.$$"
 
 # ── Generate/update session_handover.md ─────────────────────────────────────
 python3 "$PROJECT_DIR/scripts/generate_session_handover.py" \

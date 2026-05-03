@@ -28,11 +28,12 @@ jq -n \
 
 # Update last_tool_failure in state.json for handover visibility
 if [ -f "$STATE_FILE" ]; then
+  STATE_TMP=$(mktemp "${STATE_FILE}.XXXXXX")
   jq --arg ts "$TIMESTAMP" \
      --arg tool "$TOOL_NAME" \
      --arg error "$ERROR_MSG" \
     '.last_tool_failure = {"ts": $ts, "tool": $tool, "error": $error}' \
-    "$STATE_FILE" > "$STATE_FILE.tmp" && mv "$STATE_FILE.tmp" "$STATE_FILE" 2>/dev/null || true
+    "$STATE_FILE" > "$STATE_TMP" && mv "$STATE_TMP" "$STATE_FILE" 2>/dev/null || rm -f "$STATE_TMP"
 fi
 
 exit 0
