@@ -32,7 +32,7 @@ def update_claude_md(project_dir: Path, args) -> bool:
         print("[update_context] CLAUDE.md not found — skipping", file=sys.stderr)
         return False
 
-    content = claude_md.read_text()
+    content = claude_md.read_text(encoding="utf-8", errors="replace")
 
     # Build the replacement block
     new_section = AUTO_SECTION_TEMPLATE.format(
@@ -58,7 +58,7 @@ def update_claude_md(project_dir: Path, args) -> bool:
         updated = content.rstrip() + "\n\n" + new_section + "\n"
 
     tmp = claude_md.with_suffix(".md.tmp")
-    tmp.write_text(updated)
+    tmp.write_text(updated, encoding="utf-8")
     tmp.replace(claude_md)
     print(f"[update_context] CLAUDE.md updated ({args.mode} mode)", file=sys.stderr)
     return True

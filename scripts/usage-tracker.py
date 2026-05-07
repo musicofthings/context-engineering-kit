@@ -10,6 +10,10 @@ import argparse
 import json
 import os
 import sys
+
+# Windows cp1252 consoles can't encode box-drawing chars and emoji
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -30,7 +34,7 @@ def get_tier() -> str:
     f = PROJECT_DIR / "config" / "rate_limits.json"
     if f.exists():
         try:
-            return json.loads(f.read_text()).get("subscription_tier", "pro")
+            return json.loads(f.read_text(encoding="utf-8")).get("subscription_tier", "pro")
         except Exception:
             pass
     return os.environ.get("CEK_SUBSCRIPTION_TIER", "pro")
@@ -46,14 +50,14 @@ def today_key() -> str:
 
 def load_json(p: Path) -> dict:
     try:
-        return json.loads(p.read_text()) if p.exists() else {}
+        return json.loads(p.read_text(encoding="utf-8")) if p.exists() else {}
     except Exception:
         return {}
 
 
 def save_json(p: Path, d: dict):
     SESSION_DIR.mkdir(parents=True, exist_ok=True)
-    p.write_text(json.dumps(d, indent=2))
+    p.write_text(json.dumps(d, indent=2), encoding="utf-8")
 
 
 def ingest(ev: dict) -> dict:

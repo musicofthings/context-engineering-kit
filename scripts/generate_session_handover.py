@@ -28,7 +28,7 @@ def load_state(project_dir: Path) -> dict:
     state_file = project_dir / ".claude" / "session" / "state.json"
     if state_file.exists():
         try:
-            return json.loads(state_file.read_text())
+            return json.loads(state_file.read_text(encoding="utf-8", errors="replace"))
         except Exception:
             return {}
     return {}
@@ -40,7 +40,7 @@ def load_existing_handover(project_dir: Path) -> dict:
     if not handover_file.exists():
         return {}
 
-    content = handover_file.read_text()
+    content = handover_file.read_text(encoding="utf-8", errors="replace")
     sections = {}
 
     # Extract active task
@@ -243,7 +243,7 @@ def main():
     output_path = Path(args.output) if args.output else project_dir / "session_handover.md"
 
     content = generate(args)
-    output_path.write_text(content)
+    output_path.write_text(content, encoding="utf-8")
     print(f"[handover] Written to {output_path}", file=sys.stderr)
     sys.exit(0)
 
