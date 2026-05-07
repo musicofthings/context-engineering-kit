@@ -65,49 +65,7 @@ context-engineering-kit/
 
 ## Active work context
 <!-- AUTO-UPDATED by hooks — do not edit this section manually -->
-<!-- LAST_UPDATED: [timestamp] -->
-<!-- ACTIVE_TASK: [task] -->
-<!-- PHASE: [phase] -->
-<!-- NEXT_ACTION: [action] -->
-
-## Architecture decisions
-<!-- Append decisions here. Format: [date] Decision: Rationale: -->
-
-## Lessons learned
-<!-- Append after each session. Format: [date] Problem → Fix -->
-
-## Known gotchas
-- Windows (no-admin): use `claude.cmd` not `claude`; see docs/windows-no-admin.md
-- On first run: `chmod +x .claude/hooks/*.sh` (Mac/Linux) or check Git Bash on Windows
-- Git Bash path on Windows: set in `.claude/settings.json` as `"bash_path"`
-- hooks read stdin as JSON — always pipe through `jq` for field extraction
-
-## Useful commands
-```bash
-# Check hook health
-claude /doctor
-
-# See all wired hooks
-claude /hooks
-
-# Check context usage
-claude /token-status
-
-# Generate session handover now
-claude /handover
-
-# Sync state to git (before switching device/subscription)
-bash scripts/session_sync.sh --save
-
-# Restore state from git (on new device)
-bash scripts/session_sync.sh --load
-
-# Force smart compaction
-claude /compact-smart
-```
-
-<!-- AUTO-UPDATED by hooks — do not edit this section manually -->
-<!-- LAST_UPDATED: 2026-05-03T13:18:33Z -->
+<!-- LAST_UPDATED: 2026-05-07T08:40:24Z -->
 <!-- ACTIVE_TASK: unknown -->
 <!-- PHASE: unknown -->
 <!-- NEXT_ACTION: unknown -->

@@ -1,5 +1,5 @@
 # Session Handover
-_Generated: 2026-05-03T13:28:39Z_
+_Generated: 2026-05-07T08:41:54Z_
 _Branch: main_
 _Trigger: auto | Context at compact: unknown%_
 _Compact count this project: 0_
@@ -28,9 +28,13 @@ initial setup
 
 ---
 
+---
+
+---
+
 ## 🔄 In Progress (Exact Resume Point)
 **Branch:** `main`
-**Last commit:** `f26fa82 fix: resolve CI failure, broken hook ref, and add new hook events`
+**Last commit:** `b174a21 fix(windows): add explicit utf-8 encoding to all pathlib read_text/write_text calls`
 **Next immediate action:** run /context-health in Claude Code
 
 ---
@@ -48,7 +52,15 @@ initial setup
 
 ---
 
+---
+
+---
+
 ## 🏗 Architecture Decisions Made
+| Decision | Rationale | Date |
+|----------|-----------|------|
+| Decision | Rationale | Date |
+|----------|-----------|------|
 | Decision | Rationale | Date |
 |----------|-----------|------|
 | Decision | Rationale | Date |
@@ -60,6 +72,10 @@ This Session
 | git as continuity backbone | Works across all subscriptions and devices | 2026-04-03 |
 | PreCompact + PostCompact hooks | Official hook pair for context preservation | 2026-04-03 |
 | Statusline reads `project_dir` from JSON | Portable across machines — no hardcoded paths | 2026-04-03 |
+
+---
+
+---
 
 ---
 
@@ -84,40 +100,34 @@ bash scripts/session_sync.sh --load
 ## 📁 Files Modified This Session
 | File | Status |
 |------|--------|
-| `D:\Projects\context-engineering-kit\scripts\morning_brief.py` | modified |
-| `/Users/theranosis_dx/projects/context-engineering-kit/.claude/hooks/session-start.sh` | modified |
-| `/Users/theranosis_dx/projects/context-engineering-kit/.claude/hooks/subagent-lifecycle.sh` | modified |
-| `.claude/session/state.json` | modified |
+| `CLAUDE.md` | modified |
 | `D:\Projects\context-engineering-kit\session_handover.md` | modified |
-| `D:\Projects\context-engineering-kit\scripts\schedule_morning_brief.ps1` | modified |
 | `D:\Projects\context-engineering-kit\config\morning_brief.json` | modified |
-| `/Users/theranosis_dx/projects/context-engineering-kit/.github/workflows/session-state.yml` | modified |
-| `/Users/theranosis_dx/projects/context-engineering-kit/.claude/hooks/post-tool-failure.sh` | modified |
-| `.claude/session/usage.jsonl` | modified |
-| `/Users/theranosis_dx/projects/context-engineering-kit/.claude/settings.json` | modified |
-| `/Users/theranosis_dx/projects/context-engineering-kit/.github/workflows/sync-api-docs.yml` | modified |
+| `D:\Projects\context-engineering-kit\scripts\schedule_morning_brief.ps1` | modified |
 | `D:\Projects\context-engineering-kit\.claude\skills\morning-brief\skill.md` | modified |
 | `D:\Projects\context-engineering-kit\.claude\settings.json` | modified |
+| `/Users/theranosis_dx/projects/context-engineering-kit/README.md` | modified |
+| `D:\Projects\context-engineering-kit\scripts\morning_brief.py` | modified |
+| `session_handover.md` | modified |
 
 ---
 
 ## 🌿 Git Context
 ```
 Branch  : main
-Commit  : f26fa82 fix: resolve CI failure, broken hook ref, and add new hook events
-Status  : M .claude/session/state.json
- M .claude/session/usage.jsonl
-?? .claude/session/daily-usage.json
-?? .claude/session/usage-forecast.json
+Commit  : b174a21 fix(windows): add explicit utf-8 encoding to all pathlib read_text/write_text calls
+Status  : M CLAUDE.md
+ M session_handover.md
+?? .claude/worktrees/
 ```
 
 Recent commits:
 ```
-f26fa82 fix: resolve CI failure, broken hook ref, and add new hook events
-e9ef4a5 chore(context): sync from oncophenomics.local — initial setup [2026-05-03T13:18:58Z]
-f541d5e docs: rewrite README with Desktop plugin vs CLI standalone use cases
-0ab31e6 fix(context-health): smarter ⚠️/❌ outside a project directory; bump v2.4.1
-1add1e5 fix: code review — injection safety, duplicate hooks, offset bugs, atomicity
+b174a21 fix(windows): add explicit utf-8 encoding to all pathlib read_text/write_text calls
+ae6aff7 chore(context): merge â€” resolve state.json conflict, take remote last_stop timestamp
+a6d11d1 fix: eliminate shared $STATE_FILE.tmp race condition across all hooks
+8f62a2f chore(context): session state update [2026-05-03]
+0eed1d3 docs: update README with new hooks (PostToolUseFailure, SubagentStart/Stop) and session files
 ```
 
 ---
@@ -129,6 +139,10 @@ for This Project
 - Run `bash scripts/session_sync.sh --save` before switching devices
 - Use `/compact-smart` over `/compact` for better context retention
 - Commit protocol: never commit directly to `main`/`master`; use conventional prefixes
+
+---
+
+---
 
 ---
 
