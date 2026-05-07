@@ -18,8 +18,9 @@
 set -euo pipefail
 
 PROJECT_DIR="${CLAUDE_PROJECT_DIR:-$(pwd)}"
-PYTHON=$(command -v python3 2>/dev/null || command -v python 2>/dev/null || echo "python3")
 PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$PROJECT_DIR}"
+# shellcheck source=../../scripts/find_python.sh
+source "$PLUGIN_ROOT/scripts/find_python.sh"
 PLUGIN_SETTINGS="$PLUGIN_ROOT/config/plugin_settings.json"
 
 # Feature gate: allow disabling usage_sentinel from plugin_settings.json

@@ -13,7 +13,8 @@ set -euo pipefail
 PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$(dirname "$(dirname "$0")")}"
 PROJECT_DIR="${CLAUDE_PROJECT_DIR:-$(pwd)}"
 SETTINGS_FILE="$PLUGIN_ROOT/config/plugin_settings.json"
-PYTHON=$(command -v python3 2>/dev/null || command -v python 2>/dev/null || echo "python3")
+# shellcheck source=find_python.sh
+source "$PLUGIN_ROOT/scripts/find_python.sh"
 
 log() { echo "[auto-init] $*" >&2; }
 

@@ -9,7 +9,8 @@
 set -euo pipefail
 
 PROJECT_DIR="${CLAUDE_PROJECT_DIR:-$(pwd)}"
-PYTHON=$(command -v python3 2>/dev/null || command -v python 2>/dev/null || echo "python3")
+# shellcheck source=../../scripts/find_python.sh
+source "${CLAUDE_PLUGIN_ROOT:-$PROJECT_DIR}/scripts/find_python.sh"
 BRIEFS_DIR="$PROJECT_DIR/briefs"
 TODAY=$(date -u +"%Y-%m-%d")
 BRIEF_FILE="$BRIEFS_DIR/${TODAY}.md"

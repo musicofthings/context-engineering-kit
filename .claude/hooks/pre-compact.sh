@@ -8,7 +8,8 @@ set -euo pipefail
 
 PROJECT_DIR="${CLAUDE_PROJECT_DIR:-$(pwd)}"
 TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-PYTHON=$(command -v python3 2>/dev/null || command -v python 2>/dev/null || echo "python3")
+# shellcheck source=../../scripts/find_python.sh
+source "${CLAUDE_PLUGIN_ROOT:-$PROJECT_DIR}/scripts/find_python.sh"
 STATE_FILE="$PROJECT_DIR/.claude/session/state.json"
 HANDOVER_FILE="$PROJECT_DIR/session_handover.md"
 AUDIT_LOG="$PROJECT_DIR/.claude/compact-audit.log"
