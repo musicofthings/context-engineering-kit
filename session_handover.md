@@ -1,8 +1,8 @@
 # Session Handover
-_Generated: 2026-05-07T08:45:27Z_
+_Generated: 2026-05-07T09:36:59Z_
 _Branch: main_
-_Trigger: manual | Context at compact: 75%_
-_Compact count this project: 3_
+_Trigger: auto | Context at compact: 88%_
+_Compact count this project: 5_
 
 ---
 
@@ -22,9 +22,13 @@ initial setup
 
 ---
 
+---
+
+---
+
 ## 🔄 In Progress (Exact Resume Point)
 **Branch:** `main`
-**Last commit:** `fe3af54 chore(context): sync from CON1282-Shibi — initial setup [2026-05-07T08:41:54Z]`
+**Last commit:** `c415f03 fix: centralise Python 3 detection in scripts/find_python.sh`
 **Next immediate action:** let me check the hooks are worki
 
 ---
@@ -36,12 +40,24 @@ initial setup
 
 ---
 
+---
+
+---
+
 ## 🏗 Architecture Decisions Made
 | Decision | Rationale | Date |
 |----------|-----------|------|
 | Decision | Rationale | Date |
 |----------|-----------|------|
+| Decision | Rationale | Date |
+|----------|-----------|------|
+| Decision | Rationale | Date |
+|----------|-----------|------|
 | (none yet) | — | — |
+
+---
+
+---
 
 ---
 
@@ -64,11 +80,10 @@ bash scripts/session_sync.sh --load
 ## 📁 Files Modified This Session
 | File | Status |
 |------|--------|
-| `.claude/hooks/usage-sentinel.sh` | modified |
+| `CLAUDE.md` | modified |
 | `session_handover.md` | modified |
-| `.claude/settings.json` | modified |
-| `.claude/hooks/morning-brief-auto.sh` | modified |
 | `.claude/hooks/pre-compact.sh` | modified |
+| `.claude/hooks/post-compact.sh` | modified |
 | `.claude/session/state.json` | modified |
 
 ---
@@ -76,25 +91,21 @@ bash scripts/session_sync.sh --load
 ## 🌿 Git Context
 ```
 Branch  : main
-Commit  : fe3af54 chore(context): sync from CON1282-Shibi — initial setup [2026-05-07T08:41:54Z]
-Status  : M .claude/hooks/morning-brief-auto.sh
+Commit  : c415f03 fix: centralise Python 3 detection in scripts/find_python.sh
+Status  : M .claude/hooks/post-compact.sh
  M .claude/hooks/pre-compact.sh
- M .claude/hooks/usage-sentinel.sh
  M .claude/session/state.json
- M .claude/settings.json
+ M CLAUDE.md
  M session_handover.md
-?? .claude/session/tool-failures.jsonl
-?? .claude/session/turn-ledger.jsonl
-?? .claude/worktrees/
 ```
 
 Recent commits:
 ```
+c415f03 fix: centralise Python 3 detection in scripts/find_python.sh
+e9ed61f chore(context): session state + gitignore worktrees and sentinel files
+f2bc880 feat: auto-activate plugin on new repos + fix Windows hook failures
 fe3af54 chore(context): sync from CON1282-Shibi â€” initial setup [2026-05-07T08:41:54Z]
 b174a21 fix(windows): add explicit utf-8 encoding to all pathlib read_text/write_text calls
-ae6aff7 chore(context): merge â€” resolve state.json conflict, take remote last_stop timestamp
-a6d11d1 fix: eliminate shared $STATE_FILE.tmp race condition across all hooks
-8f62a2f chore(context): session state update [2026-05-03]
 ```
 
 ---
@@ -102,6 +113,10 @@ a6d11d1 fix: eliminate shared $STATE_FILE.tmp race condition across all hooks
 ## ⚠️ Critical Rules
 - Never commit secrets or API keys
 - Run /handover before switching devices
+
+---
+
+---
 
 ---
 

@@ -65,7 +65,7 @@ context-engineering-kit/
 
 ## Active work context
 <!-- AUTO-UPDATED by hooks — do not edit this section manually -->
-<!-- LAST_UPDATED: 2026-05-07T08:45:26Z -->
+<!-- LAST_UPDATED: 2026-05-07T09:36:58Z -->
 <!-- ACTIVE_TASK: initial setup -->
 <!-- PHASE: Phase 0 — Setup -->
 <!-- NEXT_ACTION: let me check the hooks are worki -->

@@ -1,19 +1,25 @@
 {
-  "last_updated": "2026-05-07T08:45:26Z",
-  "trigger": "manual",
-  "context_pct_at_compact": "75",
+  "last_updated": "2026-05-07T09:36:58Z",
+  "trigger": "auto",
+  "context_pct_at_compact": "88",
   "git_branch": "main",
-  "git_last_commit": "fe3af54 chore(context): sync from CON1282-Shibi — initial setup [2026-05-07T08:41:54Z]",
+  "git_last_commit": "c415f03 fix: centralise Python 3 detection in scripts/find_python.sh",
   "active_task": "initial setup",
   "phase": "Phase 0 — Setup",
   "next_action": "let me check the hooks are worki",
   "modified_files": [
-    ".claude/hooks/morning-brief-auto.sh",
+    ".claude/hooks/post-compact.sh",
     ".claude/hooks/pre-compact.sh",
-    ".claude/hooks/usage-sentinel.sh",
     ".claude/session/state.json",
-    ".claude/settings.json",
+    "CLAUDE.md",
     "session_handover.md"
   ],
-  "compact_count": 3
+  "compact_count": 5,
+  "session_start_time": "2026-05-07T07:04:24Z",
+  "saved_by": "CON1282-Shibi",
+  "last_tool_failure": {
+    "ts": "2026-05-07T08:42:28Z",
+    "tool": "Bash",
+    "error": "test"
+  }
 }
