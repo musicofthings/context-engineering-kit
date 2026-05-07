@@ -105,3 +105,12 @@ bash scripts/session_sync.sh --load
 # Force smart compaction
 claude /compact-smart
 ```
+
+<!-- AUTO-UPDATED by hooks — do not edit this section manually -->
+<!-- LAST_UPDATED: 2026-05-03T13:18:33Z -->
+<!-- ACTIVE_TASK: unknown -->
+<!-- PHASE: unknown -->
+<!-- NEXT_ACTION: unknown -->
+<!-- BRANCH: unknown -->
+<!-- COMPACT_MODE: manual -->
+<!-- END AUTO-UPDATED -->

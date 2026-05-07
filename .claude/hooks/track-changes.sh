@@ -15,9 +15,10 @@ mkdir -p "$PROJECT_DIR/.claude/session"
 
 # Append to changed_files list in state.json
 if [ -f "$STATE_FILE" ]; then
+  STATE_TMP=$(mktemp "${STATE_FILE}.XXXXXX")
   jq --arg f "$FILE_PATH" \
     'if (.changed_files | index($f)) then . else .changed_files += [$f] end' \
-    "$STATE_FILE" > "$STATE_FILE.tmp" && mv "$STATE_FILE.tmp" "$STATE_FILE" 2>/dev/null || true
+    "$STATE_FILE" > "$STATE_TMP" && mv "$STATE_TMP" "$STATE_FILE" 2>/dev/null || rm -f "$STATE_TMP"
 fi
 
 exit 0

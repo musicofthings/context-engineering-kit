@@ -57,7 +57,9 @@ def update_claude_md(project_dir: Path, args) -> bool:
         # Append before end of file if markers not found
         updated = content.rstrip() + "\n\n" + new_section + "\n"
 
-    claude_md.write_text(updated)
+    tmp = claude_md.with_suffix(".md.tmp")
+    tmp.write_text(updated)
+    tmp.replace(claude_md)
     print(f"[update_context] CLAUDE.md updated ({args.mode} mode)", file=sys.stderr)
     return True
 

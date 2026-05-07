@@ -18,11 +18,12 @@ STOP_REASON=$(echo "$INPUT" | jq -r '.stop_reason // "end_turn"' 2>/dev/null || 
 # Only update timestamp and stop reason — don't overwrite task state set by skills
 if [ -f "$STATE_FILE" ]; then
   CURRENT=$(cat "$STATE_FILE")
+  STATE_TMP=$(mktemp "${STATE_FILE}.XXXXXX")
   echo "$CURRENT" | jq \
     --arg ts "$TIMESTAMP" \
     --arg reason "$STOP_REASON" \
     '.last_stop = $ts | .last_stop_reason = $reason' \
-    > "$STATE_FILE.tmp" && mv "$STATE_FILE.tmp" "$STATE_FILE" 2>/dev/null || true
+    > "$STATE_TMP" && mv "$STATE_TMP" "$STATE_FILE" 2>/dev/null || rm -f "$STATE_TMP"
 else
   cat > "$STATE_FILE" <<EOF
 {

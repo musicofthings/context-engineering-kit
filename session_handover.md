@@ -1,16 +1,17 @@
 # Session Handover
-_Generated: 2026-04-03T12:13:00Z_
-_Branch: master_
-_Triggered by: user request (/handover)_
+_Generated: 2026-05-03T13:28:39Z_
+_Branch: main_
+_Trigger: auto | Context at compact: unknown%_
+_Compact count this project: 0_
 
 ---
 
 ## 🎯 Active Task
 **What we're building/fixing:**
-Setting up and validating the context-engineering-kit harness on a Windows (no-admin) machine. The kit is installed and hooks are wired; the current focus is verifying all components are healthy and making the statusline portable across machines.
+initial setup
 
 **Phase:** Phase 0 — Setup
-**Progress:** ~70% complete — repo initialised, hooks wired, statusline made portable; `/context-health` not yet run to confirm full health.
+**Next action:** run /context-health in Claude Code
 
 ---
 
@@ -23,18 +24,14 @@ Setting up and validating the context-engineering-kit harness on a Windows (no-a
 
 ---
 
-## 🔄 In Progress (Exact Resume Point)
-**File:** (no active edit)
-**Function/Section:** post-setup validation
-**What was happening:** Session started fresh; `/context-health` was flagged as the next step in `state.json` but not yet run.
-**Next immediate action:** Run `/context-health` to verify all hooks, skills, and config files are correctly wired.
+---
 
 ---
 
-## 🚧 Blockers & Known Issues
-- Windows (no-admin): use `claude.cmd` not `claude` — desktop app conflicts with PATH
-- Git Bash on Windows: if hooks fail, verify `bash_path` is set in `.claude/settings.json`
-- `.claude/statusline.sh` is untracked (shown in `git status`) — needs to be committed or `.gitignore`d
+## 🔄 In Progress (Exact Resume Point)
+**Branch:** `main`
+**Last commit:** `f26fa82 fix: resolve CI failure, broken hook ref, and add new hook events`
+**Next immediate action:** run /context-health in Claude Code
 
 ---
 
@@ -47,7 +44,16 @@ Setting up and validating the context-engineering-kit harness on a Windows (no-a
 
 ---
 
-## 🏗 Architecture Decisions Made This Session
+---
+
+---
+
+## 🏗 Architecture Decisions Made
+| Decision | Rationale | Date |
+|----------|-----------|------|
+| Decision | Rationale | Date |
+|----------|-----------|------|
+This Session
 | Decision | Rationale | Date |
 |----------|-----------|------|
 | Skills over commands | `.claude/skills/` is the 2026 recommended format | 2026-04-03 |
@@ -57,34 +63,67 @@ Setting up and validating the context-engineering-kit harness on a Windows (no-a
 
 ---
 
+---
+
+---
+
 ## 🔧 Commands to Resume
 ```bash
-# Pull latest
-git pull origin master
-
-# Load session state
+# On any machine after git pull:
+git pull origin main
 bash scripts/session_sync.sh --load
 
-# Resume context
-claude /handover
-
-# Verify health
-claude /context-health
+# In Claude Code:
+# /context-health     — verify hooks are wired
+# /handover           — review this file
+# /token-status       — check context usage
 ```
 
 ---
 
-## 📁 Key Files Modified
-| File | What changed |
-|------|--------------|
-| `.claude/settings.json` | Hooks wired; bash_path set for Windows |
-| `.claude/statusline-cek.ps1` | Now reads `project_dir` from `state.json` (portable) |
-| `.claude/statusline.sh` | New cross-machine launcher (untracked) |
-| `.claude/session/usage.jsonl` | Session usage appended |
+## 📁 Files Modified This Session
+| File | Status |
+|------|--------|
+| `D:\Projects\context-engineering-kit\scripts\morning_brief.py` | modified |
+| `/Users/theranosis_dx/projects/context-engineering-kit/.claude/hooks/session-start.sh` | modified |
+| `/Users/theranosis_dx/projects/context-engineering-kit/.claude/hooks/subagent-lifecycle.sh` | modified |
+| `.claude/session/state.json` | modified |
+| `D:\Projects\context-engineering-kit\session_handover.md` | modified |
+| `D:\Projects\context-engineering-kit\scripts\schedule_morning_brief.ps1` | modified |
+| `D:\Projects\context-engineering-kit\config\morning_brief.json` | modified |
+| `/Users/theranosis_dx/projects/context-engineering-kit/.github/workflows/session-state.yml` | modified |
+| `/Users/theranosis_dx/projects/context-engineering-kit/.claude/hooks/post-tool-failure.sh` | modified |
+| `.claude/session/usage.jsonl` | modified |
+| `/Users/theranosis_dx/projects/context-engineering-kit/.claude/settings.json` | modified |
+| `/Users/theranosis_dx/projects/context-engineering-kit/.github/workflows/sync-api-docs.yml` | modified |
+| `D:\Projects\context-engineering-kit\.claude\skills\morning-brief\skill.md` | modified |
+| `D:\Projects\context-engineering-kit\.claude\settings.json` | modified |
 
 ---
 
-## ⚠️ Critical Rules for This Project
+## 🌿 Git Context
+```
+Branch  : main
+Commit  : f26fa82 fix: resolve CI failure, broken hook ref, and add new hook events
+Status  : M .claude/session/state.json
+ M .claude/session/usage.jsonl
+?? .claude/session/daily-usage.json
+?? .claude/session/usage-forecast.json
+```
+
+Recent commits:
+```
+f26fa82 fix: resolve CI failure, broken hook ref, and add new hook events
+e9ef4a5 chore(context): sync from oncophenomics.local — initial setup [2026-05-03T13:18:58Z]
+f541d5e docs: rewrite README with Desktop plugin vs CLI standalone use cases
+0ab31e6 fix(context-health): smarter ⚠️/❌ outside a project directory; bump v2.4.1
+1add1e5 fix: code review — injection safety, duplicate hooks, offset bugs, atomicity
+```
+
+---
+
+## ⚠️ Critical Rules
+for This Project
 - Never commit secrets, API keys, or patient data
 - Never modify `.claude/hooks/*.sh` without testing with `/doctor` afterward
 - Run `bash scripts/session_sync.sh --save` before switching devices
@@ -93,8 +132,13 @@ claude /context-health
 
 ---
 
+---
+
+---
+
 ## 🧬 Bioinformatics Context (if applicable)
 - Not applicable this session — pure tooling setup
 
 ---
-_Read this file at the start of every session. Update it with /handover before compacting._
+_Auto-updated by `pre-compact.sh` hook and `/handover` skill._
+_Read this at the start of every session. Update with `/handover`._

@@ -98,8 +98,12 @@ else
   warn "Not a git repo — initialising..."
   git init
   git add .
-  git commit -m "feat: initial context-engineering-kit setup [$TIMESTAMP]"
-  ok "Git repo initialised and committed"
+  if ! git diff --cached --quiet 2>/dev/null; then
+    git commit -m "feat: initial context-engineering-kit setup [$TIMESTAMP]"
+    ok "Git repo initialised and committed"
+  else
+    ok "Git repo initialised (nothing to commit)"
+  fi
 fi
 
 # ── 6. Windows-specific: check claude.cmd ────────────────────────────────────
