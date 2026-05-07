@@ -65,10 +65,10 @@ context-engineering-kit/
 
 ## Active work context
 <!-- AUTO-UPDATED by hooks — do not edit this section manually -->
-<!-- LAST_UPDATED: 2026-05-07T08:40:24Z -->
-<!-- ACTIVE_TASK: unknown -->
-<!-- PHASE: unknown -->
-<!-- NEXT_ACTION: unknown -->
-<!-- BRANCH: unknown -->
-<!-- COMPACT_MODE: manual -->
+<!-- LAST_UPDATED: 2026-05-07T08:45:26Z -->
+<!-- ACTIVE_TASK: initial setup -->
+<!-- PHASE: Phase 0 — Setup -->
+<!-- NEXT_ACTION: let me check the hooks are worki -->
+<!-- BRANCH: main -->
+<!-- COMPACT_MODE: compact -->
 <!-- END AUTO-UPDATED -->
