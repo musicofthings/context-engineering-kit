@@ -4,6 +4,8 @@
 
 Hooks, skills, and scripts that keep your context alive through compaction, device switches, and subscription changes. Works as a **Claude Code Desktop plugin** or a **Claude Code CLI standalone install**.
 
+🌐 **[Landing page & full docs →](https://musicofthings.github.io/context-engineering-kit/)**
+
 ---
 
 ## What problem does it solve?
@@ -19,6 +21,7 @@ Hooks, skills, and scripts that keep your context alive through compaction, devi
 | Context rot from undifferentiated compaction | `/compact-smart` preserves code, decisions, and task state at higher fidelity |
 | Hard to hand work off to a fresh session | `/handover` generates a structured `session_handover.md` in one command |
 | Dangerous commands allowed silently | `guard-dangerous.sh` blocks `rm -rf /` and production config writes |
+| New repos need manual context-kit setup | `auto_activate_new_repos` bootstraps any new git project automatically |
 
 ---
 
@@ -31,18 +34,20 @@ Choose the install path that matches how you use Claude Code:
 | **How** | Upload zip via Customize UI | Clone repo + `bash setup.sh` |
 | **Skill names** | `/context-engineering-kit:handover` | `/handover` |
 | **Hooks wired by** | `hooks/hooks.json` (auto) | `.claude/settings.json` |
+| **Auto-activates on new repos** | ✅ Yes (plugin toggle) | Manual per-project |
 | **Best for** | Always-on across all projects | One specific project |
 
 ---
 
 ## Option A — Claude Code Desktop (plugin)
 
-The recommended path if you use the **Claude Code desktop app**. The plugin loads automatically in every project — no per-project setup needed.
+The recommended path if you use the **Claude Code desktop app**. The plugin loads automatically in every project — no per-project setup needed. New projects are bootstrapped automatically on first open.
 
 ### Prerequisites
 
 - Claude Code desktop app (latest)
-- `jq`, `python3`, `bash`, `git`
+- `jq`, `bash`, `git`
+- `python3` or `python` (v3.x) — the kit auto-detects the right command
 - `feedparser` for morning brief: `pip install feedparser`
 
 ### Install steps
@@ -80,6 +85,27 @@ All skills are namespaced with the plugin name:
 /context-engineering-kit:morning-brief
 ```
 
+### Auto-activation on new repos
+
+By default the plugin bootstraps `session_handover.md` and `state.json` in any new git project on first open. To configure:
+
+```json
+// config/plugin_settings.json
+{
+  "auto_activate_new_repos": true,
+  "features": {
+    "session_tracking":  true,
+    "usage_sentinel":    true,
+    "morning_brief":     false,
+    "tool_failure_log":  true,
+    "subagent_tracking": true
+  },
+  "skip_repos": ["/path/to/repo-to-skip"]
+}
+```
+
+Set `auto_activate_new_repos: false` to disable entirely, or add individual project paths to `skip_repos`.
+
 ### Configure subscription type
 
 Edit `config/usage_budget.json` inside the plugin directory, or set an environment variable in Claude Code's settings:
@@ -104,7 +130,7 @@ Use this if you run `claude` from the terminal. Hooks wire directly into the pro
 
 - Claude Code CLI: `npm install -g @anthropic-ai/claude-code`
 - `bash`, `git`, `jq` (`brew install jq` / `apt install jq`)
-- `python3`
+- `python3` or `python` (v3.x) — auto-detected
 - `feedparser` for morning brief: `pip install feedparser`
 
 ### Install steps
@@ -154,17 +180,6 @@ Short names — no prefix needed:
 /morning-brief
 ```
 
-### Using the CLI plugin mode (optional)
-
-If you want the plugin experience in the CLI without copying files into your project:
-
-```bash
-git clone https://github.com/musicofthings/context-engineering-kit.git
-claude --plugin-dir ./context-engineering-kit
-```
-
-Skills will use the namespaced form (`/context-engineering-kit:*`) same as Desktop mode.
-
 ---
 
 ## Skills reference
@@ -203,14 +218,14 @@ Auto-invoked when context exceeds 65%.
 
 ### `/handover`
 
-Generates a complete, structured `session_handover.md`:
+Generates a complete, structured `session_handover.md` and commits it:
 
 ```
 ✅ session_handover.md updated — 7 items captured
 Run: bash scripts/session_sync.sh --save  to commit to git
 ```
 
-Run this before switching devices, hitting the context limit, or ending a session.
+Run before switching devices, hitting the context limit, or ending a session.
 
 ### `/compact-smart`
 
@@ -243,10 +258,6 @@ Unlike `/compact` which summarises everything uniformly, this:
 
 Fetches today's AI/ML news from configured RSS feeds. Auto-generated once per day on session start.
 
-```bash
-python scripts/morning_brief.py --quiet   # generate file silently (used by auto hook)
-```
-
 Edit `config/morning_brief.json` to add/remove feeds:
 
 ```json
@@ -256,8 +267,7 @@ Edit `config/morning_brief.json` to add/remove feeds:
   ],
   "max_items_per_feed": 3,
   "max_age_hours": 24,
-  "fallback_max_age_hours": 120,
-  "fallback_threshold": 3
+  "fallback_max_age_hours": 120
 }
 ```
 
@@ -273,22 +283,31 @@ All hooks fire automatically — you never call them manually.
 
 | Hook event | Script | When it fires | What it does |
 |------------|--------|--------------|--------------|
+| `SessionStart` | `auto_init_project.sh` | First open of any new project | Auto-bootstraps `session_handover.md` + `state.json` |
 | `SessionStart` | `session-start.sh` | Every new session | Injects date, git branch, task summary, budget status |
 | `SessionStart` | `morning-brief-auto.sh` | First session each day | Generates daily AI news brief silently |
 | `UserPromptSubmit` | `usage-sentinel.sh` | Before every prompt | Tracks usage; injects warnings at 70/80/85/92% |
-| `PreCompact` | `pre-compact.sh` | Before any compaction | Generates `session_handover.md`, updates `CLAUDE.md` |
-| `PostCompact` | `post-compact.sh` | After any compaction | Re-injects `state.json` so Claude retains task awareness |
+| `PreCompact` | `pre-compact.sh` | Before any compaction | Saves handover + state (merged), commits to git |
+| `PostCompact` | `post-compact.sh` | After any compaction | Re-injects task state so Claude retains context |
 | `Stop` | `extract-state-on-stop.sh` | After every response (async) | Heuristically extracts next_action and active task |
 | `Stop` | `usage-tracker.py` | After every response (async) | Records rate limit %, context %, cost to `daily-usage.json` |
 | `Stop` | `stop.sh` | After every response | Updates `state.json` with timestamp and stop reason |
 | `SessionEnd` | `session-end.sh` | When Claude Code closes | Git commits all session state files |
 | `PreToolUse` (Bash) | `guard-dangerous.sh` | Before any bash command | Blocks `rm -rf /`, production config writes |
 | `PostToolUse` (Edit/Write) | `track-changes.sh` | After every file edit | Logs modified files to `state.json` |
-| `PostToolUseFailure` | `post-tool-failure.sh` | When any tool call fails | Logs error to `tool-failures.jsonl` + `last_tool_failure` in `state.json` |
-| `SubagentStart` | `subagent-lifecycle.sh` | When a subagent starts | Logs invocation to `subagents.jsonl`, increments `subagents_started` |
-| `SubagentStop` | `subagent-lifecycle.sh` | When a subagent finishes | Logs completion to `subagents.jsonl` |
-| `Notification` | `notify.sh` | On notifications | Cross-platform desktop notification (macOS/Linux/Windows) |
-| `PermissionRequest` | `auto-approve-permissions.sh` | Before permission dialogs | Auto-approves safe context file writes and context-kit Bash scripts |
+| `PostToolUseFailure` | `post-tool-failure.sh` | When any tool call fails | Logs error to `tool-failures.jsonl` + `state.json` |
+| `SubagentStart/Stop` | `subagent-lifecycle.sh` | Subagent lifecycle | Tracks delegated work in `subagents.jsonl` |
+| `Notification` | `notify.sh` | On notifications | Cross-platform desktop notification |
+| `PermissionRequest` | `auto-approve-permissions.sh` | Permission dialogs | Auto-approves safe context file writes |
+
+### PreCompact — what gets saved
+
+Every compaction triggers a full save sequence:
+
+1. **Merge** `state.json` (preserves `session_start_time`, `last_tool_failure`, all existing fields)
+2. **Regenerate** `session_handover.md` from current conversation state
+3. **Update** `CLAUDE.md` active-work section
+4. **Git commit** all session files so `session_sync` can push them
 
 ### Usage sentinel — auto-save escalation
 
@@ -296,7 +315,7 @@ All hooks fire automatically — you never call them manually.
 |-----------|--------|
 | 70% | Soft note: "Consider /handover + /session-sync save" |
 | 80% | Reminder injected into context |
-| 85% | Directive: Claude runs `generate_session_handover.py` + `session_sync.sh --save` before responding |
+| 85% | Directive: Claude runs save sequence before responding |
 | 92% | Urgent: Claude saves immediately, then notifies you |
 
 Each threshold fires once per session (sentinel files prevent repeated injections).
@@ -335,11 +354,29 @@ Updates after every turn. Reads from `.claude/session/state.json` and `.claude/s
 
 ## Configuration
 
+### `config/plugin_settings.json`
+
+Global plugin behaviour — controls auto-activation and per-feature toggles:
+
+```json
+{
+  "auto_activate_new_repos": true,
+  "features": {
+    "session_tracking":  true,
+    "usage_sentinel":    true,
+    "morning_brief":     false,
+    "tool_failure_log":  true,
+    "subagent_tracking": true
+  },
+  "skip_repos": []
+}
+```
+
 ### `config/usage_budget.json`
 
 ```json
 {
-  "subscription_type": "pro",       // pro | max | api | team
+  "subscription_type": "pro",
   "subscriptions": {
     "api": { "daily_budget_usd": 10.00 }
   },
@@ -352,7 +389,7 @@ Updates after every turn. Reads from `.claude/session/state.json` and `.claude/s
 }
 ```
 
-### Environment variables (override without editing files)
+### Environment variables
 
 Set in Claude Code settings under `"env"`, or export in your shell:
 
@@ -369,14 +406,14 @@ Set in Claude Code settings under `"env"`, or export in your shell:
 
 ## Session state files
 
-| File | Description | Committed to git |
-|------|-------------|-----------------|
-| `.claude/session/state.json` | Active task, phase, next action, changed files | Yes |
+| File | Description | Committed |
+|------|-------------|-----------|
+| `.claude/session/state.json` | Active task, phase, next action, compact count | Yes |
 | `.claude/session/daily-usage.json` | Per-day cost, tokens, turns, peak % | Yes |
 | `.claude/session/usage-forecast.json` | Latest forecast: status, turns-to-warn, ETA | Yes |
-| `.claude/session/turn-ledger.jsonl` | Per-turn log of extracted next_action and task hints | No |
-| `.claude/session/tool-failures.jsonl` | Log of failed tool calls (tool name, error, path, timestamp) | No |
-| `.claude/session/subagents.jsonl` | Log of subagent invocations (type, description, start/stop) | No |
+| `.claude/session/turn-ledger.jsonl` | Per-turn log of extracted next_action hints | Yes |
+| `.claude/session/tool-failures.jsonl` | Failed tool calls (tool, error, path, timestamp) | Yes |
+| `.claude/session/subagents.jsonl` | Subagent invocations (type, description, lifecycle) | No |
 | `session_handover.md` | Structured task handover (human-readable) | Yes |
 | `CLAUDE.md` | Living project context document | Yes |
 
@@ -387,23 +424,28 @@ Set in Claude Code settings under `"env"`, or export in your shell:
 ```
 context-engineering-kit/
 ├── .claude-plugin/
-│   └── plugin.json                  ← plugin manifest (name, version, metadata)
+│   ├── plugin.json                  ← plugin manifest (name, version, metadata)
+│   └── marketplace.json             ← marketplace listing metadata
 ├── hooks/
-│   └── hooks.json                   ← Desktop/CLI-plugin hook wiring (${CLAUDE_PLUGIN_ROOT})
+│   └── hooks.json                   ← Desktop/plugin hook wiring (${CLAUDE_PLUGIN_ROOT})
 ├── skills/                          ← plugin-format skills (context-engineering-kit:*)
 │   └── */SKILL.md
-├── agents/                          ← plugin-format agents
+├── agents/
 │   ├── context-updater.md
 │   └── session-scribe.md
+├── docs/
+│   └── index.html                   ← GitHub Pages landing page
 │
-├── .claude/                         ← CLI standalone config (also used by plugin scripts)
+├── .claude/                         ← CLI standalone config
 │   ├── settings.json                ← CLI hook wiring + env config
 │   ├── statusline.sh                ← status bar
 │   ├── hooks/                       ← all hook scripts (shared by both modes)
 │   ├── skills/                      ← CLI standalone skills (short names)
-│   └── rules/                       ← auto-loaded rules (commit, security, token-hygiene)
+│   └── rules/                       ← auto-loaded rules
 │
 ├── scripts/
+│   ├── find_python.sh               ← Python 3 resolver (python3 → python → py)
+│   ├── auto_init_project.sh         ← bootstraps new repos on SessionStart
 │   ├── generate_session_handover.py
 │   ├── update_context_files.py
 │   ├── session_sync.sh
@@ -411,6 +453,7 @@ context-engineering-kit/
 │   └── morning_brief.py
 │
 ├── config/
+│   ├── plugin_settings.json         ← auto-activation toggle + feature flags
 │   ├── usage_budget.json
 │   ├── model_thresholds.json
 │   ├── rate_limits.json
@@ -428,6 +471,7 @@ context-engineering-kit/
 ```
 Session start
   → Claude Code opens
+  → auto_init_project.sh fires (bootstraps if new project)
   → session-start.sh fires (date, git, task injected automatically)
   → /context-health      — verify everything is wired
   → /handover            — review what was in progress
@@ -435,12 +479,12 @@ Session start
 During work
   → usage-sentinel.sh tracks usage silently on every prompt
   → /token-status        — check usage at any time
-  → /model-switch haiku  — drop to Haiku for routine tasks to save tokens
+  → /model-switch haiku  — drop to Haiku for routine tasks
 
 Approaching limit (auto-triggered at 80%+)
   → sentinel injects save reminder / directive automatically
   → /compact-smart       — smarter compaction to extend session
-  → /handover            — generate handover before compacting
+  → pre-compact.sh fires automatically, saves + commits everything
 
 Session end
   → /session-sync save   — push state to git
@@ -451,6 +495,18 @@ Resuming on another device
   → bash scripts/session_sync.sh --load
   → claude → /context-health → /handover
 ```
+
+---
+
+## Platform notes
+
+| Platform | Notes |
+|----------|-------|
+| macOS | Full support — `bash setup.sh` |
+| Linux | Full support — `bash setup.sh` |
+| Windows (Git Bash) | `bash.exe setup.sh`; use `claude.cmd` not `claude` |
+| Windows (no `python3`) | `scripts/find_python.sh` auto-detects `python` and `py.exe` |
+| CI/CD | Hooks run headlessly; GitHub Actions handle state validation |
 
 ---
 
@@ -474,25 +530,4 @@ Then in Claude Code: `/my-skill`
 
 ---
 
-## Platform notes
-
-| Platform | Notes |
-|----------|-------|
-| macOS | Full support — `bash setup.sh` |
-| Linux | Full support — `bash setup.sh` |
-| Windows (Git Bash) | `bash.exe setup.sh`; use `claude.cmd` not `claude` |
-| CI/CD | Hooks run headlessly; GitHub Actions handle state validation |
-
----
-
-## For bioinformatics / genomics projects
-
-```bash
-cp examples/bioinformatics-ngs/CLAUDE.md /path/to/your-ngs-project/CLAUDE.md
-```
-
-Pre-configured for: VCF/FASTA token hygiene, ACMG criteria, NGS pipeline stages, gnomAD/ClinVar, AWS Batch, GRCh38.
-
----
-
-*context-engineering-kit v2.4.2 — Built for multi-device, multi-subscription Claude Code workflows.*
+*context-engineering-kit v2.5.0 — Built for multi-device, multi-subscription Claude Code workflows.*
