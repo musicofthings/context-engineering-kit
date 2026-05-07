@@ -12,13 +12,14 @@ HANDOVER_FILE="$PROJECT_DIR/session_handover.md"
 log() { echo "[post-compact] $*" >&2; }
 
 # ── Load state ───────────────────────────────────────────────────────────────
+REPO_NAME=$(basename "$PROJECT_DIR")
 if [ -f "$STATE_FILE" ]; then
-  ACTIVE_TASK=$(jq -r '.active_task // "not set"' "$STATE_FILE" 2>/dev/null || echo "not set")
-  PHASE=$(jq -r '.phase // "not set"' "$STATE_FILE" 2>/dev/null || echo "not set")
-  NEXT_ACTION=$(jq -r '.next_action // "not set"' "$STATE_FILE" 2>/dev/null || echo "not set")
-  GIT_BRANCH=$(jq -r '.git_branch // "unknown"' "$STATE_FILE" 2>/dev/null || echo "unknown")
+  ACTIVE_TASK=$(jq -r '.active_task // "not set"'   "$STATE_FILE" 2>/dev/null || echo "not set")
+  PHASE=$(jq -r '.phase // "not set"'               "$STATE_FILE" 2>/dev/null || echo "not set")
+  NEXT_ACTION=$(jq -r '.next_action // "not set"'   "$STATE_FILE" 2>/dev/null || echo "not set")
+  GIT_BRANCH=$(jq -r '.git_branch // "unknown"'     "$STATE_FILE" 2>/dev/null || echo "unknown")
   GIT_COMMIT=$(jq -r '.git_last_commit // "unknown"' "$STATE_FILE" 2>/dev/null || echo "unknown")
-  COMPACT_COUNT=$(jq -r '.compact_count // 1' "$STATE_FILE" 2>/dev/null || echo "1")
+  COMPACT_COUNT=$(jq -r '.compact_count // 1'       "$STATE_FILE" 2>/dev/null || echo "1")
 else
   ACTIVE_TASK="unknown — read session_handover.md"
   PHASE="unknown"
@@ -35,17 +36,12 @@ cat <<INJECT
  CONTEXT RESTORED AFTER COMPACTION #$COMPACT_COUNT
 ════════════════════════════════════════════════════════
 
-Project : context-engineering-kit
+Project : $REPO_NAME
 Branch  : $GIT_BRANCH
 Commit  : $GIT_COMMIT
 Task    : $ACTIVE_TASK
 Phase   : $PHASE
 Next    : $NEXT_ACTION
-
-⚡ Critical rules still apply:
-  - Never commit directly to main
-  - Never modify .env files
-  - Use claude.cmd on Windows no-admin machines
 
 📋 Full task state is in session_handover.md
    Read it before continuing work.

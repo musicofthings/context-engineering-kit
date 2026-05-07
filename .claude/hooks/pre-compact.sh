@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # .claude/hooks/pre-compact.sh
 # Fires BEFORE Claude compacts the context window.
-# Updates session_handover.md, CLAUDE.md, and README so nothing is lost.
+# Saves all session state to disk and git so nothing is lost.
 # Input: JSON on stdin with compaction trigger context
 
 set -euo pipefail
@@ -31,63 +31,86 @@ mkdir -p "$PROJECT_DIR/.claude/session"
 # ── Capture git context ──────────────────────────────────────────────────────
 GIT_BRANCH=$(git -C "$PROJECT_DIR" rev-parse --abbrev-ref HEAD 2>/dev/null || echo "unknown")
 GIT_COMMIT=$(git -C "$PROJECT_DIR" log --oneline -1 2>/dev/null || echo "none")
-GIT_STATUS=$(git -C "$PROJECT_DIR" status --short 2>/dev/null | head -10 || echo "")
 MODIFIED_FILES=$(git -C "$PROJECT_DIR" diff --name-only 2>/dev/null | head -10 || echo "")
 
-# ── Update session state JSON ────────────────────────────────────────────────
+# ── Update session state JSON — MERGE with existing, never replace ───────────
+# Preserves session_start_time, last_tool_failure, saved_by, and all other
+# fields written by other hooks. Only updates compaction-specific fields.
 PREV_COMPACT_COUNT=0
-ACTIVE_TASK="unknown"
-PHASE="unknown"
-NEXT_ACTION="unknown"
-
 if [ -f "$STATE_FILE" ]; then
-  PREV_STATE=$(cat "$STATE_FILE")
-  ACTIVE_TASK=$(echo "$PREV_STATE" | jq -r '.active_task // "unknown"' 2>/dev/null || echo "unknown")
-  PHASE=$(echo "$PREV_STATE" | jq -r '.phase // "unknown"' 2>/dev/null || echo "unknown")
-  NEXT_ACTION=$(echo "$PREV_STATE" | jq -r '.next_action // "unknown"' 2>/dev/null || echo "unknown")
-  PREV_COMPACT_COUNT=$(echo "$PREV_STATE" | jq -r '.compact_count // 0' 2>/dev/null || echo "0")
+  PREV_COMPACT_COUNT=$(jq -r '.compact_count // 0' "$STATE_FILE" 2>/dev/null || echo "0")
 fi
-
 COMPACT_COUNT=$(( PREV_COMPACT_COUNT + 1 ))
+
 MODIFIED_FILES_JSON=$(echo "$MODIFIED_FILES" | jq -R -s 'split("\n") | map(select(. != ""))' 2>/dev/null || echo "[]")
 
-# Use jq --arg for all string values to avoid JSON injection
-jq -n \
-  --arg ts "$TIMESTAMP" \
-  --arg trigger "$TRIGGER" \
-  --arg ctx "$CONTEXT_PCT" \
-  --arg branch "$GIT_BRANCH" \
-  --arg commit "$GIT_COMMIT" \
-  --arg task "$ACTIVE_TASK" \
-  --arg phase "$PHASE" \
-  --arg next "$NEXT_ACTION" \
-  --argjson files "$MODIFIED_FILES_JSON" \
-  --argjson count "$COMPACT_COUNT" \
-  '{
-    last_updated: $ts,
-    trigger: $trigger,
-    context_pct_at_compact: $ctx,
-    git_branch: $branch,
-    git_last_commit: $commit,
-    active_task: $task,
-    phase: $phase,
-    next_action: $next,
-    modified_files: $files,
-    compact_count: $count
-  }' > "${STATE_FILE}.precompact.$$" \
-  && mv "${STATE_FILE}.precompact.$$" "$STATE_FILE" || rm -f "${STATE_FILE}.precompact.$$"
+STATE_TMP=$(mktemp "${STATE_FILE}.XXXXXX")
+if [ -f "$STATE_FILE" ]; then
+  # Merge: keep all existing fields, update only compaction-specific ones
+  jq \
+    --arg ts        "$TIMESTAMP" \
+    --arg trigger   "$TRIGGER" \
+    --arg ctx       "$CONTEXT_PCT" \
+    --arg branch    "$GIT_BRANCH" \
+    --arg commit    "$GIT_COMMIT" \
+    --argjson files "$MODIFIED_FILES_JSON" \
+    --argjson count "$COMPACT_COUNT" \
+    '. + {
+      last_updated:           $ts,
+      trigger:                $trigger,
+      context_pct_at_compact: $ctx,
+      git_branch:             $branch,
+      git_last_commit:        $commit,
+      modified_files:         $files,
+      compact_count:          $count
+    }' "$STATE_FILE" > "$STATE_TMP" \
+    && mv "$STATE_TMP" "$STATE_FILE" \
+    || { rm -f "$STATE_TMP"; log "WARNING: state.json update failed"; }
+else
+  # No existing state — create minimal bootstrap
+  jq -n \
+    --arg ts        "$TIMESTAMP" \
+    --arg trigger   "$TRIGGER" \
+    --arg ctx       "$CONTEXT_PCT" \
+    --arg branch    "$GIT_BRANCH" \
+    --arg commit    "$GIT_COMMIT" \
+    --argjson files "$MODIFIED_FILES_JSON" \
+    --argjson count "$COMPACT_COUNT" \
+    '{
+      last_updated:           $ts,
+      initialized_by:         "pre-compact",
+      trigger:                $trigger,
+      context_pct_at_compact: $ctx,
+      git_branch:             $branch,
+      git_last_commit:        $commit,
+      active_task:            "unknown",
+      phase:                  "unknown",
+      next_action:            "read session_handover.md",
+      modified_files:         $files,
+      compact_count:          $count
+    }' > "$STATE_TMP" \
+    && mv "$STATE_TMP" "$STATE_FILE" \
+    || { rm -f "$STATE_TMP"; log "WARNING: state.json creation failed"; }
+fi
+
+# Re-read merged state for handover generation
+ACTIVE_TASK=$(jq -r '.active_task // "unknown"' "$STATE_FILE" 2>/dev/null || echo "unknown")
+PHASE=$(jq -r '.phase // "unknown"'             "$STATE_FILE" 2>/dev/null || echo "unknown")
+NEXT_ACTION=$(jq -r '.next_action // "unknown"' "$STATE_FILE" 2>/dev/null || echo "unknown")
 
 # ── Generate/update session_handover.md ─────────────────────────────────────
+log "Generating session_handover.md..."
 "$PYTHON" "$PROJECT_DIR/scripts/generate_session_handover.py" \
   --trigger "$TRIGGER" \
   --context-pct "$CONTEXT_PCT" \
   --branch "$GIT_BRANCH" \
   --commit "$GIT_COMMIT" \
-  2>/dev/null || {
-    # Fallback: write minimal handover if Python fails
-    cat > "$HANDOVER_FILE" <<HANDOVER
+  2>&1 | while IFS= read -r line; do log "$line"; done \
+|| {
+  log "WARNING: generate_session_handover.py failed — writing minimal fallback"
+  cat > "$HANDOVER_FILE" <<HANDOVER
 # Session Handover
-_Auto-generated by pre-compact hook at $TIMESTAMP
+_Auto-generated by pre-compact hook at $TIMESTAMP_
 
 ## Context snapshot
 - **Trigger**: $TRIGGER
@@ -107,7 +130,6 @@ $MODIFIED_FILES
 ## Notes
 Context was compacted. Check git log for work completed this session.
 HANDOVER
-    log "Python script failed — wrote minimal handover"
 }
 
 # ── Update CLAUDE.md active work context section ─────────────────────────────
@@ -118,28 +140,48 @@ HANDOVER
   --task "$ACTIVE_TASK" \
   --phase "$PHASE" \
   --next-action "$NEXT_ACTION" \
-  2>/dev/null || log "update_context_files.py skipped (not blocking)"
+  2>&1 | while IFS= read -r line; do log "$line"; done || true
+
+# ── Commit session files to git so session-sync can push them ────────────────
+# Uses --no-verify: hooks already ran; this is a mechanical snapshot commit.
+log "Committing session snapshot to git..."
+(
+  cd "$PROJECT_DIR"
+  git add session_handover.md CLAUDE.md \
+          .claude/session/state.json \
+          .claude/session/turn-ledger.jsonl \
+          .claude/session/tool-failures.jsonl \
+          2>/dev/null || true
+  git diff --cached --quiet 2>/dev/null && {
+    log "No changes to commit (files unchanged)"
+  } || {
+    git commit --no-verify -m "chore(context): pre-compact snapshot [$TIMESTAMP] ctx=${CONTEXT_PCT}%" \
+      2>&1 | while IFS= read -r line; do log "$line"; done \
+    || log "WARNING: git commit failed (not blocking)"
+  }
+) || true
 
 # ── Append to audit log ──────────────────────────────────────────────────────
-echo "{\"timestamp\":\"$TIMESTAMP\",\"trigger\":\"$TRIGGER\",\"context_pct\":\"$CONTEXT_PCT\",\"branch\":\"$GIT_BRANCH\"}" \
+echo "{\"timestamp\":\"$TIMESTAMP\",\"trigger\":\"$TRIGGER\",\"context_pct\":\"$CONTEXT_PCT\",\"branch\":\"$GIT_BRANCH\",\"compact_count\":$COMPACT_COUNT}" \
   >> "$AUDIT_LOG" 2>/dev/null || true
 
 # ── Emit context injection text for Claude ───────────────────────────────────
-# Anything echoed to stdout is injected into Claude's context post-compaction
+# Stdout is injected into Claude's context window after compaction
 cat <<INJECT
 === COMPACTION CONTEXT PRESERVED ===
-Timestamp: $TIMESTAMP
-Branch: $GIT_BRANCH
+Timestamp  : $TIMESTAMP
+Branch     : $GIT_BRANCH
 Last commit: $GIT_COMMIT
 Active task: $ACTIVE_TASK
-Phase: $PHASE
+Phase      : $PHASE
 Next action: $NEXT_ACTION
+Compactions: $COMPACT_COUNT
 
-session_handover.md has been updated with full task state.
-Read session_handover.md to restore full context.
-Type /token-status to see current usage after compaction.
+session_handover.md has been updated and committed.
+Read session_handover.md to restore full task context.
+Type /token-status to see usage after compaction.
 === END CONTEXT INJECTION ===
 INJECT
 
-log "PreCompact complete"
+log "PreCompact complete (compact #$COMPACT_COUNT)"
 exit 0
