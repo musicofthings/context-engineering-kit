@@ -9,6 +9,7 @@
 set -euo pipefail
 
 PROJECT_DIR="${CLAUDE_PROJECT_DIR:-$(pwd)}"
+PYTHON=$(command -v python3 2>/dev/null || command -v python 2>/dev/null || echo "python3")
 BRIEFS_DIR="$PROJECT_DIR/briefs"
 TODAY=$(date -u +"%Y-%m-%d")
 BRIEF_FILE="$BRIEFS_DIR/${TODAY}.md"
@@ -21,14 +22,14 @@ CONFIG_FILE="$PROJECT_DIR/config/morning_brief.json"
 [ -f "$BRIEF_FILE" ] && exit 0
 
 # Check feedparser is available; skip silently if not installed
-python3 -c "import feedparser" 2>/dev/null || {
+"$PYTHON" -c "import feedparser" 2>/dev/null || {
   echo "[morning-brief] feedparser not installed — run: pip install feedparser" >&2
   exit 0
 }
 
 # Generate the brief quietly (file only, no terminal output during hook)
 mkdir -p "$BRIEFS_DIR"
-python3 "$PROJECT_DIR/scripts/morning_brief.py" --quiet 2>/dev/null || {
+"$PYTHON" "$PROJECT_DIR/scripts/morning_brief.py" --quiet 2>/dev/null || {
   echo "[morning-brief] Brief generation failed — run /morning-brief manually" >&2
   exit 0
 }
