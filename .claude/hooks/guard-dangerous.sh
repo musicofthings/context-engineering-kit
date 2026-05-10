@@ -44,10 +44,18 @@ for regex in "${DANGEROUS_REGEXES[@]}"; do
   fi
 done
 
-# Block writes to production.* config files — match `> production.something`,
-# `tee production.something`, or `cp ... production.something`. Avoid the
-# old false-positive on echo "...production..." or `git diff origin/production`.
-if [[ "$CMD" =~ (^|[[:space:]])(>+|tee|cp|mv)[[:space:]]+([^[:space:]]+/)?production\.[a-zA-Z0-9_]+ ]]; then
+# Block writes to production.* config files.
+#
+# Two patterns because the destination is positioned differently per command:
+#   - "> production.env"          — direct: file follows the operator
+#   - "tee production.env"        — direct: file is the next token
+#   - "cp src.env production.env" — last arg: cp/mv take SOURCE [...] DEST
+#   - "mv tmp production.env"     — last arg
+# Source-reads of production files (e.g. `cp production.env backup`) are
+# allowed — they don't write to production.
+PROD_RE_DIRECT='(^|[[:space:]])(>+|tee)[[:space:]]+([^[:space:]]+/)?production\.[a-zA-Z0-9_]+'
+PROD_RE_DEST='(^|[[:space:]])(cp|mv)[[:space:]]+[^;&|]*[[:space:]]([^[:space:]]+/)?production\.[a-zA-Z0-9_]+([[:space:]]*$|[[:space:]]*[;&|])'
+if [[ "$CMD" =~ $PROD_RE_DIRECT ]] || [[ "$CMD" =~ $PROD_RE_DEST ]]; then
   echo "BLOCKED: Attempted write to production.* config file" >&2
   exit 2
 fi
