@@ -26,6 +26,22 @@
       --purple:    #d2a8ff;
       --yellow:    #e3b341;
       --radius:    10px;
+      --nav-bg:    rgba(13,17,23,0.92);
+    }
+
+    body.light {
+      --bg:        #f6f8fa;
+      --bg2:       #ffffff;
+      --bg3:       #eaeef2;
+      --border:    #d0d7de;
+      --text:      #1f2328;
+      --muted:     #57606a;
+      --accent:    #cf222e;
+      --accent2:   #0969da;
+      --green:     #1a7f37;
+      --purple:    #8250df;
+      --yellow:    #9a6700;
+      --nav-bg:    rgba(246,248,250,0.92);
     }
 
     html { scroll-behavior: smooth; }
@@ -80,11 +96,28 @@
       position: sticky;
       top: 0;
       z-index: 100;
-      background: rgba(13,17,23,0.92);
+      background: var(--nav-bg);
       backdrop-filter: blur(12px);
       border-bottom: 1px solid var(--border);
       padding: 14px 0;
     }
+
+    .theme-toggle {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 5px 10px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 0.85rem;
+      color: var(--muted);
+      transition: color 0.15s, border-color 0.15s;
+      line-height: 1;
+    }
+
+    .theme-toggle:hover { color: var(--text); border-color: var(--muted); }
 
     nav .inner {
       display: flex;
@@ -636,6 +669,9 @@
       <a href="#skills">Skills</a>
       <a href="#hooks">Hooks</a>
       <a href="https://github.com/musicofthings/context-engineering-kit" class="nav-cta">GitHub →</a>
+      <button class="theme-toggle" id="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">
+        <span id="theme-icon">☀️</span>
+      </button>
     </div>
   </div>
 </nav>
@@ -1204,6 +1240,23 @@
     event.currentTarget.classList.add('active');
   }
 
+  function toggleTheme() {
+    const isLight = document.body.classList.toggle('light');
+    document.getElementById('theme-icon').textContent = isLight ? '🌙' : '☀️';
+    try { localStorage.setItem('cek-theme', isLight ? 'light' : 'dark'); } catch (e) {}
+  }
+
+  (function detectTheme() {
+    let saved;
+    try { saved = localStorage.getItem('cek-theme'); } catch (e) {}
+    const preferLight = saved ? saved === 'light' : window.matchMedia('(prefers-color-scheme: light)').matches;
+    if (preferLight) {
+      document.body.classList.add('light');
+      const icon = document.getElementById('theme-icon');
+      if (icon) icon.textContent = '🌙';
+    }
+  })();
+
   function setOS(os) {
     document.body.className = 'os-' + os;
     document.querySelectorAll('.os-btn').forEach(b => b.classList.remove('active'));
@@ -1230,6 +1283,8 @@
     }
   })();
 </script>
+
+<script data-name="BMC-Widget" data-cfasync="false" src="https://cdnjs.buymeacoffee.com/1.0.0/widget.prod.min.js" data-id="shibi76" data-description="Support me on Buy me a coffee!" data-message="If you enjoyed this claude code cek plugin then please share your feedback and support us to maintain this open source repo" data-color="#5F7FFF" data-position="Right" data-x_margin="18" data-y_margin="18"></script>
 
 </body>
 </html>
