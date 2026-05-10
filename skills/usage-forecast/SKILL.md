@@ -7,10 +7,13 @@ auto-invoke-when: user asks about usage limits, remaining capacity, how many mor
 
 # Usage Forecast — Daily Burn Rate & Limit Prediction
 
-Run the usage tracker in report mode and display the output:
+Run the usage tracker in report mode and display the output. Use
+`${CLAUDE_PLUGIN_ROOT}` if it is set (plugin install) and fall back to
+the project-relative path (developer install):
 
 ```bash
-python3 scripts/usage-tracker.py --report
+"${CLAUDE_PLUGIN_ROOT:-.}/scripts/usage-tracker.py" --report 2>/dev/null \
+  || python3 "${CLAUDE_PLUGIN_ROOT:-.}/scripts/usage-tracker.py" --report
 ```
 
 Then display the full report to the user.
@@ -27,9 +30,14 @@ If status is WARNING or CRITICAL:
 
 ### Adjusting limits
 
-The warn/critical thresholds are in `config/rate_limits.json`.
-The subscription tier is set by the `CEK_SUBSCRIPTION_TIER` environment variable
-or `subscription_tier` key in `config/rate_limits.json`.
+The warn/compact/critical thresholds are sourced from `settings.json` env
+vars (`CEK_TOKEN_WARN_PCT`, `CEK_TOKEN_COMPACT_PCT`, `CEK_TOKEN_CRITICAL_PCT`)
+with defaults 70/85/92.
+
+The subscription tier is read from (in order): `config/rate_limits.json`
+key `subscription_tier`, then `config/usage_budget.json` key
+`subscription_type`, then env var `CEK_SUBSCRIPTION_TIER`. Both config files
+accept either field name; the tracker reconciles them.
 
 Valid tiers: `pro`, `max`, `api`
 

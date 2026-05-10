@@ -19,12 +19,18 @@ _find_python3() {
   for cmd in python3 python py; do
     if command -v "$cmd" &>/dev/null 2>&1; then
       if "$cmd" -c "import sys; sys.exit(0 if sys.version_info[0] >= 3 else 1)" 2>/dev/null; then
+        # On Windows, bare `python` may resolve to the Microsoft Store stub
+        # (which prints "Python was not found" and exits non-zero on -c). The
+        # version check above catches that. `py` is the canonical Windows path.
         echo "$cmd"
         return 0
       fi
     fi
   done
-  echo "python3"   # will produce a clear "not found" error on use
+  # No Python 3 found — emit a loud message to stderr so failed hooks have
+  # a discoverable cause rather than silently exit-127ing.
+  echo "[find_python] ERROR: no Python 3 interpreter found on PATH (tried: python3, python, py)" >&2
+  echo "python3"
 }
 
 PYTHON=$(_find_python3)

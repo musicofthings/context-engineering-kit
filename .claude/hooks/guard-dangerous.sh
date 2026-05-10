@@ -8,16 +8,31 @@ set -euo pipefail
 INPUT=$(cat)
 CMD=$(echo "$INPUT" | jq -r '.tool_input.command // ""' 2>/dev/null || echo "")
 
-# Regex patterns — match whitespace variants, quoting, and long-form flags
+# Regex patterns — match whitespace variants, quoting, and long-form flags.
+# Targets are intentionally narrow: only the truly destructive patterns,
+# with enough variation to catch flag reordering and argument expansion.
 DANGEROUS_REGEXES=(
+  # rm with -rf / -fr / --recursive --force against / ~ $HOME *
   'rm[[:space:]]+-[a-zA-Z]*r[a-zA-Z]*f[[:space:]]+[/~]'
+  'rm[[:space:]]+-[a-zA-Z]*f[a-zA-Z]*r[[:space:]]+[/~]'
   'rm[[:space:]]+--recursive[[:space:]]+--force[[:space:]]+[/~]'
   'rm[[:space:]]+--force[[:space:]]+--recursive[[:space:]]+[/~]'
+  'rm[[:space:]]+-[a-zA-Z]*r[a-zA-Z]*f[[:space:]]+\$HOME'
+  'rm[[:space:]]+-[a-zA-Z]*r[a-zA-Z]*f[[:space:]]+\*'
+  # find -delete on root-ish paths
+  'find[[:space:]]+/[[:space:]].*-delete'
+  # destructive git operations on remote/main
+  'git[[:space:]]+push[[:space:]]+(--force|-f)[[:space:]]+.*[[:space:]](main|master)'
+  'git[[:space:]]+clean[[:space:]]+-[a-zA-Z]*f[a-zA-Z]*d'
+  # disk wipers
   'dd[[:space:]]+if=/dev/zero'
   'dd[[:space:]]+if=[^[:space:]]*[[:space:]]+of=/dev/'
   'mkfs(\.[a-z]+)?[[:space:]]'
+  # fork bomb
   ':\(\)\{:\|:&\};:'
+  # broad permission drops
   'chmod[[:space:]]+-R[[:space:]]+777[[:space:]]+/'
+  # raw block-device redirects
   '>[[:space:]]*/dev/sd[a-z]'
 )
 
@@ -29,9 +44,11 @@ for regex in "${DANGEROUS_REGEXES[@]}"; do
   fi
 done
 
-# Block writes to production config
-if [[ "$CMD" == *"production"* && ("$CMD" == *"write"* || "$CMD" == *">"*) ]]; then
-  echo "BLOCKED: Attempted write to production config" >&2
+# Block writes to production.* config files — match `> production.something`,
+# `tee production.something`, or `cp ... production.something`. Avoid the
+# old false-positive on echo "...production..." or `git diff origin/production`.
+if [[ "$CMD" =~ (^|[[:space:]])(>+|tee|cp|mv)[[:space:]]+([^[:space:]]+/)?production\.[a-zA-Z0-9_]+ ]]; then
+  echo "BLOCKED: Attempted write to production.* config file" >&2
   exit 2
 fi
 

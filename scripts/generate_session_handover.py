@@ -14,10 +14,15 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 
-def run(cmd: str, cwd: str = None) -> str:
+def run(cmd, cwd: str = None) -> str:
+    """Run a command list and return stdout. Accepts a string for legacy
+    callers (split on whitespace) or a list (preferred). Avoids shell=True
+    so paths with spaces/quotes don't break on Windows."""
+    if isinstance(cmd, str):
+        cmd = cmd.split()
     try:
         result = subprocess.run(
-            cmd, shell=True, capture_output=True, text=True, cwd=cwd, timeout=10
+            cmd, capture_output=True, text=True, cwd=cwd, timeout=10
         )
         return result.stdout.strip()
     except Exception:
@@ -243,7 +248,10 @@ def main():
     output_path = Path(args.output) if args.output else project_dir / "session_handover.md"
 
     content = generate(args)
-    output_path.write_text(content, encoding="utf-8")
+    # Atomic write: PreCompact and /handover skill can race.
+    tmp = output_path.with_suffix(output_path.suffix + ".tmp")
+    tmp.write_text(content, encoding="utf-8")
+    os.replace(tmp, output_path)
     print(f"[handover] Written to {output_path}", file=sys.stderr)
     sys.exit(0)
 

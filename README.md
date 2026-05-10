@@ -400,7 +400,7 @@ Set in Claude Code settings under `"env"`, or export in your shell:
 | `CEK_TOKEN_CRITICAL_PCT` | `85` | Context % at which to auto-save |
 | `CEK_MODEL_HAIKU` | `claude-haiku-4-5-20251001` | Haiku model ID |
 | `CEK_MODEL_SONNET` | `claude-sonnet-4-6` | Sonnet model ID |
-| `CEK_MODEL_OPUS` | `claude-opus-4-6` | Opus model ID |
+| `CEK_MODEL_OPUS` | `claude-opus-4-7` | Opus model ID |
 
 ---
 

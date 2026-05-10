@@ -24,6 +24,16 @@ rm -f "$SENTINEL_DIR/.sentinel_warn" \
       "$SENTINEL_DIR/.sentinel_save" \
       "$SENTINEL_DIR/.sentinel_critical" 2>/dev/null || true
 
+# ── Reset subagent counter ───────────────────────────────────────────────────
+# subagents_running drifts upward across crashes — reset to 0 on session start
+# so the count reflects this session only.
+if [ -f "$STATE_FILE" ]; then
+  STATE_TMP=$(mktemp "${STATE_FILE}.XXXXXX")
+  jq '.subagents_running = 0' "$STATE_FILE" > "$STATE_TMP" 2>/dev/null \
+    && mv "$STATE_TMP" "$STATE_FILE" \
+    || rm -f "$STATE_TMP"
+fi
+
 # ── Record session start time in state.json ──────────────────────────────────
 # usage-sentinel.sh reads this to compute elapsed time against the budget window.
 # Always overwrite — SessionStart fires on new sessions only, not compact resumes.

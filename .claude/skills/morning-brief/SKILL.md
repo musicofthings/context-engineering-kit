@@ -1,3 +1,10 @@
+---
+name: morning-brief
+description: Display the daily AI news digest from configured RSS feeds. Auto-generated once per day at session start. Use /context-engineering-kit:morning-brief to read today's brief.
+user-invocable: true
+auto-invoke-when: user asks about today's AI news, what's new in AI, or morning brief
+---
+
 # /morning-brief
 
 Run the daily AI news digest from RSS feeds and display it in the terminal.
@@ -7,7 +14,7 @@ Run the daily AI news digest from RSS feeds and display it in the terminal.
 Run this bash command and display the output to the user:
 
 ```bash
-python scripts/morning_brief.py --save
+python3 "${CLAUDE_PLUGIN_ROOT:-.}/scripts/morning_brief.py" --save
 ```
 
 Then tell the user:

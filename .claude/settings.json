@@ -256,7 +256,7 @@
     "CEK_TOKEN_CRITICAL_PCT": "92",
     "CEK_MODEL_HAIKU": "claude-haiku-4-5-20251001",
     "CEK_MODEL_SONNET": "claude-sonnet-4-6",
-    "CEK_MODEL_OPUS": "claude-opus-4-6",
+    "CEK_MODEL_OPUS": "claude-opus-4-7",
     "CEK_SUBSCRIPTION_TIER": "pro"
   },
   "statusLine": {
