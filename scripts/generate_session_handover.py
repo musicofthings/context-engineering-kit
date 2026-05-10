@@ -47,33 +47,33 @@ def load_existing_handover(project_dir: Path) -> dict:
     if "## 🎯 Active Task" in content:
         start = content.find("## 🎯 Active Task") + len("## 🎯 Active Task")
         end = content.find("\n## ", start)
-        sections["active_task_section"] = content[start:end].strip() if end > 0 else content[start:].strip()
+        sections["active_task_section"] = content[start:end].strip() if end != -1 else content[start:].strip()
 
     # Extract completed items
     _completed_header = "## ✅ Completed This Session"
     if _completed_header in content:
         start = content.find(_completed_header) + len(_completed_header)
         end = content.find("\n## ", start + 1)
-        sections["completed"] = content[start:end].strip() if end > 0 else content[start:].strip()
+        sections["completed"] = content[start:end].strip() if end != -1 else content[start:].strip()
 
     # Extract remaining work
     if "## 📋 Remaining Work" in content:
         start = content.find("## 📋 Remaining Work") + len("## 📋 Remaining Work")
         end = content.find("\n## ", start)
-        sections["remaining"] = content[start:end].strip() if end > 0 else content[start:].strip()
+        sections["remaining"] = content[start:end].strip() if end != -1 else content[start:].strip()
 
     # Extract architecture decisions table
     _decisions_header = "## 🏗 Architecture Decisions Made"
     if _decisions_header in content:
         start = content.find(_decisions_header) + len(_decisions_header)
         end = content.find("\n## ", start)
-        sections["decisions"] = content[start:end].strip() if end > 0 else content[start:].strip()
+        sections["decisions"] = content[start:end].strip() if end != -1 else content[start:].strip()
 
     # Extract critical rules
     if "## ⚠️ Critical Rules" in content:
         start = content.find("## ⚠️ Critical Rules") + len("## ⚠️ Critical Rules")
         end = content.find("\n## ", start)
-        sections["rules"] = content[start:end].strip() if end > 0 else content[start:].strip()
+        sections["rules"] = content[start:end].strip() if end != -1 else content[start:].strip()
 
     # Extract bioinfo context
     _bioinfo_header = "## 🧬 Bioinformatics Context (if applicable)"

@@ -33,9 +33,11 @@ TURN_COUNT=$(echo "$INPUT" | jq -r '.turn_count // 0' 2>/dev/null || echo "0")
 NEXT_ACTION=""
 
 # Priority 1: explicit "next" statements at end of response
+# Collapse newlines first so [^.!?] doesn't behave differently across grep implementations
 if echo "$RESPONSE" | grep -qiE "(next[: ](i'll|i will|step|we'll|we will|is|are|up)|now (i'll|i will|let's|i'm going to)|after this|going to |i'm going to |will now |let me )"; then
   NEXT_ACTION=$(echo "$RESPONSE" \
-    | grep -iEo "(next[: ](i'll|i will|step|we'll|we will|is|are|up)[^.!?\n]{5,80}|now (i'll|i will|let's|i'm going to)[^.!?\n]{5,80}|after this[^.!?\n]{5,60}|going to [^.!?\n]{5,60}|i'm going to [^.!?\n]{5,60}|will now [^.!?\n]{5,60}|let me [^.!?\n]{5,60})" \
+    | tr '\n' ' ' \
+    | grep -iEo "(next[: ](i'll|i will|step|we'll|we will|is|are|up)[^.!?]{5,80}|now (i'll|i will|let's|i'm going to)[^.!?]{5,80}|after this[^.!?]{5,60}|going to [^.!?]{5,60}|i'm going to [^.!?]{5,60}|will now [^.!?]{5,60}|let me [^.!?]{5,60})" \
     | head -1 \
     | sed 's/^[[:space:]]*//' \
     | cut -c1-120 \
@@ -45,7 +47,8 @@ fi
 # Priority 2: TODO or action items at end
 if [ -z "$NEXT_ACTION" ]; then
   NEXT_ACTION=$(echo "$RESPONSE" \
-    | grep -iEo "(TODO:[^.!?\n]{5,80}|need to [^.!?\n]{5,60}|should [^.!?\n]{5,60})" \
+    | tr '\n' ' ' \
+    | grep -iEo "(TODO:[^.!?]{5,80}|need to [^.!?]{5,60}|should [^.!?]{5,60})" \
     | head -1 \
     | sed 's/TODO://i' \
     | sed 's/^[[:space:]]*//' \

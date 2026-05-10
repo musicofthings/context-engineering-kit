@@ -59,7 +59,7 @@ def main():
         print(f"Config not found: {CONFIG_FILE}", file=sys.stderr)
         sys.exit(1)
 
-    config = json.loads(CONFIG_FILE.read_text())
+    config = json.loads(CONFIG_FILE.read_text(encoding="utf-8"))
     apis = config.get("apis", [])
     timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
@@ -83,7 +83,7 @@ def main():
         sections.append("```\n" + extracted[:3000] + "\n```\n")
         sections.append("\n---\n")
 
-    OUTPUT_FILE.write_text("\n".join(sections))
+    OUTPUT_FILE.write_text("\n".join(sections), encoding="utf-8")
     print(f"api_docs.md written ({OUTPUT_FILE.stat().st_size} bytes)", file=sys.stderr)
 
 

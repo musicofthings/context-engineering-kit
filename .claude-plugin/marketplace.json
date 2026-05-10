@@ -12,7 +12,7 @@
       "name": "context-engineering-kit",
       "source": "./",
       "description": "Automated context preservation for Claude Code across sessions, devices, and subscriptions.",
-      "version": "2.4.0",
+      "version": "2.4.1",
       "author": {
         "name": "musicofthings"
       },

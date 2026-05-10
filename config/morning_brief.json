@@ -4,7 +4,6 @@
   "max_age_hours": 24,
   "fallback_max_age_hours": 120,
   "fallback_threshold": 3,
-  "output_file": "briefs/morning_brief.md",
 
   "feeds": [
     {
