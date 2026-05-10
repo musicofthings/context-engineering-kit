@@ -32,19 +32,14 @@ Remaining    : ~173 min (~2h 53m)
 
 For API billing, read `session_cost_usd` from state.json and compare to `daily_budget_usd`.
 
-## 3. Daily Usage from ccusage
+## 3. Daily Usage
 
 Run this and display the output:
 ```bash
-python3 scripts/usage_report.py --days 1
+python3 scripts/usage-tracker.py --report
 ```
 
-If ccusage data is not available, note: "Install ccusage (`npm install -g ccusage`) for historical token tracking."
-
-Also run with `--write-summary` to refresh the usage_summary.json cache:
-```bash
-python3 scripts/usage_report.py --days 1 --write-summary
-```
+If the forecast file is stale (`.claude/session/usage-forecast.json` is missing or old), note that it is refreshed automatically on each Stop event.
 
 ## 4. State Freshness
 

@@ -36,11 +36,12 @@ do_save() {
 
   # Update state with device info
   if [ -f "$STATE_FILE" ]; then
+    STATE_TMP=$(mktemp "${STATE_FILE}.XXXXXX")
     jq --arg host "$HOSTNAME_ID" \
        --arg platform "$PLATFORM" \
        --arg ts "$TIMESTAMP" \
        '.saved_by = $host | .saved_platform = $platform | .last_save = $ts' \
-       "$STATE_FILE" > "$STATE_FILE.tmp" && mv "$STATE_FILE.tmp" "$STATE_FILE"
+       "$STATE_FILE" > "$STATE_TMP" && mv "$STATE_TMP" "$STATE_FILE" || rm -f "$STATE_TMP"
   else
     cat > "$STATE_FILE" <<EOF
 {
@@ -134,7 +135,7 @@ do_status() {
 
   cd "$PROJECT_DIR"
   GIT_BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "not a git repo")
-  GIT_AHEAD=$(git rev-list --count origin/HEAD..HEAD 2>/dev/null || echo "?")
+  GIT_AHEAD=$(git rev-list --count "@{u}..HEAD" 2>/dev/null || git rev-list --count origin/HEAD..HEAD 2>/dev/null || echo "?")
   log ""
   log "Git branch    : $GIT_BRANCH"
   log "Commits ahead : $GIT_AHEAD"

@@ -9,13 +9,14 @@ auto-invoke-when: user mentions switching devices, ending session, or asks about
 
 Generate a complete, structured session_handover.md. Write the output to `session_handover.md` in the project root.
 
-Use this exact structure:
+Use this exact structure (matches what `generate_session_handover.py` produces so the pre-compact hook preserves your edits):
 
 ```markdown
 # Session Handover
 _Generated: [ISO timestamp]_
 _Branch: [git branch]_
-_Triggered by: [user request / pre-compact hook / context threshold]_
+_Trigger: [user request / pre-compact hook / context threshold] | Context at compact: [N]%_
+_Compact count this project: [N]_
 
 ---
 
@@ -24,27 +25,19 @@ _Triggered by: [user request / pre-compact hook / context threshold]_
 [1–3 sentences describing the active task clearly enough that a fresh Claude instance can pick it up]
 
 **Phase:** [Phase name and number if applicable]
-**Progress:** [X% complete — describe what's done vs what remains]
+**Next action:** [exactly what to do next — be specific]
 
 ---
 
 ## ✅ Completed This Session
-- [Specific thing done, with file paths where relevant]
-- [Another completed item]
+- [ ] (track completed items here)
 
 ---
 
 ## 🔄 In Progress (Exact Resume Point)
-**File:** [path/to/file.ext]
-**Function/Section:** [exact location]
-**What was happening:** [description]
-**Next immediate action:** [exactly what to do next — be specific]
-
----
-
-## 🚧 Blockers & Known Issues
-- [Blocker 1: description + what was tried]
-- [Known issue: description]
+**Branch:** `[branch]`
+**Last commit:** `[commit hash and message]`
+**Next immediate action:** [exactly what to do next]
 
 ---
 
@@ -55,7 +48,7 @@ _Triggered by: [user request / pre-compact hook / context threshold]_
 
 ---
 
-## 🏗 Architecture Decisions Made This Session
+## 🏗 Architecture Decisions Made
 | Decision | Rationale | Date |
 |----------|-----------|------|
 | [decision] | [why] | [date] |
@@ -64,39 +57,51 @@ _Triggered by: [user request / pre-compact hook / context threshold]_
 
 ## 🔧 Commands to Resume
 ```bash
-# Clone / pull latest
+# On any machine after git pull:
 git pull origin [branch]
-
-# Load session state
 bash scripts/session_sync.sh --load
 
-# Resume context
-claude /handover
+# In Claude Code:
+# /context-health     — verify hooks are wired
+# /handover           — review this file
+# /token-status       — check context usage
 ```
 
 ---
 
-## 📁 Key Files Modified
-| File | What changed |
-|------|--------------|
-| [path] | [what] |
+## 📁 Files Modified This Session
+| File | Status |
+|------|--------|
+| [path] | modified |
 
 ---
 
-## ⚠️ Critical Rules for This Project
-- [Rule 1]
-- [Rule 2]
+## 🌿 Git Context
+```
+Branch  : [branch]
+Commit  : [commit]
+Status  : [clean / dirty]
+```
+
+Recent commits:
+```
+[last 5 commits]
+```
+
+---
+
+## ⚠️ Critical Rules
+- Never commit secrets or API keys
+- Run /handover before switching devices
 
 ---
 
 ## 🧬 Bioinformatics Context (if applicable)
-- Reference genome: [GRCh38 / hg19 / other]
-- Pipeline stage: [stage]
-- Sample/cohort: [description]
-- ACMG criteria in use: [criteria]
+- Not configured for this project
 
 ---
-_Read this file at the start of every session. Update it with /handover before compacting._
+_Auto-updated by `pre-compact.sh` hook and `/handover` skill._
+_Read this at the start of every session. Update with `/handover`._
 ```
 
 After writing the file:

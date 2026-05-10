@@ -16,6 +16,9 @@
 
 set -euo pipefail
 
+# Default CLAUDE_PROJECT_DIR so -u doesn't abort if the var is unset
+CLAUDE_PROJECT_DIR="${CLAUDE_PROJECT_DIR:-$(pwd)}"
+
 INPUT=$(cat)
 
 # Extract tool name and file path from PermissionRequest input

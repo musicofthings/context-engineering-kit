@@ -58,8 +58,12 @@ def update_claude_md(project_dir: Path, args) -> bool:
         updated = content.rstrip() + "\n\n" + new_section + "\n"
 
     tmp = claude_md.with_suffix(".md.tmp")
-    tmp.write_text(updated, encoding="utf-8")
-    tmp.replace(claude_md)
+    try:
+        tmp.write_text(updated, encoding="utf-8")
+        tmp.replace(claude_md)
+    except Exception:
+        tmp.unlink(missing_ok=True)
+        raise
     print(f"[update_context] CLAUDE.md updated ({args.mode} mode)", file=sys.stderr)
     return True
 

@@ -136,11 +136,12 @@ def forecast(m: dict, day: dict, tier_name: str) -> dict:
     crit_c  = tier["cost_crit"]
 
     if real:
-        pct           = rl_5h
-        ppt           = pct / turns  # % per turn
-        turns_to_warn = int((warn_p - pct) / ppt) if ppt > 0 and pct < warn_p else 0
-        turns_to_crit = int((crit_p - pct) / ppt) if ppt > 0 and pct < crit_p else 0
-        source        = "rate_limit_window"
+        pct            = rl_5h
+        session_turns  = max(1, m.get("turns", 1))  # use session turns; aligns with 5h window scope
+        ppt            = pct / session_turns
+        turns_to_warn  = int((warn_p - pct) / ppt) if ppt > 0 and pct < warn_p else 0
+        turns_to_crit  = int((crit_p - pct) / ppt) if ppt > 0 and pct < crit_p else 0
+        source         = "rate_limit_window"
     else:
         pct           = (cost_t / crit_c * 100) if crit_c > 0 else 0
         cpt           = cost_t / turns

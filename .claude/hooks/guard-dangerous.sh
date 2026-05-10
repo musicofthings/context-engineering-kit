@@ -8,19 +8,22 @@ set -euo pipefail
 INPUT=$(cat)
 CMD=$(echo "$INPUT" | jq -r '.tool_input.command // ""' 2>/dev/null || echo "")
 
-DANGEROUS_PATTERNS=(
-  "rm -rf /"
-  "rm -rf ~"
-  "dd if=/dev/zero"
-  "mkfs"
-  ":(){:|:&};:"
-  "chmod -R 777 /"
-  "> /dev/sda"
+# Regex patterns — match whitespace variants, quoting, and long-form flags
+DANGEROUS_REGEXES=(
+  'rm[[:space:]]+-[a-zA-Z]*r[a-zA-Z]*f[[:space:]]+[/~]'
+  'rm[[:space:]]+--recursive[[:space:]]+--force[[:space:]]+[/~]'
+  'rm[[:space:]]+--force[[:space:]]+--recursive[[:space:]]+[/~]'
+  'dd[[:space:]]+if=/dev/zero'
+  'dd[[:space:]]+if=[^[:space:]]*[[:space:]]+of=/dev/'
+  'mkfs(\.[a-z]+)?[[:space:]]'
+  ':\(\)\{:\|:&\};:'
+  'chmod[[:space:]]+-R[[:space:]]+777[[:space:]]+/'
+  '>[[:space:]]*/dev/sd[a-z]'
 )
 
-for pattern in "${DANGEROUS_PATTERNS[@]}"; do
-  if [[ "$CMD" == *"$pattern"* ]]; then
-    echo "BLOCKED: Command matches dangerous pattern: '$pattern'" >&2
+for regex in "${DANGEROUS_REGEXES[@]}"; do
+  if [[ "$CMD" =~ $regex ]]; then
+    echo "BLOCKED: Command matches dangerous pattern: '$regex'" >&2
     echo "Command was: $CMD" >&2
     exit 2
   fi

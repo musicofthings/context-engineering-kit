@@ -8,13 +8,13 @@ so every new session picks up exactly where the last one left off.
 
 ## Quick orientation
 - **Hooks fire automatically** — you do not need to call them manually
-- **Skills are slash commands** — type `/token-status`, `/handover`, `/compact-smart`, etc.
+- **Skills are slash commands** — type `/token-status`, `/handover`, `/compact-smart`, `/usage-forecast`, `/morning-brief`, etc.
 - **session_handover.md** is the live state file — always read it at session start
 - **config/** holds all tunable thresholds (model switching, token budgets, rate limits)
 
 ## Critical rules
 - Never commit secrets, API keys, or patient data
-- Never modify `.claude/hooks/*.sh` without testing with `/doctor` afterward
+- Never modify `.claude/hooks/*.sh` without testing with `/context-health` afterward
 - Always run `bash scripts/session_sync.sh --save` before switching devices
 - Use `/fast` for quick edits; reserve Opus for architecture decisions
 
@@ -38,7 +38,9 @@ context-engineering-kit/
 │   │   ├── model-switch/            ← /model-switch
 │   │   ├── compact-smart/           ← /compact-smart
 │   │   ├── session-sync/            ← /session-sync
-│   │   └── context-health/          ← /context-health
+│   │   ├── context-health/          ← /context-health
+│   │   ├── usage-forecast/          ← /usage-forecast
+│   │   └── morning-brief/           ← /morning-brief
 │   ├── rules/
 │   │   ├── commit-protocol.md
 │   │   ├── security.md
