@@ -472,8 +472,8 @@
 
     .os-btn svg { flex-shrink: 0; }
 
-    /* hide platform blocks by default; JS shows the right one */
-    .os-win, .os-mac, .os-linux { display: none; }
+    /* hide platform blocks by default; :not(body) prevents body.os-linux hiding itself */
+    .os-win:not(body), .os-mac:not(body), .os-linux:not(body) { display: none; }
     body.os-windows .os-win   { display: block; }
     body.os-macos   .os-mac   { display: block; }
     body.os-linux   .os-linux { display: block; }
