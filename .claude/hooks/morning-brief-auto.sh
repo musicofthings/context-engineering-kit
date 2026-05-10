@@ -9,8 +9,24 @@
 set -euo pipefail
 
 PROJECT_DIR="${CLAUDE_PROJECT_DIR:-$(pwd)}"
-# shellcheck source=../../scripts/find_python.sh
-source "${CLAUDE_PLUGIN_ROOT:-$PROJECT_DIR}/scripts/find_python.sh"
+PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$PROJECT_DIR}"
+PLUGIN_SETTINGS="$PLUGIN_ROOT/config/plugin_settings.json"
+
+# Feature gate: respect plugin_settings.features.morning_brief
+if [ -f "$PLUGIN_SETTINGS" ]; then
+  FEATURE_ON=$(jq -r '.features.morning_brief // false' "$PLUGIN_SETTINGS" 2>/dev/null || echo "false")
+  [ "$FEATURE_ON" = "true" ] || exit 0
+fi
+
+# Resolve python AFTER feature gate so we don't fail when feature is off
+# and find_python.sh isn't available (different plugin install layouts).
+if [ -f "$PLUGIN_ROOT/scripts/find_python.sh" ]; then
+  # shellcheck source=../../scripts/find_python.sh
+  source "$PLUGIN_ROOT/scripts/find_python.sh"
+else
+  PYTHON="${PYTHON:-python3}"
+fi
+
 BRIEFS_DIR="$PROJECT_DIR/briefs"
 TODAY=$(date -u +"%Y-%m-%d")
 BRIEF_FILE="$BRIEFS_DIR/${TODAY}.md"

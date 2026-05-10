@@ -14,7 +14,7 @@ Run the daily AI news digest from RSS feeds and display it in the terminal.
 Run this bash command and display the output to the user:
 
 ```bash
-python3 scripts/morning_brief.py --save
+python3 "${CLAUDE_PLUGIN_ROOT:-.}/scripts/morning_brief.py" --save
 ```
 
 Then tell the user:

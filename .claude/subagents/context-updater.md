@@ -1,6 +1,7 @@
 ---
 name: context-updater
 description: Maintains all context engineering files. Updates session_handover.md, CLAUDE.md active section, and README synopsis. Called by pre-compact hook and /handover skill.
+tools: Read, Bash, Edit, Write
 ---
 
 # Context Updater Subagent

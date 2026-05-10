@@ -70,7 +70,8 @@ def update_claude_md(project_dir: Path, args) -> bool:
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--mode", default="compact", help="Update mode: compact, session-end, manual")
+    parser.add_argument("--mode", default="compact", choices=["compact", "session-end", "manual"],
+                        help="Update mode: compact, session-end, manual")
     parser.add_argument("--timestamp", default=datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"))
     parser.add_argument("--branch", default="")
     parser.add_argument("--task", default="")

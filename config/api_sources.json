@@ -6,8 +6,8 @@
     {
       "name": "anthropic-claude-code",
       "description": "Claude Code hooks, skills, slash commands, subagents",
-      "base_url": "https://code.claude.com/docs/en/hooks",
-      "extract_sections": ["Hook events", "SessionStart", "PreCompact", "PostCompact", "Stop", "SessionEnd"],
+      "base_url": "https://docs.anthropic.com/en/docs/claude-code/hooks",
+      "extract_sections": ["Hook events", "SessionStart", "PreCompact", "Stop", "SessionEnd"],
       "update_frequency": "weekly",
       "cache_ttl_hours": 168
     },

@@ -29,7 +29,7 @@ Analyse the current task context and recommend a model:
 - Writing documentation
 - Standard analysis tasks
 
-**Switch to Opus** (`/model claude-opus-4-6`) when:
+**Switch to Opus** (`/model claude-opus-4-7`) when:
 - Designing system architecture
 - Complex multi-step reasoning
 - Reviewing security or compliance decisions
