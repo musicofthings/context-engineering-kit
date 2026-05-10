@@ -1,7 +1,7 @@
 # Session Handover
-_Generated: 2026-05-07T09:36:59Z_
-_Branch: main_
-_Trigger: auto | Context at compact: 88%_
+_Generated: 2026-05-10T06:34:20Z_
+_Branch: claude/mystifying-hopper-79584a_
+_Trigger: auto | Context at compact: unknown%_
 _Compact count this project: 5_
 
 ---
@@ -26,15 +26,19 @@ initial setup
 
 ---
 
+---
+
 ## 🔄 In Progress (Exact Resume Point)
-**Branch:** `main`
-**Last commit:** `c415f03 fix: centralise Python 3 detection in scripts/find_python.sh`
+**Branch:** `claude/mystifying-hopper-79584a`
+**Last commit:** `7e0bbf4 fix: resolve 22 bugs found in deep codebase review`
 **Next immediate action:** let me check the hooks are worki
 
 ---
 
 ## 📋 Remaining Work
 1. (add remaining work items here)
+
+---
 
 ---
 
@@ -53,7 +57,11 @@ initial setup
 |----------|-----------|------|
 | Decision | Rationale | Date |
 |----------|-----------|------|
+| Decision | Rationale | Date |
+|----------|-----------|------|
 | (none yet) | — | — |
+
+---
 
 ---
 
@@ -66,7 +74,7 @@ initial setup
 ## 🔧 Commands to Resume
 ```bash
 # On any machine after git pull:
-git pull origin main
+git pull origin claude/mystifying-hopper-79584a
 bash scripts/session_sync.sh --load
 
 # In Claude Code:
@@ -80,32 +88,26 @@ bash scripts/session_sync.sh --load
 ## 📁 Files Modified This Session
 | File | Status |
 |------|--------|
-| `CLAUDE.md` | modified |
-| `session_handover.md` | modified |
-| `.claude/hooks/pre-compact.sh` | modified |
-| `.claude/hooks/post-compact.sh` | modified |
-| `.claude/session/state.json` | modified |
+| `docs/index.html` | modified |
 
 ---
 
 ## 🌿 Git Context
 ```
-Branch  : main
-Commit  : c415f03 fix: centralise Python 3 detection in scripts/find_python.sh
-Status  : M .claude/hooks/post-compact.sh
- M .claude/hooks/pre-compact.sh
- M .claude/session/state.json
- M CLAUDE.md
- M session_handover.md
+Branch  : claude/mystifying-hopper-79584a
+Commit  : 7e0bbf4 fix: resolve 22 bugs found in deep codebase review
+Status  : M docs/index.html
+?? .claude/session/daily-usage.json
+?? .claude/session/usage-forecast.json
 ```
 
 Recent commits:
 ```
-c415f03 fix: centralise Python 3 detection in scripts/find_python.sh
-e9ed61f chore(context): session state + gitignore worktrees and sentinel files
-f2bc880 feat: auto-activate plugin on new repos + fix Windows hook failures
-fe3af54 chore(context): sync from CON1282-Shibi â€” initial setup [2026-05-07T08:41:54Z]
-b174a21 fix(windows): add explicit utf-8 encoding to all pathlib read_text/write_text calls
+7e0bbf4 fix: resolve 22 bugs found in deep codebase review
+57c6cee chore(docs): refresh API documentation [skip ci] 2026-05-10
+7a02618 docs: add GitHub Pages landing page and update README to v2.5.0
+f1e9ec8 fix(pre-compact): merge state instead of replace, add git commit, fix post-compact project name
+fcf380c chore(context): pre-compact snapshot [2026-05-07T09:36:58Z] ctx=88%
 ```
 
 ---
@@ -113,6 +115,8 @@ b174a21 fix(windows): add explicit utf-8 encoding to all pathlib read_text/write
 ## ⚠️ Critical Rules
 - Never commit secrets or API keys
 - Run /handover before switching devices
+
+---
 
 ---
 
