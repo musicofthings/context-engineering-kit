@@ -1258,7 +1258,8 @@
   })();
 
   function setOS(os) {
-    document.body.className = 'os-' + os;
+    document.body.classList.remove('os-windows', 'os-macos', 'os-linux');
+    document.body.classList.add('os-' + os);
     document.querySelectorAll('.os-btn').forEach(b => b.classList.remove('active'));
     const btn = document.getElementById('os-btn-' + (os === 'windows' ? 'win' : os === 'macos' ? 'mac' : 'linux'));
     if (btn) btn.classList.add('active');
