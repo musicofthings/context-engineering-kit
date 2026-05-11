@@ -1,0 +1,33 @@
+# {{PROJECT_NAME}}
+
+## What this project is
+{{PROJECT_DESCRIPTION}}
+
+## Quick orientation
+{{QUICK_ORIENTATION}}
+
+## Critical rules
+- Never commit secrets, API keys, or credentials to git
+- {{ADD_PROJECT_SPECIFIC_RULES}}
+
+## Project structure
+```
+{{PROJECT_TREE}}
+```
+
+## Active work context
+<!-- Auto-updated by CEK hooks — do not edit this section manually -->
+
+## Architecture decisions
+<!-- Add significant design decisions here as they are made -->
+
+## Lessons learned
+<!-- Add gotchas, non-obvious constraints, and hard-won insights here -->
+
+## Known gotchas
+<!-- Anything that would trip up a fresh Claude instance -->
+
+## Useful commands
+```bash
+# {{ADD_PROJECT_COMMANDS_HERE}}
+```
