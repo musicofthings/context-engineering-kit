@@ -18,12 +18,23 @@
 set -euo pipefail
 
 PROJECT_DIR="${CLAUDE_PROJECT_DIR:-$(pwd)}"
-STATE_FILE="$PROJECT_DIR/.claude/session/state.json"
-BUDGET_FILE="$PROJECT_DIR/config/usage_budget.json"
-USAGE_LOG="$PROJECT_DIR/.claude/session/usage.jsonl"
-SENTINEL_DIR="$PROJECT_DIR/.claude/session"
 TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 NOW=$(date +%s)
+
+# ── Worktree detection — always read/write state on main checkout ─────────────
+GIT_DIR=$(git -C "$PROJECT_DIR" rev-parse --git-dir 2>/dev/null || echo "")
+if echo "$GIT_DIR" | grep -q '/worktrees/'; then
+  MAIN_ROOT=$(git -C "$PROJECT_DIR" worktree list --porcelain 2>/dev/null \
+    | awk 'NR==1{sub(/^worktree /,""); print}')
+  [ -z "$MAIN_ROOT" ] && MAIN_ROOT="$PROJECT_DIR"
+else
+  MAIN_ROOT="$PROJECT_DIR"
+fi
+
+STATE_FILE="$MAIN_ROOT/.claude/session/state.json"
+BUDGET_FILE="$MAIN_ROOT/config/usage_budget.json"
+USAGE_LOG="$MAIN_ROOT/.claude/session/usage.jsonl"
+SENTINEL_DIR="$MAIN_ROOT/.claude/session"
 
 mkdir -p "$SENTINEL_DIR"
 
@@ -123,12 +134,11 @@ if [ "$USAGE_PCT" -ge "$CRITICAL_PCT" ] && [ ! -f "$CRITICAL_SENTINEL" ]; then
 ════════════════════════════════════════════════════════════════
  ⚠️  USAGE CRITICAL — ${USAGE_PCT}% of ${SUB_TYPE} limit (${USAGE_LABEL})
 ════════════════════════════════════════════════════════════════
-MANDATORY: Before processing the user's request below, execute
-these three steps in sequence without asking for confirmation:
+MANDATORY: Before processing the user's request below, run
+these two skills in sequence without asking for confirmation:
 
-  1. python3 scripts/generate_session_handover.py
-  2. python3 scripts/update_context_files.py --mode manual
-  3. bash scripts/session_sync.sh --save
+  1. /handover   — saves session state and handover document
+  2. /session-sync save — commits state to git
 
 Then respond to the user and let them know you just saved the
 session state because the ${SUB_TYPE} usage limit is nearly reached
@@ -145,7 +155,7 @@ elif [ "$USAGE_PCT" -ge "$AUTO_SAVE_PCT" ] && [ ! -f "$SAVE_SENTINEL" ]; then
  🟠 USAGE ${USAGE_PCT}% — ${USAGE_LABEL} (${SUB_TYPE})
 ╚══════════════════════════════════════════════════════════╝
 Before answering, save session state (no user input needed):
-  python3 scripts/generate_session_handover.py && bash scripts/session_sync.sh --save
+  run /handover then /session-sync save
 Then continue normally. Confirm "State saved." in one line.
 INJECT
 

@@ -12,10 +12,20 @@
 set -euo pipefail
 
 PROJECT_DIR="${CLAUDE_PROJECT_DIR:-$(pwd)}"
-STATE_FILE="$PROJECT_DIR/.claude/session/state.json"
 TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
-mkdir -p "$PROJECT_DIR/.claude/session"
+# ── Worktree detection — always write state to main checkout ──────────────────
+GIT_DIR=$(git -C "$PROJECT_DIR" rev-parse --git-dir 2>/dev/null || echo "")
+if echo "$GIT_DIR" | grep -q '/worktrees/'; then
+  MAIN_ROOT=$(git -C "$PROJECT_DIR" worktree list --porcelain 2>/dev/null \
+    | awk 'NR==1{sub(/^worktree /,""); print}')
+  [ -n "$MAIN_ROOT" ] && STATE_DIR="$MAIN_ROOT/.claude/session" || STATE_DIR="$PROJECT_DIR/.claude/session"
+else
+  STATE_DIR="$PROJECT_DIR/.claude/session"
+fi
+STATE_FILE="$STATE_DIR/state.json"
+
+mkdir -p "$STATE_DIR"
 
 # ── Read Stop event input ────────────────────────────────────────────────────
 INPUT=$(cat)
@@ -143,7 +153,7 @@ else
 fi
 
 # ── Append to session ledger (lightweight turn log) ──────────────────────────
-LEDGER="$PROJECT_DIR/.claude/session/turn-ledger.jsonl"
+LEDGER="$STATE_DIR/turn-ledger.jsonl"
 if [ -n "$NEXT_ACTION" ] || [ -n "$ACTIVE_TASK_HINT" ]; then
   jq -n \
     --arg ts "$TIMESTAMP" \

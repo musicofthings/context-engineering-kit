@@ -6,14 +6,38 @@
 set -euo pipefail
 
 PROJECT_DIR="${CLAUDE_PROJECT_DIR:-$(pwd)}"
-STATE_FILE="$PROJECT_DIR/.claude/session/state.json"
-HISTORY_FILE="$PROJECT_DIR/.claude/session/history.jsonl"
-HANDOVER_FILE="$PROJECT_DIR/session_handover.md"
 TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
 log() { echo "[session-end] $*" >&2; }
 
 log "Session ending at $TIMESTAMP"
+
+# ── Worktree detection — always commit session state on main checkout ─────────
+# Worktrees are ephemeral; committing to a worktree branch loses state when
+# the worktree is deleted. Redirect all writes to the main checkout instead.
+GIT_DIR=$(git -C "$PROJECT_DIR" rev-parse --git-dir 2>/dev/null || echo "")
+if echo "$GIT_DIR" | grep -q '/worktrees/'; then
+  MAIN_ROOT=$(git -C "$PROJECT_DIR" worktree list --porcelain 2>/dev/null \
+    | awk 'NR==1{sub(/^worktree /,""); print}')
+  if [ -n "$MAIN_ROOT" ]; then
+    log "In linked worktree — redirecting session state to main checkout: $MAIN_ROOT"
+    # Sync session files from worktree into main repo before committing
+    mkdir -p "$MAIN_ROOT/.claude/session"
+    cp -r "$PROJECT_DIR/.claude/session/." "$MAIN_ROOT/.claude/session/" 2>/dev/null || true
+    [ -f "$PROJECT_DIR/session_handover.md" ] \
+      && cp "$PROJECT_DIR/session_handover.md" "$MAIN_ROOT/session_handover.md" 2>/dev/null || true
+    COMMIT_DIR="$MAIN_ROOT"
+  else
+    log "Could not find main worktree root — skipping session-end commit"
+    exit 0
+  fi
+else
+  COMMIT_DIR="$PROJECT_DIR"
+fi
+
+STATE_FILE="$COMMIT_DIR/.claude/session/state.json"
+HISTORY_FILE="$COMMIT_DIR/.claude/session/history.jsonl"
+HANDOVER_FILE="$COMMIT_DIR/session_handover.md"
 
 # ── Append to history ────────────────────────────────────────────────────────
 if [ -f "$STATE_FILE" ]; then
@@ -22,7 +46,7 @@ if [ -f "$STATE_FILE" ]; then
 fi
 
 # ── Git commit session files ─────────────────────────────────────────────────
-cd "$PROJECT_DIR"
+cd "$COMMIT_DIR"
 
 # Only commit if there are changes to session files
 CHANGED=$(git diff --name-only .claude/session/ session_handover.md CLAUDE.md 2>/dev/null || echo "")

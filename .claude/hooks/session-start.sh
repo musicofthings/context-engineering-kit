@@ -6,9 +6,25 @@
 set -euo pipefail
 
 PROJECT_DIR="${CLAUDE_PROJECT_DIR:-$(pwd)}"
-STATE_FILE="$PROJECT_DIR/.claude/session/state.json"
-SENTINEL_DIR="$PROJECT_DIR/.claude/session"
 TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+# ── Worktree detection — always read/write state on main checkout ─────────────
+# Worktrees are ephemeral; session state must persist on main, not on the
+# short-lived worktree branch that will be deleted after the task is done.
+GIT_DIR=$(git -C "$PROJECT_DIR" rev-parse --git-dir 2>/dev/null || echo "")
+if echo "$GIT_DIR" | grep -q '/worktrees/'; then
+  MAIN_ROOT=$(git -C "$PROJECT_DIR" worktree list --porcelain 2>/dev/null \
+    | awk 'NR==1{sub(/^worktree /,""); print}')
+  [ -z "$MAIN_ROOT" ] && MAIN_ROOT="$PROJECT_DIR"
+  IN_WORKTREE=true
+else
+  MAIN_ROOT="$PROJECT_DIR"
+  IN_WORKTREE=false
+fi
+
+STATE_FILE="$MAIN_ROOT/.claude/session/state.json"
+SENTINEL_DIR="$MAIN_ROOT/.claude/session"
+BUDGET_FILE="$MAIN_ROOT/config/usage_budget.json"
 
 mkdir -p "$SENTINEL_DIR"
 
@@ -59,7 +75,6 @@ COMPACT_COUNT=$(jq -r '.compact_count // 0' "$STATE_FILE" 2>/dev/null || echo "0
 # Load budget config for display
 SUB_TYPE="pro"
 WINDOW_MINUTES=300
-BUDGET_FILE="$PROJECT_DIR/config/usage_budget.json"
 if [ -f "$BUDGET_FILE" ]; then
   SUB_TYPE=$(jq -r '.subscription_type // "pro"' "$BUDGET_FILE" 2>/dev/null || echo "pro")
   WINDOW_MINUTES=$(jq -r ".subscriptions.${SUB_TYPE}.window_minutes // 300" "$BUDGET_FILE" 2>/dev/null || echo "300")
@@ -72,7 +87,7 @@ cat << INJECT
 ╚══════════════════════════════════════════════════════════╝
 
 📅 Date/Time    : $TODAY
-🌿 Branch       : $GIT_BRANCH
+🌿 Branch       : $GIT_BRANCH$([ "$IN_WORKTREE" = true ] && echo " (worktree — state on main)")
 📝 Commit       : $GIT_COMMIT
 🔄 Dirty files  : $GIT_DIRTY
 📦 Compactions  : $COMPACT_COUNT this project
