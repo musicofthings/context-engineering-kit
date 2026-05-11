@@ -23,7 +23,7 @@
   ],
   "last_stop": "2026-05-03T13:47:13Z",
   "last_stop_reason": "end_turn",
-  "session_start_time": "2026-04-03T11:33:13Z",
+  "session_start_time": "2026-05-11T14:32:08Z",
   "saved_by": "oncophenomics.local",
   "saved_platform": "mac",
   "last_save": "2026-05-03T13:18:58Z",
@@ -31,5 +31,6 @@
     "ts": "2026-05-03T13:35:10Z",
     "tool": "Bash",
     "error": "Exit code 1\nerror: Your local changes to the following files would be overwritten by checkout:\n\t.claude/session/state.json\nPlease commit your changes or stash them before you switch branches.\nAborting"
-  }
+  },
+  "subagents_running": 0
 }
