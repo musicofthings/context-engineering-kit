@@ -1,8 +1,8 @@
 # Session Handover
-_Generated: 2026-05-03T13:28:39Z_
-_Branch: main_
+_Generated: 2026-05-10T06:34:20Z_
+_Branch: claude/mystifying-hopper-79584a_
 _Trigger: auto | Context at compact: unknown%_
-_Compact count this project: 0_
+_Compact count this project: 5_
 
 ---
 
@@ -11,16 +11,16 @@ _Compact count this project: 0_
 initial setup
 
 **Phase:** Phase 0 — Setup
-**Next action:** run /context-health in Claude Code
+**Next action:** let me check the hooks are worki
 
 ---
 
 ## ✅ Completed This Session
-- Repo initialised with hooks, skills, and config files
-- `.claude/settings.json` wired with all hooks (PreToolUse, PostToolUse, PreCompact, PostCompact, Stop, Notification)
-- `session-start.sh` / `stop.sh` / `session-end.sh` hooks confirmed firing (session state auto-updating)
-- Statusline made portable: `.claude/statusline-cek.ps1` now reads `project_dir` from `state.json` instead of hardcoded path (`dc08a00`)
-- `.claude/statusline.sh` created as cross-machine launcher
+- [ ] (track completed items here)
+
+---
+
+---
 
 ---
 
@@ -29,18 +29,18 @@ initial setup
 ---
 
 ## 🔄 In Progress (Exact Resume Point)
-**Branch:** `main`
-**Last commit:** `f26fa82 fix: resolve CI failure, broken hook ref, and add new hook events`
-**Next immediate action:** run /context-health in Claude Code
+**Branch:** `claude/mystifying-hopper-79584a`
+**Last commit:** `7e0bbf4 fix: resolve 22 bugs found in deep codebase review`
+**Next immediate action:** let me check the hooks are worki
 
 ---
 
 ## 📋 Remaining Work
-1. Run `/context-health` — verify full hook and skill wiring
-2. Commit or ignore `.claude/statusline.sh`
-3. Commit dirty files (`.claude/session/usage.jsonl`, `.claude/settings.json`, `.claude/statusline-cek.ps1`)
-4. Customise `config/model_thresholds.json` for workflow if needed
-5. Add any project-specific rules to `.claude/rules/`
+1. (add remaining work items here)
+
+---
+
+---
 
 ---
 
@@ -53,13 +53,17 @@ initial setup
 |----------|-----------|------|
 | Decision | Rationale | Date |
 |----------|-----------|------|
-This Session
 | Decision | Rationale | Date |
 |----------|-----------|------|
-| Skills over commands | `.claude/skills/` is the 2026 recommended format | 2026-04-03 |
-| git as continuity backbone | Works across all subscriptions and devices | 2026-04-03 |
-| PreCompact + PostCompact hooks | Official hook pair for context preservation | 2026-04-03 |
-| Statusline reads `project_dir` from JSON | Portable across machines — no hardcoded paths | 2026-04-03 |
+| Decision | Rationale | Date |
+|----------|-----------|------|
+| Decision | Rationale | Date |
+|----------|-----------|------|
+| (none yet) | — | — |
+
+---
+
+---
 
 ---
 
@@ -70,7 +74,7 @@ This Session
 ## 🔧 Commands to Resume
 ```bash
 # On any machine after git pull:
-git pull origin main
+git pull origin claude/mystifying-hopper-79584a
 bash scripts/session_sync.sh --load
 
 # In Claude Code:
@@ -84,51 +88,37 @@ bash scripts/session_sync.sh --load
 ## 📁 Files Modified This Session
 | File | Status |
 |------|--------|
-| `D:\Projects\context-engineering-kit\scripts\morning_brief.py` | modified |
-| `/Users/theranosis_dx/projects/context-engineering-kit/.claude/hooks/session-start.sh` | modified |
-| `/Users/theranosis_dx/projects/context-engineering-kit/.claude/hooks/subagent-lifecycle.sh` | modified |
-| `.claude/session/state.json` | modified |
-| `D:\Projects\context-engineering-kit\session_handover.md` | modified |
-| `D:\Projects\context-engineering-kit\scripts\schedule_morning_brief.ps1` | modified |
-| `D:\Projects\context-engineering-kit\config\morning_brief.json` | modified |
-| `/Users/theranosis_dx/projects/context-engineering-kit/.github/workflows/session-state.yml` | modified |
-| `/Users/theranosis_dx/projects/context-engineering-kit/.claude/hooks/post-tool-failure.sh` | modified |
-| `.claude/session/usage.jsonl` | modified |
-| `/Users/theranosis_dx/projects/context-engineering-kit/.claude/settings.json` | modified |
-| `/Users/theranosis_dx/projects/context-engineering-kit/.github/workflows/sync-api-docs.yml` | modified |
-| `D:\Projects\context-engineering-kit\.claude\skills\morning-brief\skill.md` | modified |
-| `D:\Projects\context-engineering-kit\.claude\settings.json` | modified |
+| `docs/index.html` | modified |
 
 ---
 
 ## 🌿 Git Context
 ```
-Branch  : main
-Commit  : f26fa82 fix: resolve CI failure, broken hook ref, and add new hook events
-Status  : M .claude/session/state.json
- M .claude/session/usage.jsonl
+Branch  : claude/mystifying-hopper-79584a
+Commit  : 7e0bbf4 fix: resolve 22 bugs found in deep codebase review
+Status  : M docs/index.html
 ?? .claude/session/daily-usage.json
 ?? .claude/session/usage-forecast.json
 ```
 
 Recent commits:
 ```
-f26fa82 fix: resolve CI failure, broken hook ref, and add new hook events
-e9ef4a5 chore(context): sync from oncophenomics.local — initial setup [2026-05-03T13:18:58Z]
-f541d5e docs: rewrite README with Desktop plugin vs CLI standalone use cases
-0ab31e6 fix(context-health): smarter ⚠️/❌ outside a project directory; bump v2.4.1
-1add1e5 fix: code review — injection safety, duplicate hooks, offset bugs, atomicity
+7e0bbf4 fix: resolve 22 bugs found in deep codebase review
+57c6cee chore(docs): refresh API documentation [skip ci] 2026-05-10
+7a02618 docs: add GitHub Pages landing page and update README to v2.5.0
+f1e9ec8 fix(pre-compact): merge state instead of replace, add git commit, fix post-compact project name
+fcf380c chore(context): pre-compact snapshot [2026-05-07T09:36:58Z] ctx=88%
 ```
 
 ---
 
 ## ⚠️ Critical Rules
-for This Project
-- Never commit secrets, API keys, or patient data
-- Never modify `.claude/hooks/*.sh` without testing with `/doctor` afterward
-- Run `bash scripts/session_sync.sh --save` before switching devices
-- Use `/compact-smart` over `/compact` for better context retention
-- Commit protocol: never commit directly to `main`/`master`; use conventional prefixes
+- Never commit secrets or API keys
+- Run /handover before switching devices
+
+---
+
+---
 
 ---
 
@@ -137,7 +127,7 @@ for This Project
 ---
 
 ## 🧬 Bioinformatics Context (if applicable)
-- Not applicable this session — pure tooling setup
+- Not configured for this project
 
 ---
 _Auto-updated by `pre-compact.sh` hook and `/handover` skill._

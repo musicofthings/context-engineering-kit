@@ -9,6 +9,24 @@
 set -euo pipefail
 
 PROJECT_DIR="${CLAUDE_PROJECT_DIR:-$(pwd)}"
+PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$PROJECT_DIR}"
+PLUGIN_SETTINGS="$PLUGIN_ROOT/config/plugin_settings.json"
+
+# Feature gate: respect plugin_settings.features.morning_brief
+if [ -f "$PLUGIN_SETTINGS" ]; then
+  FEATURE_ON=$(jq -r '.features.morning_brief // false' "$PLUGIN_SETTINGS" 2>/dev/null || echo "false")
+  [ "$FEATURE_ON" = "true" ] || exit 0
+fi
+
+# Resolve python AFTER feature gate so we don't fail when feature is off
+# and find_python.sh isn't available (different plugin install layouts).
+if [ -f "$PLUGIN_ROOT/scripts/find_python.sh" ]; then
+  # shellcheck source=../../scripts/find_python.sh
+  source "$PLUGIN_ROOT/scripts/find_python.sh"
+else
+  PYTHON="${PYTHON:-python3}"
+fi
+
 BRIEFS_DIR="$PROJECT_DIR/briefs"
 TODAY=$(date -u +"%Y-%m-%d")
 BRIEF_FILE="$BRIEFS_DIR/${TODAY}.md"
@@ -21,14 +39,14 @@ CONFIG_FILE="$PROJECT_DIR/config/morning_brief.json"
 [ -f "$BRIEF_FILE" ] && exit 0
 
 # Check feedparser is available; skip silently if not installed
-python3 -c "import feedparser" 2>/dev/null || {
+"$PYTHON" -c "import feedparser" 2>/dev/null || {
   echo "[morning-brief] feedparser not installed — run: pip install feedparser" >&2
   exit 0
 }
 
 # Generate the brief quietly (file only, no terminal output during hook)
 mkdir -p "$BRIEFS_DIR"
-python3 "$PROJECT_DIR/scripts/morning_brief.py" --quiet 2>/dev/null || {
+"$PYTHON" "$PROJECT_DIR/scripts/morning_brief.py" --quiet 2>/dev/null || {
   echo "[morning-brief] Brief generation failed — run /morning-brief manually" >&2
   exit 0
 }

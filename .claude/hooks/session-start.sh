@@ -40,16 +40,23 @@ rm -f "$SENTINEL_DIR/.sentinel_warn" \
       "$SENTINEL_DIR/.sentinel_save" \
       "$SENTINEL_DIR/.sentinel_critical" 2>/dev/null || true
 
-# ── Record session start time in state.json ──────────────────────────────────
-# usage-sentinel.sh reads this to compute elapsed time against the budget window
+# ── Reset subagent counter ───────────────────────────────────────────────────
+# subagents_running drifts upward across crashes — reset to 0 on session start
+# so the count reflects this session only.
 if [ -f "$STATE_FILE" ]; then
-  # Check if this is a genuine new session (not a compact resume)
-  EXISTING_START=$(jq -r '.session_start_time // ""' "$STATE_FILE" 2>/dev/null || echo "")
-  if [ -z "$EXISTING_START" ]; then
-    STATE_TMP=$(mktemp "${STATE_FILE}.XXXXXX")
-    jq --arg ts "$TIMESTAMP" '.session_start_time = $ts' "$STATE_FILE" > "$STATE_TMP" \
-      && mv "$STATE_TMP" "$STATE_FILE" 2>/dev/null || rm -f "$STATE_TMP"
-  fi
+  STATE_TMP=$(mktemp "${STATE_FILE}.XXXXXX")
+  jq '.subagents_running = 0' "$STATE_FILE" > "$STATE_TMP" 2>/dev/null \
+    && mv "$STATE_TMP" "$STATE_FILE" \
+    || rm -f "$STATE_TMP"
+fi
+
+# ── Record session start time in state.json ──────────────────────────────────
+# usage-sentinel.sh reads this to compute elapsed time against the budget window.
+# Always overwrite — SessionStart fires on new sessions only, not compact resumes.
+if [ -f "$STATE_FILE" ]; then
+  STATE_TMP=$(mktemp "${STATE_FILE}.XXXXXX")
+  jq --arg ts "$TIMESTAMP" '.session_start_time = $ts' "$STATE_FILE" > "$STATE_TMP" \
+    && mv "$STATE_TMP" "$STATE_FILE" 2>/dev/null || rm -f "$STATE_TMP"
 else
   cat > "$STATE_FILE" << STATEOF
 {
@@ -83,7 +90,7 @@ fi
 cat << INJECT
 
 ╔══════════════════════════════════════════════════════════╗
-║  context-engineering-kit v2.4 — Session Started          ║
+║  context-engineering-kit v2.4.1 — Session Started         ║
 ╚══════════════════════════════════════════════════════════╝
 
 📅 Date/Time    : $TODAY

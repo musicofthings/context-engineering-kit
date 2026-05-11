@@ -30,21 +30,20 @@ Budget used  : 42%  🟢
 Remaining    : ~173 min (~2h 53m)
 ```
 
-For API billing, read `session_cost_usd` from state.json and compare to `daily_budget_usd`.
+For API billing, read `session_cost_usd` from `.claude/session/state.json`
+and compare to `daily_budget_usd` from `config/usage_budget.json` under
+`subscriptions.api.daily_budget_usd`.
 
-## 3. Daily Usage from ccusage
+## 3. Daily Usage
 
-Run this and display the output:
+Run this and display the output. The path uses `${CLAUDE_PLUGIN_ROOT}`
+when installed as a plugin and falls back to the project-relative path
+in dev mode:
 ```bash
-python3 scripts/usage_report.py --days 1
+python3 "${CLAUDE_PLUGIN_ROOT:-.}/scripts/usage-tracker.py" --report
 ```
 
-If ccusage data is not available, note: "Install ccusage (`npm install -g ccusage`) for historical token tracking."
-
-Also run with `--write-summary` to refresh the usage_summary.json cache:
-```bash
-python3 scripts/usage_report.py --days 1 --write-summary
-```
+If the forecast file is stale (`.claude/session/usage-forecast.json` is missing or old), note that it is refreshed automatically on each Stop event.
 
 ## 4. State Freshness
 
@@ -72,7 +71,7 @@ Read `.claude/session/` for sentinel files:
 |-----------|--------|
 | Simple edits | `/model claude-haiku-4-5-20251001` |
 | Standard dev | Stay on Sonnet (default) |
-| Architecture | `/model claude-opus-4-6` |
+| Architecture | `/model claude-opus-4-7` |
 | Context > 80% | `/fast` mode |
 | Budget > 80% | Switch to Haiku to extend remaining window |
 

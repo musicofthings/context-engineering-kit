@@ -1,6 +1,7 @@
 ---
 name: session-scribe
 description: Extracts architecture decisions and lessons learned from the current conversation and appends them to CLAUDE.md. Called by /handover and session-end hook.
+tools: Read, Edit, Grep
 ---
 
 # Session Scribe Subagent

@@ -15,6 +15,16 @@
         "hooks": [
           {
             "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/scripts/auto_init_project.sh",
+            "async": false
+          }
+        ]
+      },
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
             "command": "bash ${CLAUDE_PLUGIN_ROOT}/.claude/hooks/session-start.sh"
           }
         ]
@@ -95,7 +105,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 ${CLAUDE_PLUGIN_ROOT}/scripts/usage-tracker.py",
+            "command": "bash -c 'source \"${CLAUDE_PLUGIN_ROOT}/scripts/find_python.sh\" && \"$PYTHON\" \"${CLAUDE_PLUGIN_ROOT}/scripts/usage-tracker.py\"'",
             "async": true
           }
         ]

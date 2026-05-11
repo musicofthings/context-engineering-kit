@@ -1,0 +1,22 @@
+{
+  "_doc": "Global plugin settings for context-engineering-kit. Edit here to control behaviour across all projects.",
+
+  "auto_activate_new_repos": true,
+
+  "features": {
+    "session_tracking":  true,
+    "usage_sentinel":    true,
+    "morning_brief":     false,
+    "tool_failure_log":  true,
+    "subagent_tracking": true
+  },
+
+  "skip_repos": [],
+
+  "_notes": [
+    "auto_activate_new_repos: when true, SessionStart bootstraps any project that has no session_handover.md",
+    "features.*: disable individual features without removing hook wiring",
+    "skip_repos: list of absolute project paths to never auto-init (e.g. /home/user/sensitive-repo)",
+    "morning_brief is off by default — enable it after running: pip install feedparser"
+  ]
+}

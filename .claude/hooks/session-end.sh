@@ -48,11 +48,11 @@ fi
 # ── Git commit session files ─────────────────────────────────────────────────
 cd "$COMMIT_DIR"
 
-# Only commit if there are changes to session files
-CHANGED=$(git diff --name-only .claude/session/ session_handover.md CLAUDE.md 2>/dev/null || echo "")
+# Check both staged and unstaged changes for session files before adding
+CHANGED=$(git status --porcelain .claude/session/state.json session_handover.md CLAUDE.md 2>/dev/null || echo "")
 
 if [ -n "$CHANGED" ]; then
-  git add .claude/session/state.json .claude/session/history.jsonl \
+  git add .claude/session/state.json \
          session_handover.md CLAUDE.md 2>/dev/null || true
 
   ACTIVE_TASK="unknown"

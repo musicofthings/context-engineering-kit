@@ -21,7 +21,10 @@
       "Write(.claude/config-audit.log)",
       "Bash(python3 scripts/generate_session_handover.py*)",
       "Bash(python3 scripts/update_context_files.py*)",
-      "Bash(python3 scripts/usage_report.py*)",
+      "Bash(python3 scripts/usage-tracker.py*)",
+      "Bash(python scripts/generate_session_handover.py*)",
+      "Bash(python scripts/update_context_files.py*)",
+      "Bash(python scripts/usage-tracker.py*)",
       "Bash(bash scripts/session_sync.sh*)",
       "Bash(bash .claude/hooks/*.sh*)",
       "Bash(git add .claude/session/* session_handover.md CLAUDE.md)",
@@ -69,7 +72,7 @@
     ],
     "PermissionRequest": [
       {
-        "matcher": "",
+        "matcher": "Write|Edit|MultiEdit",
         "hooks": [
           {
             "type": "command",
@@ -128,7 +131,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$CLAUDE_PROJECT_DIR\"/scripts/usage-tracker.py",
+            "command": "bash -c 'source \"$CLAUDE_PROJECT_DIR/scripts/find_python.sh\" && \"$PYTHON\" \"$CLAUDE_PROJECT_DIR/scripts/usage-tracker.py\"'",
             "async": true
           }
         ]
@@ -247,12 +250,13 @@
     ]
   },
   "env": {
-    "CEK_VERSION": "2.4.0",
+    "CEK_VERSION": "2.4.1",
     "CEK_TOKEN_WARN_PCT": "70",
-    "CEK_TOKEN_CRITICAL_PCT": "85",
+    "CEK_TOKEN_COMPACT_PCT": "85",
+    "CEK_TOKEN_CRITICAL_PCT": "92",
     "CEK_MODEL_HAIKU": "claude-haiku-4-5-20251001",
     "CEK_MODEL_SONNET": "claude-sonnet-4-6",
-    "CEK_MODEL_OPUS": "claude-opus-4-6",
+    "CEK_MODEL_OPUS": "claude-opus-4-7",
     "CEK_SUBSCRIPTION_TIER": "pro"
   },
   "statusLine": {

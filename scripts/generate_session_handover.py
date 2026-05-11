@@ -14,10 +14,15 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 
-def run(cmd: str, cwd: str = None) -> str:
+def run(cmd, cwd: str = None) -> str:
+    """Run a command list and return stdout. Accepts a string for legacy
+    callers (split on whitespace) or a list (preferred). Avoids shell=True
+    so paths with spaces/quotes don't break on Windows."""
+    if isinstance(cmd, str):
+        cmd = cmd.split()
     try:
         result = subprocess.run(
-            cmd, shell=True, capture_output=True, text=True, cwd=cwd, timeout=10
+            cmd, capture_output=True, text=True, cwd=cwd, timeout=10
         )
         return result.stdout.strip()
     except Exception:
@@ -28,7 +33,7 @@ def load_state(project_dir: Path) -> dict:
     state_file = project_dir / ".claude" / "session" / "state.json"
     if state_file.exists():
         try:
-            return json.loads(state_file.read_text())
+            return json.loads(state_file.read_text(encoding="utf-8", errors="replace"))
         except Exception:
             return {}
     return {}
@@ -40,40 +45,40 @@ def load_existing_handover(project_dir: Path) -> dict:
     if not handover_file.exists():
         return {}
 
-    content = handover_file.read_text()
+    content = handover_file.read_text(encoding="utf-8", errors="replace")
     sections = {}
 
     # Extract active task
     if "## 🎯 Active Task" in content:
         start = content.find("## 🎯 Active Task") + len("## 🎯 Active Task")
         end = content.find("\n## ", start)
-        sections["active_task_section"] = content[start:end].strip() if end > 0 else content[start:].strip()
+        sections["active_task_section"] = content[start:end].strip() if end != -1 else content[start:].strip()
 
     # Extract completed items
     _completed_header = "## ✅ Completed This Session"
     if _completed_header in content:
         start = content.find(_completed_header) + len(_completed_header)
         end = content.find("\n## ", start + 1)
-        sections["completed"] = content[start:end].strip() if end > 0 else content[start:].strip()
+        sections["completed"] = content[start:end].strip() if end != -1 else content[start:].strip()
 
     # Extract remaining work
     if "## 📋 Remaining Work" in content:
         start = content.find("## 📋 Remaining Work") + len("## 📋 Remaining Work")
         end = content.find("\n## ", start)
-        sections["remaining"] = content[start:end].strip() if end > 0 else content[start:].strip()
+        sections["remaining"] = content[start:end].strip() if end != -1 else content[start:].strip()
 
     # Extract architecture decisions table
     _decisions_header = "## 🏗 Architecture Decisions Made"
     if _decisions_header in content:
         start = content.find(_decisions_header) + len(_decisions_header)
         end = content.find("\n## ", start)
-        sections["decisions"] = content[start:end].strip() if end > 0 else content[start:].strip()
+        sections["decisions"] = content[start:end].strip() if end != -1 else content[start:].strip()
 
     # Extract critical rules
     if "## ⚠️ Critical Rules" in content:
         start = content.find("## ⚠️ Critical Rules") + len("## ⚠️ Critical Rules")
         end = content.find("\n## ", start)
-        sections["rules"] = content[start:end].strip() if end > 0 else content[start:].strip()
+        sections["rules"] = content[start:end].strip() if end != -1 else content[start:].strip()
 
     # Extract bioinfo context
     _bioinfo_header = "## 🧬 Bioinformatics Context (if applicable)"
@@ -243,7 +248,10 @@ def main():
     output_path = Path(args.output) if args.output else project_dir / "session_handover.md"
 
     content = generate(args)
-    output_path.write_text(content)
+    # Atomic write: PreCompact and /handover skill can race.
+    tmp = output_path.with_suffix(output_path.suffix + ".tmp")
+    tmp.write_text(content, encoding="utf-8")
+    os.replace(tmp, output_path)
     print(f"[handover] Written to {output_path}", file=sys.stderr)
     sys.exit(0)
 

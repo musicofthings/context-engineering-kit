@@ -18,6 +18,17 @@
 set -euo pipefail
 
 PROJECT_DIR="${CLAUDE_PROJECT_DIR:-$(pwd)}"
+PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$PROJECT_DIR}"
+# shellcheck source=../../scripts/find_python.sh
+source "$PLUGIN_ROOT/scripts/find_python.sh"
+PLUGIN_SETTINGS="$PLUGIN_ROOT/config/plugin_settings.json"
+
+# Feature gate: allow disabling usage_sentinel from plugin_settings.json
+if [ -f "$PLUGIN_SETTINGS" ]; then
+  FEATURE_ON=$(jq -r '.features.usage_sentinel // true' "$PLUGIN_SETTINGS" 2>/dev/null || echo "true")
+  [ "$FEATURE_ON" = "false" ] && exit 0
+fi
+
 TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 NOW=$(date +%s)
 
@@ -81,7 +92,7 @@ parse_epoch() {
   elif date -j -f "%Y-%m-%dT%H:%M:%SZ" "$ts" +%s &>/dev/null 2>&1; then
     date -j -f "%Y-%m-%dT%H:%M:%SZ" "$ts" +%s   # macOS
   else
-    python3 -c "from datetime import datetime,timezone; print(int(datetime.fromisoformat('${ts}'.replace('Z','+00:00')).timestamp()))" 2>/dev/null || echo "0"
+    "$PYTHON" -c "from datetime import datetime,timezone; print(int(datetime.fromisoformat('${ts}'.replace('Z','+00:00')).timestamp()))" 2>/dev/null || echo "0"
   fi
 }
 
@@ -100,7 +111,7 @@ ELAPSED_MIN=$(( ELAPSED_SEC / 60 ))
 # ── Compute usage percentage ──────────────────────────────────────────────────
 if [ "$SUB_TYPE" = "api" ]; then
   # Cost-based: compare session cost against daily budget
-  USAGE_PCT=$(python3 -c "print(int(float('${SESSION_COST_USD}') / float('${DAILY_BUDGET_USD}') * 100))" 2>/dev/null || echo "0")
+  USAGE_PCT=$("$PYTHON" -c "print(int(float('${SESSION_COST_USD}') / float('${DAILY_BUDGET_USD}') * 100))" 2>/dev/null || echo "0")
   USAGE_LABEL="USD $(printf '%.2f' "$SESSION_COST_USD") / \$${DAILY_BUDGET_USD}"
   LIMIT_LABEL="daily budget"
 else

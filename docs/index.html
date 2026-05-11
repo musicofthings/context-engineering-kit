@@ -1,0 +1,1291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>context-engineering-kit — Never lose context in Claude Code again</title>
+  <meta name="description" content="Automated context preservation for Claude Code. Hooks, skills, and scripts that keep your work alive through compaction, device switches, and subscription changes." />
+  <meta property="og:title" content="context-engineering-kit" />
+  <meta property="og:description" content="Never lose context in Claude Code again. Auto-saves session state, syncs across devices, and survives compaction." />
+  <meta property="og:url" content="https://musicofthings.github.io/context-engineering-kit/" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0d1117;
+      --bg2:       #161b22;
+      --bg3:       #1c2128;
+      --border:    #30363d;
+      --text:      #e6edf3;
+      --muted:     #8b949e;
+      --accent:    #f78166;
+      --accent2:   #79c0ff;
+      --green:     #56d364;
+      --purple:    #d2a8ff;
+      --yellow:    #e3b341;
+      --radius:    10px;
+      --nav-bg:    rgba(13,17,23,0.92);
+    }
+
+    body.light {
+      --bg:        #f6f8fa;
+      --bg2:       #ffffff;
+      --bg3:       #eaeef2;
+      --border:    #d0d7de;
+      --text:      #1f2328;
+      --muted:     #57606a;
+      --accent:    #cf222e;
+      --accent2:   #0969da;
+      --green:     #1a7f37;
+      --purple:    #8250df;
+      --yellow:    #9a6700;
+      --nav-bg:    rgba(246,248,250,0.92);
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      font-size: 16px;
+    }
+
+    a { color: var(--accent2); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    code, pre {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85em;
+    }
+
+    /* ── Layout ─────────────────────────────────────── */
+    .container { max-width: 1100px; margin: 0 auto; padding: 0 24px; }
+
+    section { padding: 80px 0; }
+    section + section { border-top: 1px solid var(--border); }
+
+    h2 {
+      font-size: 2rem;
+      font-weight: 700;
+      margin-bottom: 12px;
+      letter-spacing: -0.02em;
+    }
+
+    .section-label {
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 8px;
+    }
+
+    .section-sub {
+      color: var(--muted);
+      font-size: 1.1rem;
+      max-width: 600px;
+      margin-bottom: 48px;
+    }
+
+    /* ── Nav ─────────────────────────────────────────── */
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: var(--nav-bg);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 0;
+    }
+
+    .theme-toggle {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 5px 10px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 0.85rem;
+      color: var(--muted);
+      transition: color 0.15s, border-color 0.15s;
+      line-height: 1;
+    }
+
+    .theme-toggle:hover { color: var(--text); border-color: var(--muted); }
+
+    nav .inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    .nav-logo {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.95rem;
+      font-weight: 500;
+      color: var(--text);
+    }
+
+    .nav-logo span { color: var(--accent); }
+
+    .nav-links { display: flex; gap: 28px; align-items: center; }
+
+    .nav-links a {
+      color: var(--muted);
+      font-size: 0.9rem;
+      font-weight: 500;
+      transition: color 0.15s;
+    }
+
+    .nav-links a:hover { color: var(--text); text-decoration: none; }
+
+    .nav-cta {
+      background: var(--accent);
+      color: #000 !important;
+      padding: 7px 16px;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 0.85rem;
+      transition: opacity 0.15s;
+    }
+
+    .nav-cta:hover { opacity: 0.88; text-decoration: none !important; }
+
+    /* ── Hero ────────────────────────────────────────── */
+    #hero {
+      padding: 100px 0 80px;
+      border-top: none;
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 5px 14px;
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-bottom: 28px;
+    }
+
+    .hero-badge .dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 6px var(--green);
+    }
+
+    h1 {
+      font-size: clamp(2.4rem, 5vw, 3.6rem);
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      line-height: 1.15;
+      margin-bottom: 20px;
+      max-width: 780px;
+    }
+
+    h1 em {
+      font-style: normal;
+      background: linear-gradient(135deg, var(--accent) 0%, var(--purple) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .hero-sub {
+      font-size: 1.2rem;
+      color: var(--muted);
+      max-width: 620px;
+      margin-bottom: 36px;
+    }
+
+    .hero-actions { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 60px; }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 22px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 0.95rem;
+      transition: all 0.15s;
+      cursor: pointer;
+      text-decoration: none !important;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #000;
+    }
+
+    .btn-primary:hover { opacity: 0.88; }
+
+    .btn-secondary {
+      background: var(--bg2);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+
+    .btn-secondary:hover { border-color: var(--muted); background: var(--bg3); }
+
+    .hero-terminal {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      max-width: 700px;
+    }
+
+    .terminal-bar {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      padding: 12px 16px;
+      background: var(--bg3);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .terminal-bar .dot {
+      width: 11px; height: 11px;
+      border-radius: 50%;
+    }
+
+    .terminal-bar .dot:nth-child(1) { background: #ff5f57; }
+    .terminal-bar .dot:nth-child(2) { background: #febc2e; }
+    .terminal-bar .dot:nth-child(3) { background: #28c840; }
+
+    .terminal-bar span {
+      margin-left: 8px;
+      font-size: 0.78rem;
+      color: var(--muted);
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .terminal-body { padding: 20px 22px; line-height: 1.8; }
+
+    .t-prompt { color: var(--green); }
+    .t-cmd    { color: var(--text); }
+    .t-out    { color: var(--muted); }
+    .t-ok     { color: var(--green); }
+    .t-warn   { color: var(--yellow); }
+    .t-info   { color: var(--accent2); }
+
+    /* ── Problem/Solution ────────────────────────────── */
+    .problem-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 16px;
+      margin-top: 40px;
+    }
+
+    .problem-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+    }
+
+    .problem-card .icon { font-size: 1.4rem; margin-bottom: 10px; }
+
+    .problem-card h3 {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+
+    .problem-card p { font-size: 0.9rem; color: var(--text); }
+    .problem-card .solution { color: var(--green); font-size: 0.82rem; margin-top: 8px; }
+
+    /* ── How it works ────────────────────────────────── */
+    .flow {
+      display: flex;
+      gap: 0;
+      align-items: flex-start;
+      margin-top: 48px;
+      overflow-x: auto;
+      padding-bottom: 8px;
+    }
+
+    .flow-step {
+      flex: 1;
+      min-width: 180px;
+      text-align: center;
+      position: relative;
+      padding: 0 16px;
+    }
+
+    .flow-step::after {
+      content: '→';
+      position: absolute;
+      right: -8px;
+      top: 28px;
+      color: var(--border);
+      font-size: 1.4rem;
+    }
+
+    .flow-step:last-child::after { display: none; }
+
+    .flow-icon {
+      width: 56px; height: 56px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.4rem;
+      margin: 0 auto 14px;
+      border: 2px solid var(--border);
+      background: var(--bg2);
+    }
+
+    .flow-step h3 {
+      font-size: 0.9rem;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+
+    .flow-step p {
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+
+    /* ── Features grid ───────────────────────────────── */
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 16px;
+      margin-top: 40px;
+    }
+
+    .feature-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      transition: border-color 0.2s;
+    }
+
+    .feature-card:hover { border-color: var(--muted); }
+
+    .feature-card .tag {
+      display: inline-block;
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      padding: 3px 9px;
+      border-radius: 4px;
+      margin-bottom: 12px;
+    }
+
+    .tag-hook     { background: rgba(121,192,255,0.12); color: var(--accent2); }
+    .tag-skill    { background: rgba(86,211,100,0.12);  color: var(--green); }
+    .tag-config   { background: rgba(210,168,255,0.12); color: var(--purple); }
+    .tag-platform { background: rgba(227,179,65,0.12);  color: var(--yellow); }
+
+    .feature-card h3 {
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: 8px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .feature-card p { font-size: 0.88rem; color: var(--muted); }
+
+    /* ── Install ─────────────────────────────────────── */
+    .install-tabs {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 24px;
+      background: var(--bg2);
+      padding: 5px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      width: fit-content;
+    }
+
+    .tab-btn {
+      padding: 9px 20px;
+      border-radius: 6px;
+      font-size: 0.88rem;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      background: transparent;
+      color: var(--muted);
+      transition: all 0.15s;
+    }
+
+    .tab-btn.active {
+      background: var(--bg3);
+      color: var(--text);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+    }
+
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    /* ── OS Selector ─────────────────────────────────── */
+    .os-selector {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 32px;
+      background: var(--bg2);
+      padding: 5px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      width: fit-content;
+    }
+
+    .os-btn {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      background: transparent;
+      color: var(--muted);
+      transition: all 0.15s;
+    }
+
+    .os-btn.active {
+      background: var(--bg3);
+      color: var(--text);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+    }
+
+    .os-btn svg { flex-shrink: 0; }
+
+    /* hide platform blocks by default; :not(body) prevents body.os-linux hiding itself */
+    .os-win:not(body), .os-mac:not(body), .os-linux:not(body) { display: none; }
+    body.os-windows .os-win   { display: block; }
+    body.os-macos   .os-mac   { display: block; }
+    body.os-linux   .os-linux { display: block; }
+
+    /* inline platform spans (inside shared code blocks) */
+    .p-win, .p-mac, .p-linux { display: none; }
+    body.os-windows .p-win   { display: inline; }
+    body.os-macos   .p-mac   { display: inline; }
+    body.os-linux   .p-linux { display: inline; }
+
+    .os-label {
+      display: inline-block;
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--yellow);
+      margin-bottom: 6px;
+    }
+
+    .steps { display: flex; flex-direction: column; gap: 16px; margin-top: 28px; }
+
+    .step {
+      display: flex;
+      gap: 18px;
+      align-items: flex-start;
+    }
+
+    .step-num {
+      width: 30px; height: 30px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: #000;
+      font-weight: 700;
+      font-size: 0.82rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
+    .step h4 { font-size: 0.95rem; font-weight: 600; margin-bottom: 6px; }
+    .step p  { font-size: 0.88rem; color: var(--muted); }
+
+    .code-block {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px 18px;
+      margin-top: 8px;
+      overflow-x: auto;
+    }
+
+    .code-block pre { color: var(--text); font-size: 0.83rem; line-height: 1.7; }
+    .code-block .comment { color: var(--muted); }
+    .code-block .cmd { color: var(--accent2); }
+
+    /* ── Skills table ────────────────────────────────── */
+    .skills-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 32px;
+      font-size: 0.9rem;
+    }
+
+    .skills-table th {
+      text-align: left;
+      padding: 10px 16px;
+      background: var(--bg2);
+      color: var(--muted);
+      font-weight: 600;
+      font-size: 0.8rem;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .skills-table td {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+    }
+
+    .skills-table tr:last-child td { border-bottom: none; }
+    .skills-table tr:hover td { background: var(--bg2); }
+
+    .skill-name {
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--accent2);
+      white-space: nowrap;
+    }
+
+    .skill-desc { color: var(--muted); font-size: 0.85rem; }
+
+    /* ── Hooks table ─────────────────────────────────── */
+    .hooks-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 32px;
+      font-size: 0.85rem;
+    }
+
+    .hooks-table th {
+      text-align: left;
+      padding: 10px 14px;
+      background: var(--bg2);
+      color: var(--muted);
+      font-weight: 600;
+      font-size: 0.78rem;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .hooks-table td {
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+    }
+
+    .hooks-table tr:last-child td { border-bottom: none; }
+    .hooks-table tr:hover td { background: var(--bg2); }
+
+    .event-tag {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.78rem;
+      background: rgba(121,192,255,0.1);
+      color: var(--accent2);
+      padding: 2px 7px;
+      border-radius: 4px;
+      white-space: nowrap;
+    }
+
+    .script-name {
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--green);
+      font-size: 0.8rem;
+    }
+
+    /* ── CTA ─────────────────────────────────────────── */
+    #cta {
+      text-align: center;
+      padding: 100px 0;
+    }
+
+    #cta h2 { font-size: 2.4rem; margin-bottom: 16px; }
+    #cta p  { color: var(--muted); font-size: 1.1rem; margin-bottom: 36px; }
+
+    .cta-actions { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
+
+    /* ── Footer ──────────────────────────────────────── */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 32px 0;
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+
+    footer .inner {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    footer a { color: var(--muted); }
+    footer a:hover { color: var(--text); }
+
+    /* ── Responsive ──────────────────────────────────── */
+    @media (max-width: 700px) {
+      section { padding: 56px 0; }
+      h2 { font-size: 1.6rem; }
+      .flow { flex-direction: column; gap: 24px; }
+      .flow-step::after { display: none; }
+      nav .nav-links { display: none; }
+      .skills-table th:nth-child(2),
+      .skills-table td:nth-child(2) { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── Nav ──────────────────────────────────────────────────── -->
+<nav>
+  <div class="inner">
+    <div class="nav-logo">context-<span>engineering</span>-kit</div>
+    <div class="nav-links">
+      <a href="#how-it-works">How it works</a>
+      <a href="#features">Features</a>
+      <a href="#install">Install</a>
+      <a href="#skills">Skills</a>
+      <a href="#hooks">Hooks</a>
+      <a href="https://github.com/musicofthings/context-engineering-kit" class="nav-cta">GitHub →</a>
+      <button class="theme-toggle" id="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">
+        <span id="theme-icon">☀️</span>
+      </button>
+    </div>
+  </div>
+</nav>
+
+<!-- ── Hero ─────────────────────────────────────────────────── -->
+<section id="hero">
+  <div class="container">
+    <div class="hero-badge">
+      <span class="dot"></span>
+      v2.5.0 — Claude Code Plugin + CLI
+    </div>
+
+    <h1>Never lose context<br>in <em>Claude Code</em> again.</h1>
+
+    <p class="hero-sub">
+      Automated hooks and skills that save your session state before compaction,
+      sync it across devices, and restore it on every session start —
+      so Claude always knows exactly where you left off.
+    </p>
+
+    <div class="hero-actions">
+      <a href="#install" class="btn btn-primary">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M7.47 10.78a.75.75 0 0 0 1.06 0l3.75-3.75a.75.75 0 0 0-1.06-1.06L8.75 8.44V1.75a.75.75 0 0 0-1.5 0v6.69L4.78 5.97a.75.75 0 0 0-1.06 1.06l3.75 3.75ZM3.75 13a.75.75 0 0 0 0 1.5h8.5a.75.75 0 0 0 0-1.5h-8.5Z"/></svg>
+        Install Plugin
+      </a>
+      <a href="https://github.com/musicofthings/context-engineering-kit" class="btn btn-secondary">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>
+        View on GitHub
+      </a>
+    </div>
+
+    <div class="hero-terminal">
+      <div class="terminal-bar">
+        <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+        <span>claude — context-engineering-kit</span>
+      </div>
+      <div class="terminal-body">
+        <code>
+<span class="t-info">╔══════════════════════════════════════════════════════════╗</span><br>
+<span class="t-info">║  context-engineering-kit v2.5 — Session Started          ║</span><br>
+<span class="t-info">╚══════════════════════════════════════════════════════════╝</span><br>
+<br>
+<span class="t-out">📅 Date/Time    : Thursday May 07 2026, 09:30 UTC</span><br>
+<span class="t-out">🌿 Branch       : main</span><br>
+<span class="t-out">📝 Last task    : implementing auth middleware</span><br>
+<span class="t-out">⏱  Session start: 2026-05-07T09:30:00Z</span><br>
+<span class="t-out">📊 Plan         : pro (300min window)</span><br>
+<br>
+<span class="t-out">── Last session ─────────────────────────────────────────</span><br>
+<span class="t-out">Task   : implement JWT refresh token rotation</span><br>
+<span class="t-out">Phase  : Phase 3 — Testing</span><br>
+<span class="t-out">Next   : write integration tests for /auth/refresh</span><br>
+<br>
+<span class="t-ok">✅ Hooks verified · State restored · Ready to continue</span>
+        </code>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Problem / Solution ─────────────────────────────────── -->
+<section id="problem">
+  <div class="container">
+    <p class="section-label">The Problem</p>
+    <h2>Claude Code has a memory problem.</h2>
+    <p class="section-sub">Every compaction, device switch, or subscription change risks losing your task state, decisions, and progress.</p>
+
+    <div class="problem-grid">
+      <div class="problem-card">
+        <div class="icon">🔄</div>
+        <h3>Context window fills up</h3>
+        <p>Claude compacts the conversation and loses all the decisions, file paths, and task context you built up.</p>
+        <p class="solution">→ PreCompact hook saves everything before it's gone</p>
+      </div>
+      <div class="problem-card">
+        <div class="icon">💻</div>
+        <h3>Switching devices</h3>
+        <p>You're mid-task on your work machine. You open your laptop at home and have no idea where you left off.</p>
+        <p class="solution">→ session_sync.sh commits state to git — pull and resume anywhere</p>
+      </div>
+      <div class="problem-card">
+        <div class="icon">📊</div>
+        <h3>No usage visibility</h3>
+        <p>You hit the Pro limit with no warning and lose a long session. Or you switch to Opus for a trivial rename.</p>
+        <p class="solution">→ usage-sentinel tracks burn rate and auto-saves before you hit the wall</p>
+      </div>
+      <div class="problem-card">
+        <div class="icon">🆕</div>
+        <h3>Every new repo starts cold</h3>
+        <p>You clone a new repo and Claude has no awareness of what you were doing, the project structure, or conventions.</p>
+        <p class="solution">→ auto_activate_new_repos bootstraps context on first open</p>
+      </div>
+      <div class="problem-card">
+        <div class="icon">🔀</div>
+        <h3>Subscription changes break flow</h3>
+        <p>Pro → Max → API billing — each switch is a new session with no continuity.</p>
+        <p class="solution">→ Same git repo, same session_handover.md, same state across all tiers</p>
+      </div>
+      <div class="problem-card">
+        <div class="icon">🧹</div>
+        <h3>Context rot</h3>
+        <p>Default /compact summarises everything uniformly. Important code decisions get compressed the same as exploration noise.</p>
+        <p class="solution">→ /compact-smart preserves code and decisions at higher fidelity</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── How it works ───────────────────────────────────────── -->
+<section id="how-it-works">
+  <div class="container">
+    <p class="section-label">How It Works</p>
+    <h2>Hooks wire into Claude Code automatically.</h2>
+    <p class="section-sub">You install once. After that, every session start, compaction, and stop event is handled silently in the background.</p>
+
+    <div class="flow">
+      <div class="flow-step">
+        <div class="flow-icon">🚀</div>
+        <h3>Session Start</h3>
+        <p>State injected. New repos bootstrapped. Morning brief generated.</p>
+      </div>
+      <div class="flow-step">
+        <div class="flow-icon">💬</div>
+        <h3>Every Prompt</h3>
+        <p>Usage tracked. Warnings injected at 70/80/85/92%. Auto-save triggers.</p>
+      </div>
+      <div class="flow-step">
+        <div class="flow-icon">📦</div>
+        <h3>Pre-Compact</h3>
+        <p>Handover generated. State merged. Files committed to git.</p>
+      </div>
+      <div class="flow-step">
+        <div class="flow-icon">♻️</div>
+        <h3>Post-Compact</h3>
+        <p>Task context re-injected. Claude picks up exactly where it left off.</p>
+      </div>
+      <div class="flow-step">
+        <div class="flow-icon">🔚</div>
+        <h3>Session End</h3>
+        <p>All state files committed. Ready to resume on any device.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Features ───────────────────────────────────────────── -->
+<section id="features">
+  <div class="container">
+    <p class="section-label">Features</p>
+    <h2>Everything context preservation needs.</h2>
+    <p class="section-sub">14 hooks, 8 skills, and a suite of scripts — all working together silently.</p>
+
+    <div class="features-grid">
+      <div class="feature-card">
+        <span class="tag tag-hook">Hook · PreCompact</span>
+        <h3>pre-compact.sh</h3>
+        <p>Saves session_handover.md, merges state.json (preserves all fields), updates CLAUDE.md, and commits to git before every compaction. Nothing is lost.</p>
+      </div>
+      <div class="feature-card">
+        <span class="tag tag-hook">Hook · UserPromptSubmit</span>
+        <h3>usage-sentinel.sh</h3>
+        <p>Tracks Pro/Max/API usage against your 5-hour window. Injects warnings at 70%, save reminders at 80%, and auto-save directives at 85% and 92%.</p>
+      </div>
+      <div class="feature-card">
+        <span class="tag tag-hook">Hook · SessionStart</span>
+        <h3>auto_init_project.sh</h3>
+        <p>Detects new git repos with no context-kit files and bootstraps them automatically. Controlled by <code>auto_activate_new_repos</code> in plugin_settings.json.</p>
+      </div>
+      <div class="feature-card">
+        <span class="tag tag-skill">Skill</span>
+        <h3>/compact-smart</h3>
+        <p>Relevance-scored compaction. Tags code, decisions, and error solutions for verbatim preservation. Tags exploratory noise for aggressive summarisation.</p>
+      </div>
+      <div class="feature-card">
+        <span class="tag tag-skill">Skill</span>
+        <h3>/session-sync</h3>
+        <p>Commits session_handover.md and state.json to git and pushes. On any new device: git pull → session_sync load → resume. Works across Pro ↔ Max ↔ API.</p>
+      </div>
+      <div class="feature-card">
+        <span class="tag tag-skill">Skill</span>
+        <h3>/token-status</h3>
+        <p>Live view of your 5-hour window usage, context percentage, cost today, turns taken, and ETA to limit. Reads real rate_limits data from the Stop event.</p>
+      </div>
+      <div class="feature-card">
+        <span class="tag tag-skill">Skill</span>
+        <h3>/handover</h3>
+        <p>Generates a structured session_handover.md with active task, completed items, remaining work, environment snapshot, and key decisions.</p>
+      </div>
+      <div class="feature-card">
+        <span class="tag tag-skill">Skill</span>
+        <h3>/model-switch</h3>
+        <p>Switch between Haiku (fast/cheap), Sonnet (default), and Opus (complex reasoning). <code>/model-switch auto</code> analyses your task and recommends the right model.</p>
+      </div>
+      <div class="feature-card">
+        <span class="tag tag-hook">Hook · PostToolUseFailure</span>
+        <h3>post-tool-failure.sh</h3>
+        <p>Logs every tool failure with tool name, error, and file path to tool-failures.jsonl and state.json. Failures surface in handover and context-health.</p>
+      </div>
+      <div class="feature-card">
+        <span class="tag tag-hook">Hook · SubagentStart/Stop</span>
+        <h3>subagent-lifecycle.sh</h3>
+        <p>Tracks every spawned subagent: type, description, start/stop timing. Running count maintained in state.json for handover visibility.</p>
+      </div>
+      <div class="feature-card">
+        <span class="tag tag-config">Config</span>
+        <h3>plugin_settings.json</h3>
+        <p>Global feature toggles: enable/disable auto-activation, usage sentinel, morning brief, tool failure logging, and subagent tracking. Skip specific repos.</p>
+      </div>
+      <div class="feature-card">
+        <span class="tag tag-platform">Platform</span>
+        <h3>Windows-native</h3>
+        <p><code>find_python.sh</code> auto-detects <code>python3</code> → <code>python</code> → <code>py.exe</code> (Windows Launcher) and verifies it's Python 3 before use. Works on every Windows setup.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Install ────────────────────────────────────────────── -->
+<section id="install">
+  <div class="container">
+    <p class="section-label">Installation</p>
+    <h2>Two ways to install.</h2>
+    <p class="section-sub">Plugin mode activates in every project automatically. CLI mode wires into a single project.</p>
+
+    <!-- OS selector -->
+    <div class="os-selector">
+      <button class="os-btn" id="os-btn-win" onclick="setOS('windows')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801"/></svg>
+        Windows
+      </button>
+      <button class="os-btn" id="os-btn-mac" onclick="setOS('macos')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701"/></svg>
+        macOS
+      </button>
+      <button class="os-btn" id="os-btn-linux" onclick="setOS('linux')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12.504 0c-.155 0-.315.008-.48.021C7.309.358 5.396 2.724 5.396 2.724c-.006.013-.024.032-.035.044.016-.019.08.088.08.088C3.66 5.24 4.09 7.541 4.343 8.673c-1.357 1.432-2.186 3.227-2.186 5.127 0 3.765 2.798 6.929 6.44 7.747-.003.048-.009.098-.009.148 0 .77-.237 1.499-.643 2.105h-.01c-1.187 0-2.094.966-2.094 2.146 0 .547.205 1.047.54 1.427H18.97c.335-.38.54-.88.54-1.427 0-1.18-.907-2.146-2.093-2.146h-.01a3.677 3.677 0 0 1-.644-2.105c0-.05-.006-.1-.009-.148 3.643-.818 6.441-3.982 6.441-7.747 0-1.9-.83-3.695-2.187-5.127.253-1.132.683-3.433-1.141-5.817 0 0-.018-.019-.024-.032 0 0-1.912-2.366-6.629-2.703A8.516 8.516 0 0 0 12.504 0zm.008 1.436c.134 0 .269.006.405.017 4.045.29 5.67 2.258 5.67 2.258.826 1.084 1.064 2.154.99 3.056a7.87 7.87 0 0 0-1.516-1.124c-1.234-.701-2.823-1.134-4.553-1.134-1.73 0-3.318.433-4.553 1.134A7.862 7.862 0 0 0 7.44 6.767c-.074-.902.164-1.972.99-3.056 0 0 1.625-1.968 5.67-2.258a6.975 6.975 0 0 1 .412-.017zM9.37 8.087c1.664 0 3.014 1.35 3.014 3.016 0 1.665-1.35 3.015-3.014 3.015-1.665 0-3.015-1.35-3.015-3.015 0-1.666 1.35-3.016 3.015-3.016zm5.26 0c1.664 0 3.014 1.35 3.014 3.016 0 1.665-1.35 3.015-3.015 3.015-1.664 0-3.014-1.35-3.014-3.015 0-1.666 1.35-3.016 3.014-3.016zm-5.26 1.43a1.586 1.586 0 1 0 .001 3.173 1.586 1.586 0 0 0-.001-3.173zm5.26 0a1.586 1.586 0 1 0 .001 3.173 1.586 1.586 0 0 0-.001-3.173z"/></svg>
+        Linux
+      </button>
+    </div>
+
+    <div class="install-tabs">
+      <button class="tab-btn active" onclick="showTab('plugin')">🔌 Desktop Plugin</button>
+      <button class="tab-btn" onclick="showTab('cli')">⌨️ CLI Standalone</button>
+    </div>
+
+    <!-- ── Plugin tab ───────────────────────────────── -->
+    <div id="tab-plugin" class="tab-content active">
+      <p style="color:var(--muted); font-size:0.9rem; margin-bottom:24px;">Recommended. Installs once, activates automatically in every project you open in Claude Code Desktop.</p>
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div>
+            <h4>Download the plugin zip</h4>
+            <p>From the <a href="https://github.com/musicofthings/context-engineering-kit/releases">latest release</a>, or build from source:</p>
+
+            <div class="os-win">
+              <div class="os-label">Windows PowerShell</div>
+              <div class="code-block"><pre><span class="cmd">git clone</span> https://github.com/musicofthings/context-engineering-kit.git
+<span class="cmd">cd</span> context-engineering-kit
+<span class="cmd">Compress-Archive</span> -Path . -DestinationPath ..\cek-plugin.zip -Force</pre></div>
+            </div>
+            <div class="os-mac">
+              <div class="os-label">macOS</div>
+              <div class="code-block"><pre><span class="cmd">git clone</span> https://github.com/musicofthings/context-engineering-kit.git
+<span class="cmd">cd</span> context-engineering-kit
+<span class="cmd">zip -r</span> ../cek-plugin.zip . --exclude "*.git*" --exclude "briefs/*"</pre></div>
+            </div>
+            <div class="os-linux">
+              <div class="os-label">Linux</div>
+              <div class="code-block"><pre><span class="cmd">git clone</span> https://github.com/musicofthings/context-engineering-kit.git
+<span class="cmd">cd</span> context-engineering-kit
+<span class="cmd">zip -r</span> ../cek-plugin.zip . --exclude "*.git*" --exclude "briefs/*"</pre></div>
+            </div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div>
+            <h4>Upload to Claude Code Desktop</h4>
+            <p>Open Claude Code Desktop → <strong>Customize</strong> (bottom-left gear) → <strong>Upload Plugin</strong> → select the zip. Restart Claude Code.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div>
+            <h4>Set your subscription tier</h4>
+            <p>In Claude Code settings, add to the <code>"env"</code> section:</p>
+
+            <div class="os-win">
+              <div class="os-label">Windows PowerShell</div>
+              <div class="code-block"><pre><span class="comment"># Claude Code Desktop → Customize → Advanced → env</span>
+{ <span class="cmd">"CEK_SUBSCRIPTION_TIER"</span>: <span class="t-ok">"pro"</span> }  <span class="comment"># pro | max | api | team</span></pre></div>
+            </div>
+            <div class="os-mac">
+              <div class="os-label">macOS</div>
+              <div class="code-block"><pre><span class="comment">// Claude Code Desktop → Customize → Advanced → env</span>
+{ <span class="cmd">"CEK_SUBSCRIPTION_TIER"</span>: <span class="t-ok">"pro"</span> }  <span class="comment">// pro | max | api | team</span></pre></div>
+            </div>
+            <div class="os-linux">
+              <div class="os-label">Linux</div>
+              <div class="code-block"><pre><span class="comment">// Claude Code Desktop → Customize → Advanced → env</span>
+{ <span class="cmd">"CEK_SUBSCRIPTION_TIER"</span>: <span class="t-ok">"pro"</span> }  <span class="comment">// pro | max | api | team</span></pre></div>
+            </div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">4</div>
+          <div>
+            <h4>Verify</h4>
+            <p>Open any project in Claude Code and run:</p>
+            <div class="code-block"><pre>/context-engineering-kit:context-health</pre></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── CLI tab ──────────────────────────────────── -->
+    <div id="tab-cli" class="tab-content">
+      <p style="color:var(--muted); font-size:0.9rem; margin-bottom:24px;">Standalone per-project install. Hooks wire directly into the project's <code>.claude/settings.json</code>.</p>
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div>
+            <h4>Clone and run setup</h4>
+
+            <div class="os-win">
+              <div class="os-label">Windows PowerShell</div>
+              <div class="code-block"><pre><span class="cmd">git clone</span> https://github.com/musicofthings/context-engineering-kit.git my-project
+<span class="cmd">cd</span> my-project
+<span class="cmd">bash.exe</span> setup.sh    <span class="comment"># requires Git for Windows (Git Bash)</span></pre></div>
+            </div>
+            <div class="os-mac">
+              <div class="os-label">macOS</div>
+              <div class="code-block"><pre><span class="cmd">git clone</span> https://github.com/musicofthings/context-engineering-kit.git my-project
+<span class="cmd">cd</span> my-project
+<span class="cmd">bash</span> setup.sh</pre></div>
+            </div>
+            <div class="os-linux">
+              <div class="os-label">Linux</div>
+              <div class="code-block"><pre><span class="cmd">git clone</span> https://github.com/musicofthings/context-engineering-kit.git my-project
+<span class="cmd">cd</span> my-project
+<span class="cmd">bash</span> setup.sh</pre></div>
+            </div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div>
+            <h4>Set subscription tier</h4>
+
+            <div class="os-win">
+              <div class="os-label">Windows PowerShell</div>
+              <div class="code-block"><pre><span class="comment"># Edit config\usage_budget.json</span>
+{ <span class="cmd">"subscription_type"</span>: <span class="t-ok">"pro"</span> }   <span class="comment"># pro | max | api | team</span></pre></div>
+            </div>
+            <div class="os-mac">
+              <div class="os-label">macOS</div>
+              <div class="code-block"><pre><span class="comment"># config/usage_budget.json</span>
+{ <span class="cmd">"subscription_type"</span>: <span class="t-ok">"pro"</span> }   <span class="comment"># pro | max | api | team</span></pre></div>
+            </div>
+            <div class="os-linux">
+              <div class="os-label">Linux</div>
+              <div class="code-block"><pre><span class="comment"># config/usage_budget.json</span>
+{ <span class="cmd">"subscription_type"</span>: <span class="t-ok">"pro"</span> }   <span class="comment"># pro | max | api | team</span></pre></div>
+            </div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div>
+            <h4>Launch and verify</h4>
+
+            <div class="os-win">
+              <div class="os-label">Windows PowerShell</div>
+              <div class="code-block"><pre><span class="cmd">claude.cmd</span>      <span class="comment"># use claude.cmd on Windows (avoids PATH conflict)</span>
+
+/context-health  <span class="comment"># verify hooks and state</span></pre></div>
+            </div>
+            <div class="os-mac">
+              <div class="os-label">macOS</div>
+              <div class="code-block"><pre><span class="cmd">claude</span>
+
+/context-health  <span class="comment"># verify hooks and state</span></pre></div>
+            </div>
+            <div class="os-linux">
+              <div class="os-label">Linux</div>
+              <div class="code-block"><pre><span class="cmd">claude</span>
+
+/context-health  <span class="comment"># verify hooks and state</span></pre></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Skills ─────────────────────────────────────────────── -->
+<section id="skills">
+  <div class="container">
+    <p class="section-label">Skills Reference</p>
+    <h2>Eight slash commands.</h2>
+    <p class="section-sub">Type them in Claude Code at any time. Plugin mode prefixes with <code>context-engineering-kit:</code>.</p>
+
+    <table class="skills-table">
+      <thead>
+        <tr>
+          <th>CLI command</th>
+          <th>Plugin command</th>
+          <th>What it does</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="skill-name">/context-health</span></td>
+          <td><span class="skill-name" style="color:var(--purple)">/cek:context-health</span></td>
+          <td><span class="skill-desc">Full audit — hooks wired, scripts present, state valid, git sync status</span></td>
+        </tr>
+        <tr>
+          <td><span class="skill-name">/handover</span></td>
+          <td><span class="skill-name" style="color:var(--purple)">/cek:handover</span></td>
+          <td><span class="skill-desc">Generate session_handover.md with active task, decisions, remaining work</span></td>
+        </tr>
+        <tr>
+          <td><span class="skill-name">/token-status</span></td>
+          <td><span class="skill-name" style="color:var(--purple)">/cek:token-status</span></td>
+          <td><span class="skill-desc">Live: context %, 5h window %, cost today, turns, ETA to limit</span></td>
+        </tr>
+        <tr>
+          <td><span class="skill-name">/compact-smart</span></td>
+          <td><span class="skill-name" style="color:var(--purple)">/cek:compact-smart</span></td>
+          <td><span class="skill-desc">Relevance-scored compaction — preserves code and decisions verbatim</span></td>
+        </tr>
+        <tr>
+          <td><span class="skill-name">/model-switch</span></td>
+          <td><span class="skill-name" style="color:var(--purple)">/cek:model-switch</span></td>
+          <td><span class="skill-desc">Switch Haiku / Sonnet / Opus, or <code>auto</code> to let Claude decide</span></td>
+        </tr>
+        <tr>
+          <td><span class="skill-name">/session-sync</span></td>
+          <td><span class="skill-name" style="color:var(--purple)">/cek:session-sync</span></td>
+          <td><span class="skill-desc">save / load / status — sync state to git for cross-device continuity</span></td>
+        </tr>
+        <tr>
+          <td><span class="skill-name">/usage-forecast</span></td>
+          <td><span class="skill-name" style="color:var(--purple)">/cek:usage-forecast</span></td>
+          <td><span class="skill-desc">Daily burn rate, turns-to-warn, predicted time to subscription limit</span></td>
+        </tr>
+        <tr>
+          <td><span class="skill-name">/morning-brief</span></td>
+          <td><span class="skill-name" style="color:var(--purple)">/cek:morning-brief</span></td>
+          <td><span class="skill-desc">Today's AI/ML news digest from RSS feeds (auto-generated on session start)</span></td>
+        </tr>
+      </tbody>
+    </table>
+    <p style="margin-top:14px; font-size:0.82rem; color:var(--muted)"><code>/cek:</code> is shorthand for <code>/context-engineering-kit:</code> in plugin mode.</p>
+  </div>
+</section>
+
+<!-- ── Hooks ──────────────────────────────────────────────── -->
+<section id="hooks">
+  <div class="container">
+    <p class="section-label">Hooks Reference</p>
+    <h2>Fires automatically. You do nothing.</h2>
+    <p class="section-sub">Every hook is wired in <code>hooks/hooks.json</code> (plugin) or <code>.claude/settings.json</code> (CLI standalone).</p>
+
+    <table class="hooks-table">
+      <thead>
+        <tr>
+          <th>Event</th>
+          <th>Script</th>
+          <th>What it saves / does</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="event-tag">SessionStart</span></td>
+          <td><span class="script-name">auto_init_project.sh</span></td>
+          <td>Bootstraps new repos with state.json + session_handover.md</td>
+        </tr>
+        <tr>
+          <td><span class="event-tag">SessionStart</span></td>
+          <td><span class="script-name">session-start.sh</span></td>
+          <td>Injects date, branch, task, usage status into context</td>
+        </tr>
+        <tr>
+          <td><span class="event-tag">UserPromptSubmit</span></td>
+          <td><span class="script-name">usage-sentinel.sh</span></td>
+          <td>Tracks usage %; injects warnings; auto-saves at 85/92%</td>
+        </tr>
+        <tr>
+          <td><span class="event-tag">PreCompact</span></td>
+          <td><span class="script-name">pre-compact.sh</span></td>
+          <td>Generates handover, merges state, updates CLAUDE.md, git commits</td>
+        </tr>
+        <tr>
+          <td><span class="event-tag">PostCompact</span></td>
+          <td><span class="script-name">post-compact.sh</span></td>
+          <td>Re-injects task/branch/state so Claude retains awareness</td>
+        </tr>
+        <tr>
+          <td><span class="event-tag">Stop (async)</span></td>
+          <td><span class="script-name">extract-state-on-stop.sh</span></td>
+          <td>Extracts next_action and active task hint from response text</td>
+        </tr>
+        <tr>
+          <td><span class="event-tag">Stop (async)</span></td>
+          <td><span class="script-name">usage-tracker.py</span></td>
+          <td>Records rate_limits %, context %, cost per turn to daily-usage.json</td>
+        </tr>
+        <tr>
+          <td><span class="event-tag">SessionEnd</span></td>
+          <td><span class="script-name">session-end.sh</span></td>
+          <td>Git commits all session state files on close</td>
+        </tr>
+        <tr>
+          <td><span class="event-tag">PostToolUseFailure</span></td>
+          <td><span class="script-name">post-tool-failure.sh</span></td>
+          <td>Logs tool failures to tool-failures.jsonl + state.json</td>
+        </tr>
+        <tr>
+          <td><span class="event-tag">SubagentStart/Stop</span></td>
+          <td><span class="script-name">subagent-lifecycle.sh</span></td>
+          <td>Tracks delegated work; maintains running subagent count</td>
+        </tr>
+        <tr>
+          <td><span class="event-tag">PreToolUse · Bash</span></td>
+          <td><span class="script-name">guard-dangerous.sh</span></td>
+          <td>Blocks rm -rf /, production config writes before execution</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ── CTA ────────────────────────────────────────────────── -->
+<section id="cta">
+  <div class="container">
+    <h2>Start where you left off.<br>Every time.</h2>
+    <p>Install in 4 steps. Works with Pro, Max, and API billing.</p>
+    <div class="cta-actions">
+      <a href="#install" class="btn btn-primary">Install the Plugin</a>
+      <a href="https://github.com/musicofthings/context-engineering-kit" class="btn btn-secondary">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>
+        View Source
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- ── Footer ─────────────────────────────────────────────── -->
+<footer>
+  <div class="container">
+    <div class="inner">
+      <span>context-engineering-kit v2.5.0 · MIT License · <a href="https://github.com/musicofthings/context-engineering-kit">github.com/musicofthings/context-engineering-kit</a></span>
+      <span>Built for <a href="https://claude.ai/code">Claude Code</a></span>
+    </div>
+  </div>
+</footer>
+
+<script>
+  function showTab(id) {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    document.getElementById('tab-' + id).classList.add('active');
+    event.currentTarget.classList.add('active');
+  }
+
+  function toggleTheme() {
+    const isLight = document.body.classList.toggle('light');
+    document.getElementById('theme-icon').textContent = isLight ? '🌙' : '☀️';
+    try { localStorage.setItem('cek-theme', isLight ? 'light' : 'dark'); } catch (e) {}
+  }
+
+  (function detectTheme() {
+    let saved;
+    try { saved = localStorage.getItem('cek-theme'); } catch (e) {}
+    const preferLight = saved ? saved === 'light' : window.matchMedia('(prefers-color-scheme: light)').matches;
+    if (preferLight) {
+      document.body.classList.add('light');
+      const icon = document.getElementById('theme-icon');
+      if (icon) icon.textContent = '🌙';
+    }
+  })();
+
+  function setOS(os) {
+    document.body.classList.remove('os-windows', 'os-macos', 'os-linux');
+    document.body.classList.add('os-' + os);
+    document.querySelectorAll('.os-btn').forEach(b => b.classList.remove('active'));
+    const btn = document.getElementById('os-btn-' + (os === 'windows' ? 'win' : os === 'macos' ? 'mac' : 'linux'));
+    if (btn) btn.classList.add('active');
+    try { localStorage.setItem('cek-os', os); } catch (e) {}
+  }
+
+  (function detectOS() {
+    let saved;
+    try { saved = localStorage.getItem('cek-os'); } catch (e) {}
+    if (saved && ['windows', 'macos', 'linux'].includes(saved)) {
+      setOS(saved);
+      return;
+    }
+    const ua = navigator.userAgent || '';
+    const platform = (navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || '';
+    if (/Win/i.test(platform) || /Windows/i.test(ua)) {
+      setOS('windows');
+    } else if (/Mac/i.test(platform) || /Mac OS/i.test(ua)) {
+      setOS('macos');
+    } else {
+      setOS('linux');
+    }
+  })();
+</script>
+
+<script data-name="BMC-Widget" data-cfasync="false" src="https://cdnjs.buymeacoffee.com/1.0.0/widget.prod.min.js" data-id="shibi76" data-description="Support me on Buy me a coffee!" data-message="If you enjoyed this claude code cek plugin then please share your feedback and support us to maintain this open source repo" data-color="#5F7FFF" data-position="Right" data-x_margin="18" data-y_margin="18"></script>
+
+</body>
+</html>

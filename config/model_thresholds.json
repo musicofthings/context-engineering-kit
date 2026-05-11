@@ -5,13 +5,13 @@
   "context_thresholds": {
     "warn_pct": 70,
     "compact_pct": 85,
-    "critical_pct": 95
+    "critical_pct": 92
   },
 
   "model_selection": {
     "default": "claude-sonnet-4-6",
     "fast_edits": "claude-haiku-4-5-20251001",
-    "architecture": "claude-opus-4-6",
+    "architecture": "claude-opus-4-7",
 
     "auto_switch_rules": [
       {
@@ -27,7 +27,7 @@
       },
       {
         "condition": "task_type == 'architecture' OR task_type == 'security_review'",
-        "model": "claude-opus-4-6",
+        "model": "claude-opus-4-7",
         "rationale": "Complex reasoning — Opus only when genuinely needed"
       }
     ]
@@ -43,7 +43,7 @@
   },
 
   "fast_mode": {
-    "enabled_for_models": ["claude-opus-4-6"],
+    "enabled_for_models": ["claude-opus-4-7"],
     "speed_multiplier": 2.5,
     "use_when": "Opus is needed but context is > 70% or task requires quick turnaround"
   }

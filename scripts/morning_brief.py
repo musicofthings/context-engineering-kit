@@ -9,12 +9,20 @@ Usage:
 
 import argparse
 import json
+import os
 import re
 import sys
+import urllib.request
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
 import feedparser
+
+# Hard cap on how long we'll wait for a single feed. SessionStart fires
+# this hook for every feed in config; one slow feed shouldn't block the
+# whole brief. feedparser.parse(url) does NOT propagate timeout to urlopen,
+# so we fetch the bytes ourselves first.
+FEED_FETCH_TIMEOUT_SEC = 8
 
 # ── paths ──────────────────────────────────────────────────────────────────────
 ROOT = Path(__file__).resolve().parent.parent
@@ -55,7 +63,13 @@ def fetch_feed(feed_cfg: dict, max_items: int, max_age_hours: int) -> list[dict]
     """Fetch and filter one RSS feed. Returns list of article dicts."""
     cutoff = datetime.now(timezone.utc) - timedelta(hours=max_age_hours)
     try:
-        parsed = feedparser.parse(feed_cfg["url"], request_headers={"User-Agent": "morning-brief/1.0"})
+        req = urllib.request.Request(
+            feed_cfg["url"],
+            headers={"User-Agent": "morning-brief/1.0"},
+        )
+        with urllib.request.urlopen(req, timeout=FEED_FETCH_TIMEOUT_SEC) as resp:
+            body = resp.read()
+        parsed = feedparser.parse(body)
     except Exception as e:
         return [{"error": str(e)}]
 
@@ -198,12 +212,14 @@ def main():
         print(terminal_text)
 
     if args.save:
-        BRIEFS_DIR.mkdir(exist_ok=True)
+        BRIEFS_DIR.mkdir(parents=True, exist_ok=True)
         date_slug = datetime.now(timezone.utc).strftime("%Y-%m-%d")
         out_path = BRIEFS_DIR / f"{date_slug}.md"
-        out_path.write_text(md_text, encoding="utf-8")
+        tmp = out_path.with_suffix(out_path.suffix + ".tmp")
+        tmp.write_text(md_text, encoding="utf-8")
+        os.replace(tmp, out_path)
         if not args.quiet:
-            print(f"  Saved → {out_path}")
+            print(f"  Saved -> {out_path}")
 
 
 if __name__ == "__main__":

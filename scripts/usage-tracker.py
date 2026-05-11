@@ -10,6 +10,10 @@ import argparse
 import json
 import os
 import sys
+
+# Windows cp1252 consoles can't encode box-drawing chars and emoji
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -19,20 +23,43 @@ DAILY_USAGE_FILE = SESSION_DIR / "daily-usage.json"
 FORECAST_FILE    = SESSION_DIR / "usage-forecast.json"
 TIMESTAMP_FMT    = "%Y-%m-%dT%H:%M:%SZ"
 
+
+def _env_int(name: str, default: int) -> int:
+    try:
+        return int(os.environ.get(name, default))
+    except (TypeError, ValueError):
+        return default
+
+
+# Source of truth: settings.json env vars, with hardcoded fallback for
+# users who haven't set them. Kept in sync with config/usage_budget.json
+# (warn=70, compact=85, critical=92 by default).
+WARN_PCT      = _env_int("CEK_TOKEN_WARN_PCT", 70)
+COMPACT_PCT   = _env_int("CEK_TOKEN_COMPACT_PCT", 85)
+CRITICAL_PCT  = _env_int("CEK_TOKEN_CRITICAL_PCT", 92)
+
 TIER_LIMITS = {
-    "pro":  {"5h_warn": 70,   "5h_critical": 90,  "cost_warn": 0.50, "cost_crit": 0.90},
-    "max":  {"5h_warn": 70,   "5h_critical": 90,  "cost_warn": 2.00, "cost_crit": 4.00},
-    "api":  {"5h_warn": None, "5h_critical": None, "cost_warn": 5.00, "cost_crit": 9.00},
+    "pro":  {"5h_warn": WARN_PCT, "5h_critical": CRITICAL_PCT, "cost_warn": 0.50, "cost_crit": 0.90},
+    "max":  {"5h_warn": WARN_PCT, "5h_critical": CRITICAL_PCT, "cost_warn": 2.00, "cost_crit": 4.00},
+    "api":  {"5h_warn": None,     "5h_critical": None,         "cost_warn": 5.00, "cost_crit": 9.00},
 }
 
 
 def get_tier() -> str:
-    f = PROJECT_DIR / "config" / "rate_limits.json"
-    if f.exists():
-        try:
-            return json.loads(f.read_text()).get("subscription_tier", "pro")
-        except Exception:
-            pass
+    """Read subscription tier. Tries rate_limits.json (subscription_tier)
+    then usage_budget.json (subscription_type) — these two configs use
+    different field names for the same value, so we accept both."""
+    for path, key in [
+        (PROJECT_DIR / "config" / "rate_limits.json", "subscription_tier"),
+        (PROJECT_DIR / "config" / "usage_budget.json", "subscription_type"),
+    ]:
+        if path.exists():
+            try:
+                v = json.loads(path.read_text(encoding="utf-8")).get(key)
+                if v:
+                    return v
+            except Exception:
+                continue
     return os.environ.get("CEK_SUBSCRIPTION_TIER", "pro")
 
 
@@ -46,14 +73,19 @@ def today_key() -> str:
 
 def load_json(p: Path) -> dict:
     try:
-        return json.loads(p.read_text()) if p.exists() else {}
+        return json.loads(p.read_text(encoding="utf-8")) if p.exists() else {}
     except Exception:
         return {}
 
 
 def save_json(p: Path, d: dict):
+    """Atomic write — tmp file in same dir, then os.replace.
+    Prevents truncation if the script is killed mid-write (Stop hook
+    is async and can be interrupted by the next turn)."""
     SESSION_DIR.mkdir(parents=True, exist_ok=True)
-    p.write_text(json.dumps(d, indent=2))
+    tmp = p.with_suffix(p.suffix + ".tmp")
+    tmp.write_text(json.dumps(d, indent=2), encoding="utf-8")
+    os.replace(tmp, p)
 
 
 def ingest(ev: dict) -> dict:
@@ -132,11 +164,12 @@ def forecast(m: dict, day: dict, tier_name: str) -> dict:
     crit_c  = tier["cost_crit"]
 
     if real:
-        pct           = rl_5h
-        ppt           = pct / turns  # % per turn
-        turns_to_warn = int((warn_p - pct) / ppt) if ppt > 0 and pct < warn_p else 0
-        turns_to_crit = int((crit_p - pct) / ppt) if ppt > 0 and pct < crit_p else 0
-        source        = "rate_limit_window"
+        pct            = rl_5h
+        session_turns  = max(1, m.get("turns", 1))  # use session turns; aligns with 5h window scope
+        ppt            = pct / session_turns
+        turns_to_warn  = int((warn_p - pct) / ppt) if ppt > 0 and pct < warn_p else 0
+        turns_to_crit  = int((crit_p - pct) / ppt) if ppt > 0 and pct < crit_p else 0
+        source         = "rate_limit_window"
     else:
         pct           = (cost_t / crit_c * 100) if crit_c > 0 else 0
         cpt           = cost_t / turns
@@ -163,10 +196,13 @@ def forecast(m: dict, day: dict, tier_name: str) -> dict:
             ml = left // 60
             reset_str = f"resets {ml}m" if ml < 60 else f"resets {ml//60}h{ml%60}m"
 
-    if pct >= crit_p:   status, ind, action = "CRITICAL", "🔴", "compact_smart_now"
-    elif pct >= warn_p: status, ind, action = "WARNING",  "🟠", "compact_smart_soon"
-    elif pct >= warn_p * 0.7: status, ind, action = "CAUTION", "🟡", "monitor"
-    else:               status, ind, action = "HEALTHY",  "🟢", "none"
+    # Ladder: WARN (70) → COMPACT (85) → CRITICAL (92).
+    # COMPACT is the documented threshold for /compact-smart action.
+    if pct >= crit_p:           status, ind, action = "CRITICAL", "🔴", "compact_smart_now"
+    elif pct >= COMPACT_PCT:    status, ind, action = "COMPACT",  "🟠", "compact_smart_now"
+    elif pct >= warn_p:         status, ind, action = "WARNING",  "🟡", "compact_smart_soon"
+    elif pct >= warn_p * 0.7:   status, ind, action = "CAUTION",  "🟡", "monitor"
+    else:                       status, ind, action = "HEALTHY",  "🟢", "none"
 
     return {
         "updated": now_ts, "tier": tier_name, "data_source": source,

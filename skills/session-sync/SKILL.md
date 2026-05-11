@@ -16,9 +16,8 @@ Usage: `/session-sync [save|load|status]`
 ```bash
 bash scripts/session_sync.sh --save
 ```
-3. Confirm what was committed:
+3. Confirm what was committed (note: `history.jsonl` is gitignored and will not be included):
    - `.claude/session/state.json`
-   - `.claude/session/history.jsonl`
    - `session_handover.md`
    - `CLAUDE.md`
 4. Report: "✅ Session saved to git. On your other device: `git pull && claude /session-sync load`"
@@ -50,10 +49,10 @@ If switching between Claude Pro, Max, and API:
 
 | Subscription | Setup needed |
 |-------------|-------------|
-| Claude Pro → Max | Git pull, `claude /session-sync load`, same repo |
+| Claude Pro → Max | `git pull`, then `/session-sync load` in Claude Code |
 | Claude Pro/Max → API | Same repo, set `ANTHROPIC_API_KEY`, use `claude.cmd` |
-| Office → Home machine | Git pull first, then `/session-sync load` |
-| Windows → Mac | Git pull, `bash scripts/session_sync.sh --load` |
+| Office → Home machine | `git pull`, then `/session-sync load` in Claude Code |
+| Windows → Mac | `git pull && bash scripts/session_sync.sh --load` |
 
 ## Windows note
 

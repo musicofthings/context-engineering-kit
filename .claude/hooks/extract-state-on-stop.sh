@@ -32,8 +32,10 @@ INPUT=$(cat)
 
 # Extract the assistant's response text from the Stop event
 # Stop input contains: session_id, stop_reason, turn_count, response text
-RESPONSE=$(echo "$INPUT" | jq -r '.response // ""' 2>/dev/null || echo "")
-TURN_COUNT=$(echo "$INPUT" | jq -r '.turn_count // 0' 2>/dev/null || echo "0")
+RESPONSE=$(printf '%s' "$INPUT" | jq -r '.response // ""' 2>/dev/null || echo "")
+TURN_COUNT=$(printf '%s' "$INPUT" | jq -r '.turn_count // 0' 2>/dev/null || echo "0")
+# Coerce TURN_COUNT to a numeric value — argjson aborts on non-integer.
+case "$TURN_COUNT" in ''|*[!0-9]*) TURN_COUNT=0 ;; esac
 
 # If response is empty, nothing to extract
 [ -z "$RESPONSE" ] && exit 0
@@ -43,9 +45,11 @@ TURN_COUNT=$(echo "$INPUT" | jq -r '.turn_count // 0' 2>/dev/null || echo "0")
 NEXT_ACTION=""
 
 # Priority 1: explicit "next" statements at end of response
+# Collapse newlines first so [^.!?] doesn't behave differently across grep implementations
 if echo "$RESPONSE" | grep -qiE "(next[: ](i'll|i will|step|we'll|we will|is|are|up)|now (i'll|i will|let's|i'm going to)|after this|going to |i'm going to |will now |let me )"; then
   NEXT_ACTION=$(echo "$RESPONSE" \
-    | grep -iEo "(next[: ](i'll|i will|step|we'll|we will|is|are|up)[^.!?\n]{5,80}|now (i'll|i will|let's|i'm going to)[^.!?\n]{5,80}|after this[^.!?\n]{5,60}|going to [^.!?\n]{5,60}|i'm going to [^.!?\n]{5,60}|will now [^.!?\n]{5,60}|let me [^.!?\n]{5,60})" \
+    | tr '\n' ' ' \
+    | grep -iEo "(next[: ](i'll|i will|step|we'll|we will|is|are|up)[^.!?]{5,80}|now (i'll|i will|let's|i'm going to)[^.!?]{5,80}|after this[^.!?]{5,60}|going to [^.!?]{5,60}|i'm going to [^.!?]{5,60}|will now [^.!?]{5,60}|let me [^.!?]{5,60})" \
     | head -1 \
     | sed 's/^[[:space:]]*//' \
     | cut -c1-120 \
@@ -55,7 +59,8 @@ fi
 # Priority 2: TODO or action items at end
 if [ -z "$NEXT_ACTION" ]; then
   NEXT_ACTION=$(echo "$RESPONSE" \
-    | grep -iEo "(TODO:[^.!?\n]{5,80}|need to [^.!?\n]{5,60}|should [^.!?\n]{5,60})" \
+    | tr '\n' ' ' \
+    | grep -iEo "(TODO:[^.!?]{5,80}|need to [^.!?]{5,60}|should [^.!?]{5,60})" \
     | head -1 \
     | sed 's/TODO://i' \
     | sed 's/^[[:space:]]*//' \
@@ -75,9 +80,9 @@ fi
 ACTIVE_TASK_HINT=""
 
 # Look for "working on", "building", "implementing", "fixing"
-if echo "$RESPONSE" | grep -qiE "(working on|building|implementing|fixing|creating|writing)[^.!?\n]{5,60}"; then
+if echo "$RESPONSE" | grep -qiE "(working on|building|implementing|fixing|creating|writing)[^.!?]{5,60}"; then
   ACTIVE_TASK_HINT=$(echo "$RESPONSE" \
-    | grep -iEo "(working on|building|implementing|fixing|creating|writing)[^.!?\n]{5,60}" \
+    | grep -iEo "(working on|building|implementing|fixing|creating|writing)[^.!?]{5,60}" \
     | head -1 \
     | sed 's/^[[:space:]]*//' \
     | cut -c1-80 \
@@ -88,7 +93,7 @@ fi
 PHASE_HINT=""
 if echo "$RESPONSE" | grep -qiE "phase [0-9]|phase [a-z]+|step [0-9]"; then
   PHASE_HINT=$(echo "$RESPONSE" \
-    | grep -iEo "phase [0-9a-z][^.!?\n]{0,40}" \
+    | grep -iEo "phase [0-9a-z][^.!?]{0,40}" \
     | head -1 \
     | sed 's/^[[:space:]]*//' \
     || echo "")

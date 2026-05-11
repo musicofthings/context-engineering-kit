@@ -8,13 +8,13 @@ so every new session picks up exactly where the last one left off.
 
 ## Quick orientation
 - **Hooks fire automatically** — you do not need to call them manually
-- **Skills are slash commands** — type `/token-status`, `/handover`, `/compact-smart`, etc.
+- **Skills are slash commands** — type `/token-status`, `/handover`, `/compact-smart`, `/usage-forecast`, `/morning-brief`, etc.
 - **session_handover.md** is the live state file — always read it at session start
 - **config/** holds all tunable thresholds (model switching, token budgets, rate limits)
 
 ## Critical rules
 - Never commit secrets, API keys, or patient data
-- Never modify `.claude/hooks/*.sh` without testing with `/doctor` afterward
+- Never modify `.claude/hooks/*.sh` without testing with `/context-health` afterward
 - Always run `bash scripts/session_sync.sh --save` before switching devices
 - Use `/fast` for quick edits; reserve Opus for architecture decisions
 
@@ -38,7 +38,9 @@ context-engineering-kit/
 │   │   ├── model-switch/            ← /model-switch
 │   │   ├── compact-smart/           ← /compact-smart
 │   │   ├── session-sync/            ← /session-sync
-│   │   └── context-health/          ← /context-health
+│   │   ├── context-health/          ← /context-health
+│   │   ├── usage-forecast/          ← /usage-forecast
+│   │   └── morning-brief/           ← /morning-brief
 │   ├── rules/
 │   │   ├── commit-protocol.md
 │   │   ├── security.md
@@ -65,52 +67,10 @@ context-engineering-kit/
 
 ## Active work context
 <!-- AUTO-UPDATED by hooks — do not edit this section manually -->
-<!-- LAST_UPDATED: [timestamp] -->
-<!-- ACTIVE_TASK: [task] -->
-<!-- PHASE: [phase] -->
-<!-- NEXT_ACTION: [action] -->
-
-## Architecture decisions
-<!-- Append decisions here. Format: [date] Decision: Rationale: -->
-
-## Lessons learned
-<!-- Append after each session. Format: [date] Problem → Fix -->
-
-## Known gotchas
-- Windows (no-admin): use `claude.cmd` not `claude`; see docs/windows-no-admin.md
-- On first run: `chmod +x .claude/hooks/*.sh` (Mac/Linux) or check Git Bash on Windows
-- Git Bash path on Windows: set in `.claude/settings.json` as `"bash_path"`
-- hooks read stdin as JSON — always pipe through `jq` for field extraction
-
-## Useful commands
-```bash
-# Check hook health
-claude /doctor
-
-# See all wired hooks
-claude /hooks
-
-# Check context usage
-claude /token-status
-
-# Generate session handover now
-claude /handover
-
-# Sync state to git (before switching device/subscription)
-bash scripts/session_sync.sh --save
-
-# Restore state from git (on new device)
-bash scripts/session_sync.sh --load
-
-# Force smart compaction
-claude /compact-smart
-```
-
-<!-- AUTO-UPDATED by hooks — do not edit this section manually -->
-<!-- LAST_UPDATED: 2026-05-03T13:18:33Z -->
+<!-- LAST_UPDATED: 2026-05-10T06:34:18Z -->
 <!-- ACTIVE_TASK: unknown -->
 <!-- PHASE: unknown -->
 <!-- NEXT_ACTION: unknown -->
-<!-- BRANCH: unknown -->
-<!-- COMPACT_MODE: manual -->
+<!-- BRANCH: claude/mystifying-hopper-79584a -->
+<!-- COMPACT_MODE: compact -->
 <!-- END AUTO-UPDATED -->
