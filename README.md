@@ -510,6 +510,44 @@ Resuming on another device
 
 ---
 
+## Stack-specific starter files
+
+The `examples/` directory contains ready-made `CLAUDE.md` snippets for common project
+types. Copy the relevant file into your project root (or paste sections into your
+global `~/.claude/CLAUDE.md` to apply them across all matching projects).
+
+| Example | What it covers |
+|---------|---------------|
+| [`examples/fullstack-web/CLAUDE.md`](examples/fullstack-web/CLAUDE.md) | CORS + proxy config for every major frontend/backend combo, `.env` hygiene, testing checklist |
+| [`examples/bioinformatics-ngs/CLAUDE.md`](examples/bioinformatics-ngs/CLAUDE.md) | NGS pipeline context, ACMG classification rules, genomics token hygiene |
+
+### Full-stack web: why this example exists
+
+CORS errors are the single most common failure mode when Claude scaffolds a
+frontend + backend app. The example encodes four fixes that must happen together
+and are routinely left as TODOs:
+
+1. Frontend uses relative `/api/…` paths — no hardcoded `localhost` URLs.
+2. Dev server proxy wired in the first response (Vite / Next.js / CRA snippets included).
+3. Backend CORS middleware with working code for Express, FastAPI, Django, and Go.
+4. `ALLOWED_ORIGINS` env var pattern so production origins are never hardcoded.
+
+**Quickest way to use it globally** (applies to all your web projects):
+
+```bash
+# Append the CORS section to your global CLAUDE.md
+cat examples/fullstack-web/CLAUDE.md >> ~/.claude/CLAUDE.md
+```
+
+Or copy the whole file into a specific project:
+
+```bash
+cp examples/fullstack-web/CLAUDE.md ~/projects/my-app/CLAUDE.md
+# Then customise the Architecture and Key file paths sections
+```
+
+---
+
 ## Adding a custom skill
 
 ```bash
