@@ -8,6 +8,7 @@ Reads .claude/session/state.json and git context to generate/update session_hand
 import argparse
 import json
 import os
+import re
 import subprocess
 import sys
 from datetime import datetime, timezone
@@ -39,6 +40,19 @@ def load_state(project_dir: Path) -> dict:
     return {}
 
 
+def _extract_section(content: str, header: str) -> str:
+    """Extract body text between `header` and the next ## heading (or EOF).
+
+    Uses line-anchored regex so headers inside code blocks are not matched.
+    """
+    pattern = re.compile(
+        r"^" + re.escape(header) + r"[ \t]*\n(.*?)(?=^## |\Z)",
+        re.MULTILINE | re.DOTALL,
+    )
+    m = pattern.search(content)
+    return m.group(1).strip() if m else ""
+
+
 def load_existing_handover(project_dir: Path) -> dict:
     """Extract structured sections from existing session_handover.md"""
     handover_file = project_dir / "session_handover.md"
@@ -48,43 +62,30 @@ def load_existing_handover(project_dir: Path) -> dict:
     content = handover_file.read_text(encoding="utf-8", errors="replace")
     sections = {}
 
-    # Extract active task
-    if "## 🎯 Active Task" in content:
-        start = content.find("## 🎯 Active Task") + len("## 🎯 Active Task")
-        end = content.find("\n## ", start)
-        sections["active_task_section"] = content[start:end].strip() if end != -1 else content[start:].strip()
+    active = _extract_section(content, "## 🎯 Active Task")
+    if active:
+        sections["active_task_section"] = active
 
-    # Extract completed items
-    _completed_header = "## ✅ Completed This Session"
-    if _completed_header in content:
-        start = content.find(_completed_header) + len(_completed_header)
-        end = content.find("\n## ", start + 1)
-        sections["completed"] = content[start:end].strip() if end != -1 else content[start:].strip()
+    completed = _extract_section(content, "## ✅ Completed This Session")
+    if completed:
+        sections["completed"] = completed
 
-    # Extract remaining work
-    if "## 📋 Remaining Work" in content:
-        start = content.find("## 📋 Remaining Work") + len("## 📋 Remaining Work")
-        end = content.find("\n## ", start)
-        sections["remaining"] = content[start:end].strip() if end != -1 else content[start:].strip()
+    remaining = _extract_section(content, "## 📋 Remaining Work")
+    if remaining:
+        sections["remaining"] = remaining
 
-    # Extract architecture decisions table
-    _decisions_header = "## 🏗 Architecture Decisions Made"
-    if _decisions_header in content:
-        start = content.find(_decisions_header) + len(_decisions_header)
-        end = content.find("\n## ", start)
-        sections["decisions"] = content[start:end].strip() if end != -1 else content[start:].strip()
+    decisions = _extract_section(content, "## 🏗 Architecture Decisions Made")
+    if decisions:
+        sections["decisions"] = decisions
 
-    # Extract critical rules
-    if "## ⚠️ Critical Rules" in content:
-        start = content.find("## ⚠️ Critical Rules") + len("## ⚠️ Critical Rules")
-        end = content.find("\n## ", start)
-        sections["rules"] = content[start:end].strip() if end != -1 else content[start:].strip()
+    rules = _extract_section(content, "## ⚠️ Critical Rules")
+    if rules:
+        sections["rules"] = rules
 
-    # Extract bioinfo context
-    _bioinfo_header = "## 🧬 Bioinformatics Context (if applicable)"
-    if _bioinfo_header in content:
-        start = content.find(_bioinfo_header) + len(_bioinfo_header)
-        sections["bioinfo"] = content[start:].split("---")[0].strip()
+    bioinfo = _extract_section(content, "## 🧬 Bioinformatics Context (if applicable)")
+    if bioinfo:
+        # Strip trailing --- separator if present
+        sections["bioinfo"] = bioinfo.split("\n---")[0].strip()
 
     return sections
 

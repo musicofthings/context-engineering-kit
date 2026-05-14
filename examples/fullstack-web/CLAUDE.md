@@ -78,6 +78,10 @@ handler = c.Handler(router)
 - **Production**: read origins exclusively from `ALLOWED_ORIGINS` env var. No hardcoding.
 - **Credentials / cookies**: never use `Access-Control-Allow-Origin: *`.
   Set `Access-Control-Allow-Credentials: true` and an explicit origin.
+  When using cookies with credentials, also set `SameSite=Lax` (or `Strict`) on
+  all cookies to prevent CSRF — `SameSite=None` requires `Secure` and HTTPS.
+- **Production**: `ALLOWED_ORIGINS` must use `https://` only. Never allow
+  `http://` origins in production — it exposes credentials over plain text.
 - **Environment variables**: define `ALLOWED_ORIGINS` (and any API base-URL vars) in
   `.env.example` with placeholder values. Commit `.env.example`, never `.env`.
 

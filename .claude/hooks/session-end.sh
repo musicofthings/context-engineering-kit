@@ -4,6 +4,7 @@
 # Commits session state to git so it's available on other devices/subscriptions.
 
 set -euo pipefail
+umask 0077
 
 PROJECT_DIR="${CLAUDE_PROJECT_DIR:-$(pwd)}"
 TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
@@ -18,7 +19,7 @@ log "Session ending at $TIMESTAMP"
 GIT_DIR=$(git -C "$PROJECT_DIR" rev-parse --git-dir 2>/dev/null || echo "")
 if echo "$GIT_DIR" | grep -q '/worktrees/'; then
   MAIN_ROOT=$(git -C "$PROJECT_DIR" worktree list --porcelain 2>/dev/null \
-    | awk 'NR==1{sub(/^worktree /,""); print}')
+    | awk 'NR==1{sub(/^worktree /,""); print; exit}')
   if [ -n "$MAIN_ROOT" ]; then
     log "In linked worktree — redirecting session state to main checkout: $MAIN_ROOT"
     # Sync session files from worktree into main repo before committing
@@ -39,10 +40,16 @@ STATE_FILE="$COMMIT_DIR/.claude/session/state.json"
 HISTORY_FILE="$COMMIT_DIR/.claude/session/history.jsonl"
 HANDOVER_FILE="$COMMIT_DIR/session_handover.md"
 
-# ── Append to history ────────────────────────────────────────────────────────
+# ── Append to history (atomic where flock available, best-effort otherwise) ──
 if [ -f "$STATE_FILE" ]; then
-  cat "$STATE_FILE" | jq -c ". + {\"session_ended\": \"$TIMESTAMP\"}" \
-    >> "$HISTORY_FILE" 2>/dev/null || true
+  ENTRY=$(jq -c --arg ts "$TIMESTAMP" '. + {session_ended: $ts}' "$STATE_FILE" 2>/dev/null || true)
+  if [ -n "$ENTRY" ]; then
+    if command -v flock &>/dev/null; then
+      (flock -x 9; printf '%s\n' "$ENTRY" >> "$HISTORY_FILE") 9>"${HISTORY_FILE}.lock"
+    else
+      printf '%s\n' "$ENTRY" >> "$HISTORY_FILE"
+    fi 2>/dev/null || true
+  fi
 fi
 
 # ── Git commit session files ─────────────────────────────────────────────────

@@ -24,7 +24,14 @@ warn() { echo "[session-sync] ⚠️  $*" >&2; }
 PLATFORM="unknown"
 case "$OSTYPE" in
   darwin*) PLATFORM="mac" ;;
-  linux*)  PLATFORM="linux" ;;
+  linux*)
+    # Distinguish WSL from native Linux
+    if grep -qi microsoft /proc/version 2>/dev/null; then
+      PLATFORM="wsl"
+    else
+      PLATFORM="linux"
+    fi
+    ;;
   msys*|cygwin*|win*) PLATFORM="windows" ;;
 esac
 
@@ -70,7 +77,12 @@ EOF
   else
     ACTIVE_TASK=$(jq -r '.active_task // "session state"' "$STATE_FILE" 2>/dev/null || echo "session state")
     git commit -m "chore(context): sync from $HOSTNAME_ID — $ACTIVE_TASK [$TIMESTAMP]" --no-verify
-    git push 2>/dev/null && log "Pushed to remote" || warn "Push failed — run 'git push' manually"
+    if git push 2>/dev/null; then
+      log "Pushed to remote"
+    else
+      warn "Push failed — run 'git push' manually"
+      log "⚠️  Push failed — run 'git push' manually"
+    fi
   fi
 
   log ""
@@ -86,9 +98,10 @@ EOF
 do_load() {
   log "Loading session state on $HOSTNAME_ID ($PLATFORM)..."
 
-  # Pull latest
+  # Pull latest — rebase to avoid merge commits; autostash handles local changes
   cd "$PROJECT_DIR"
-  git pull 2>/dev/null && log "Git pull complete" || warn "Git pull failed — using local state"
+  git pull --rebase --autostash 2>/dev/null && log "Git pull complete" \
+    || warn "Git pull failed — using local state (resolve conflicts manually if needed)"
 
   # Report what we found
   if [ -f "$STATE_FILE" ]; then
@@ -140,7 +153,7 @@ do_status() {
   log "Git branch    : $GIT_BRANCH"
   log "Commits ahead : $GIT_AHEAD"
 
-  UNCOMMITTED=$(git diff --name-only .claude/session/ session_handover.md CLAUDE.md 2>/dev/null | wc -l | tr -d ' ')
+  UNCOMMITTED=$(git status --porcelain .claude/session/ session_handover.md CLAUDE.md 2>/dev/null | wc -l | tr -d ' ')
   if [ "$UNCOMMITTED" -gt 0 ]; then
     log "Uncommitted   : ⚠️  $UNCOMMITTED context files have local changes"
     log "  → Run: bash scripts/session_sync.sh --save"

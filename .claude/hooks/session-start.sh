@@ -4,6 +4,7 @@
 # Records session start time, clears sentinel files, injects context.
 
 set -euo pipefail
+umask 0077
 
 PROJECT_DIR="${CLAUDE_PROJECT_DIR:-$(pwd)}"
 TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
@@ -14,7 +15,7 @@ TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 GIT_DIR=$(git -C "$PROJECT_DIR" rev-parse --git-dir 2>/dev/null || echo "")
 if echo "$GIT_DIR" | grep -q '/worktrees/'; then
   MAIN_ROOT=$(git -C "$PROJECT_DIR" worktree list --porcelain 2>/dev/null \
-    | awk 'NR==1{sub(/^worktree /,""); print}')
+    | awk 'NR==1{sub(/^worktree /,""); print; exit}')
   [ -z "$MAIN_ROOT" ] && MAIN_ROOT="$PROJECT_DIR"
   IN_WORKTREE=true
 else
@@ -40,23 +41,16 @@ rm -f "$SENTINEL_DIR/.sentinel_warn" \
       "$SENTINEL_DIR/.sentinel_save" \
       "$SENTINEL_DIR/.sentinel_critical" 2>/dev/null || true
 
-# ── Reset subagent counter ───────────────────────────────────────────────────
-# subagents_running drifts upward across crashes — reset to 0 on session start
-# so the count reflects this session only.
+# ── Reset subagent counter and record session start (merged in one jq pass) ──
+# subagents_running drifts upward across crashes — reset to 0 on session start.
+# Merging both updates into one atomic write avoids a second read-modify-write.
 if [ -f "$STATE_FILE" ]; then
   STATE_TMP=$(mktemp "${STATE_FILE}.XXXXXX")
-  jq '.subagents_running = 0' "$STATE_FILE" > "$STATE_TMP" 2>/dev/null \
+  jq --arg ts "$TIMESTAMP" \
+    '.subagents_running = 0 | .session_start_time = $ts' \
+    "$STATE_FILE" > "$STATE_TMP" \
     && mv "$STATE_TMP" "$STATE_FILE" \
     || rm -f "$STATE_TMP"
-fi
-
-# ── Record session start time in state.json ──────────────────────────────────
-# usage-sentinel.sh reads this to compute elapsed time against the budget window.
-# Always overwrite — SessionStart fires on new sessions only, not compact resumes.
-if [ -f "$STATE_FILE" ]; then
-  STATE_TMP=$(mktemp "${STATE_FILE}.XXXXXX")
-  jq --arg ts "$TIMESTAMP" '.session_start_time = $ts' "$STATE_FILE" > "$STATE_TMP" \
-    && mv "$STATE_TMP" "$STATE_FILE" 2>/dev/null || rm -f "$STATE_TMP"
 else
   cat > "$STATE_FILE" << STATEOF
 {

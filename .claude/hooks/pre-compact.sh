@@ -5,16 +5,24 @@
 # Input: JSON on stdin with compaction trigger context
 
 set -euo pipefail
+umask 0077
 
 PROJECT_DIR="${CLAUDE_PROJECT_DIR:-$(pwd)}"
 TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 # shellcheck source=../../scripts/find_python.sh
 source "${CLAUDE_PLUGIN_ROOT:-$PROJECT_DIR}/scripts/find_python.sh"
+if ! "$PYTHON" -c "import sys; sys.exit(0)" 2>/dev/null; then
+  echo "[pre-compact] FATAL: Python 3 not found — cannot generate handover. Install python3 and retry." >&2
+  exit 2
+fi
 STATE_FILE="$PROJECT_DIR/.claude/session/state.json"
 HANDOVER_FILE="$PROJECT_DIR/session_handover.md"
 AUDIT_LOG="$PROJECT_DIR/.claude/compact-audit.log"
 
 log() { echo "[pre-compact] $*" >&2; }
+
+STATE_TMP=""
+trap 'rm -f "$STATE_TMP"' EXIT
 
 log "PreCompact triggered at $TIMESTAMP"
 

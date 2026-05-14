@@ -4,6 +4,7 @@
 # Lightweight: only updates state.json. Heavy work is done in session-end.sh.
 
 set -euo pipefail
+umask 0077
 
 PROJECT_DIR="${CLAUDE_PROJECT_DIR:-$(pwd)}"
 TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
@@ -12,7 +13,7 @@ TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 GIT_DIR=$(git -C "$PROJECT_DIR" rev-parse --git-dir 2>/dev/null || echo "")
 if echo "$GIT_DIR" | grep -q '/worktrees/'; then
   MAIN_ROOT=$(git -C "$PROJECT_DIR" worktree list --porcelain 2>/dev/null \
-    | awk 'NR==1{sub(/^worktree /,""); print}')
+    | awk 'NR==1{sub(/^worktree /,""); print; exit}')
   [ -n "$MAIN_ROOT" ] && STATE_DIR="$MAIN_ROOT/.claude/session" || STATE_DIR="$PROJECT_DIR/.claude/session"
 else
   STATE_DIR="$PROJECT_DIR/.claude/session"

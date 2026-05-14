@@ -1,7 +1,8 @@
 # Session Handover
 _Generated: {{TIMESTAMP}}_
 _Branch: {{GIT_BRANCH}}_
-_Trigger: /init-cek_
+_Trigger: /init-cek | Context at compact: N/A_
+_Compact count this project: 0_
 
 ---
 
