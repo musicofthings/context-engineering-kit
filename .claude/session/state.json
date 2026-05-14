@@ -19,18 +19,29 @@
     "/Users/theranosis_dx/projects/context-engineering-kit/.claude/hooks/stop.sh",
     "/Users/theranosis_dx/projects/context-engineering-kit/.claude/hooks/track-changes.sh",
     "/Users/theranosis_dx/projects/context-engineering-kit/.claude/hooks/session-start.sh",
-    "/Users/theranosis_dx/projects/context-engineering-kit/.claude/hooks/pre-compact.sh"
+    "/Users/theranosis_dx/projects/context-engineering-kit/.claude/hooks/pre-compact.sh",
+    "/Users/theranosis_dx/projects/context-engineering-kit/.claude/worktrees/adoring-beaver-634d43/session_handover.md",
+    "/Users/theranosis_dx/projects/context-engineering-kit/.claude/worktrees/adoring-beaver-634d43/templates/CLAUDE.md.template",
+    "/Users/theranosis_dx/projects/context-engineering-kit/.claude/worktrees/adoring-beaver-634d43/templates/session_handover.template.md",
+    "/Users/theranosis_dx/projects/context-engineering-kit/.claude/worktrees/adoring-beaver-634d43/.claude/hooks/session-start.sh",
+    "/Users/theranosis_dx/projects/context-engineering-kit/.claude/worktrees/adoring-beaver-634d43/.claude/hooks/session-end.sh",
+    "/Users/theranosis_dx/projects/context-engineering-kit/.claude/worktrees/adoring-beaver-634d43/.claude/hooks/stop.sh",
+    "/Users/theranosis_dx/projects/context-engineering-kit/.claude/worktrees/adoring-beaver-634d43/.claude/hooks/pre-compact.sh",
+    "/Users/theranosis_dx/projects/context-engineering-kit/.claude/worktrees/adoring-beaver-634d43/scripts/session_sync.sh",
+    "/Users/theranosis_dx/projects/context-engineering-kit/.claude/worktrees/adoring-beaver-634d43/scripts/generate_session_handover.py",
+    "/Users/theranosis_dx/projects/context-engineering-kit/.claude/worktrees/adoring-beaver-634d43/examples/fullstack-web/CLAUDE.md"
   ],
-  "last_stop": "2026-05-14T17:23:33Z",
+  "last_stop": "2026-05-14T17:25:36Z",
   "last_stop_reason": "end_turn",
   "session_start_time": "2026-05-14T17:15:06Z",
   "saved_by": "oncophenomics.local",
   "saved_platform": "mac",
-  "last_save": "2026-05-03T13:18:58Z",
+  "last_save": "2026-05-14T17:18:40Z",
   "last_tool_failure": {
-    "ts": "2026-05-03T13:35:10Z",
+    "ts": "2026-05-14T17:25:17Z",
     "tool": "Bash",
-    "error": "Exit code 1\nerror: Your local changes to the following files would be overwritten by checkout:\n\t.claude/session/state.json\nPlease commit your changes or stash them before you switch branches.\nAborting"
+    "error": "Exit code 1\nSaved working directory and index state WIP on main: a3b0bee chore(context): save session state — initial setup [2026-05-14T17:14:43Z]\nUpdating a3b0bee..a38c9d8\nFast-forward\n .claude/hooks/pre-compact.sh           |  8 ++++\n .claude/hooks/session-end.sh           | 15 ++++--\n .claude/hooks/session-start.sh         | 22 ++++-----\n .claude/hooks/stop.sh                  |  3 +-\n .claude/session/state.json             | 12 +++--\n examples/fullstack-web/CLAUDE.md       |  4 ++\n scripts/generate_session_handover.py   | 75 ++++++++++++++---------------\n scripts/session_sync.sh                | 23 +++++++--\n session_handover.md                    | 87 +++++++++++++++-------------------\n templates/CLAUDE.md.template           |  3 +-\n templates/session_handover.template.md |  3 +-\n 11 files changed, 138 insertions(+), 117 deletions(-)\nAuto-merging .claude/session/state.json\nCONFLICT (content): Merge conflict in .claude/session/state.json\nOn branch main\nYour branch is ahead of 'origin/main' by 5 commits.\n  (use \"git push\" to publish your local commits)\n\nChanges to be committed:\n  (use \"git restore --staged <file>...\" to unstage)\n\tmodified:   .claude/session/usage.jsonl\n\nUnmerged paths:\n  (use \"git restore --staged <file>...\" to unstage)\n  (use \"git add <file>...\" to mark resolution)\n\tboth modified:   .claude/session/state.json\n\nThe stash entry is kept in case you need it again."
   },
-  "subagents_running": 0
+  "subagents_running": 0,
+  "subagents_started": 1
 }
