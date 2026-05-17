@@ -228,7 +228,7 @@
     ]
   },
   "env": {
-    "CEK_VERSION": "2.4.1",
+    "CEK_VERSION": "2.5.0",
     "CEK_TOKEN_WARN_PCT": "70",
     "CEK_TOKEN_COMPACT_PCT": "85",
     "CEK_TOKEN_CRITICAL_PCT": "92",

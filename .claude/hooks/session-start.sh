@@ -83,7 +83,7 @@ fi
 cat << INJECT
 
 ╔══════════════════════════════════════════════════════════╗
-║  context-engineering-kit v2.4.1 — Session Started         ║
+║  context-engineering-kit v2.5.0 — Session Started         ║
 ╚══════════════════════════════════════════════════════════╝
 
 📅 Date/Time    : $TODAY

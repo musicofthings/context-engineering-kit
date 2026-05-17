@@ -8,6 +8,28 @@ Hooks, skills, and scripts that keep your context alive through compaction, devi
 
 ---
 
+## What's new in v2.5.0
+
+- **Unified state resolution.** Every hook *and* script now resolves session
+  state through one helper (`scripts/resolve_state_dir.sh`) — no more path
+  divergence between components.
+- **Git worktree support.** `state.scope` (`auto` / `main` / `local`) controls
+  whether worktrees share the main checkout's state or stay isolated.
+  Branch users are unaffected — it's transparent.
+- **Concurrency-safe writes.** `state_write()` takes a portable lock (`flock`,
+  or a `mkdir` spinlock on macOS) so parallel sessions/worktrees field-merge
+  instead of clobbering `state.json`.
+- **Agent SDK session resume.** Captures the SDK `session_id` / transcript path;
+  `/handover` prints the exact `claude --resume <id>` plus the cwd-bound caveat.
+- **Hardened reliability & security.** Serialized the `Stop` hooks (was a
+  race), removed a double `post-compact` registration, tougher
+  `guard-dangerous` patterns, and canonicalized `settings.json` permission
+  rules so the `.env` deny and context-file allow rules actually match.
+- **New visual docs.** `docs/hooks-flowchart.md` — Mermaid maps of hooks,
+  the state-scope decision tree, permission evaluation, and resume flow.
+
+---
+
 ## What problem does it solve?
 
 | Problem | This kit's solution |

@@ -688,8 +688,8 @@
 
     <p class="hero-sub">
       Automated hooks and skills that save your session state before compaction,
-      sync it across devices, and restore it on every session start —
-      so Claude always knows exactly where you left off.
+      sync it across devices and git worktrees, and restore it on every session
+      start — so Claude always knows exactly where you left off.
     </p>
 
     <div class="hero-actions">
@@ -711,13 +711,13 @@
       <div class="terminal-body">
         <code>
 <span class="t-info">╔══════════════════════════════════════════════════════════╗</span><br>
-<span class="t-info">║  context-engineering-kit v2.5 — Session Started          ║</span><br>
+<span class="t-info">║  context-engineering-kit v2.5.0 — Session Started        ║</span><br>
 <span class="t-info">╚══════════════════════════════════════════════════════════╝</span><br>
 <br>
-<span class="t-out">📅 Date/Time    : Thursday May 07 2026, 09:30 UTC</span><br>
-<span class="t-out">🌿 Branch       : main</span><br>
-<span class="t-out">📝 Last task    : implementing auth middleware</span><br>
-<span class="t-out">⏱  Session start: 2026-05-07T09:30:00Z</span><br>
+<span class="t-out">📅 Date/Time    : Saturday May 17 2026, 06:05 UTC</span><br>
+<span class="t-out">🌿 Branch       : feature/auth (worktree — state on main)</span><br>
+<span class="t-out">🔑 Session      : 9f3a-21c7 (resume) ⚠ worktree cwd</span><br>
+<span class="t-out">⏱  Session start: 2026-05-17T06:05:00Z</span><br>
 <span class="t-out">📊 Plan         : pro (300min window)</span><br>
 <br>
 <span class="t-out">── Last session ─────────────────────────────────────────</span><br>
@@ -725,7 +725,7 @@
 <span class="t-out">Phase  : Phase 3 — Testing</span><br>
 <span class="t-out">Next   : write integration tests for /auth/refresh</span><br>
 <br>
-<span class="t-ok">✅ Hooks verified · State restored · Ready to continue</span>
+<span class="t-ok">✅ Hooks verified · State restored · Resume: claude --resume 9f3a-21c7</span>
         </code>
       </div>
     </div>
@@ -776,6 +776,18 @@
         <p>Default /compact summarises everything uniformly. Important code decisions get compressed the same as exploration noise.</p>
         <p class="solution">→ /compact-smart preserves code and decisions at higher fidelity</p>
       </div>
+      <div class="problem-card">
+        <div class="icon">🌲</div>
+        <h3>Git worktrees fragment state</h3>
+        <p>You spin up a worktree for a feature branch. Its state lives on a throwaway branch and vanishes when the worktree is removed — or worse, parallel sessions clobber each other's state.</p>
+        <p class="solution">→ One resolver + <code>state.scope</code> + lock-guarded writes keep state coherent</p>
+      </div>
+      <div class="problem-card">
+        <div class="icon">🔑</div>
+        <h3>Can't find the session to resume</h3>
+        <p>You want to <code>claude --resume</code> the exact conversation but don't know the session ID — and transcript resume silently breaks when the cwd changed.</p>
+        <p class="solution">→ Captures the SDK session ID; handover prints the exact resume command + cwd caveat</p>
+      </div>
     </div>
   </div>
 </section>
@@ -822,9 +834,29 @@
   <div class="container">
     <p class="section-label">Features</p>
     <h2>Everything context preservation needs.</h2>
-    <p class="section-sub">14 hooks, 8 skills, and a suite of scripts — all working together silently.</p>
+    <p class="section-sub">15+ hooks, 8 skills, and a suite of scripts — all working together silently, now worktree-aware and concurrency-safe.</p>
 
     <div class="features-grid">
+      <div class="feature-card">
+        <span class="tag tag-config">Core · v2.5</span>
+        <h3>resolve_state_dir.sh</h3>
+        <p>Single source of truth for where session state lives. Config-driven <code>state.scope</code> (auto / main / local) handles branch vs. git-worktree flows, with a portable lock-guarded <code>state_write()</code> so parallel sessions field-merge instead of clobbering.</p>
+      </div>
+      <div class="feature-card">
+        <span class="tag tag-skill">Skill · v2.5 · Agent SDK</span>
+        <h3>Session resume</h3>
+        <p>SessionStart and Stop capture the SDK <code>session_id</code> and transcript path. <code>/handover</code> prints the exact <code>claude --resume &lt;id&gt;</code> command and warns when transcript resume is cwd-bound (e.g. started in a worktree).</p>
+      </div>
+      <div class="feature-card">
+        <span class="tag tag-hook">Hook · PreToolUse</span>
+        <h3>guard-dangerous.sh</h3>
+        <p>Blocks destructive shell before it runs: <code>rm -rf /</code>, <code>rm -rf .</code>, quoted <code>$HOME</code>, separate <code>-r -f</code> flags, fork bombs, disk wipers, and writes to <code>production.*</code>. Defense-in-depth alongside canonical deny rules.</p>
+      </div>
+      <div class="feature-card">
+        <span class="tag tag-hook">Hook · PermissionRequest</span>
+        <h3>auto-approve-permissions.sh</h3>
+        <p>Silently approves writes to context files and kit scripts (metachar-rejecting, anchored), so /handover and the hooks never interrupt you for permission — while <code>.env</code> and production paths stay denied.</p>
+      </div>
       <div class="feature-card">
         <span class="tag tag-hook">Hook · PreCompact</span>
         <h3>pre-compact.sh</h3>
