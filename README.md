@@ -20,8 +20,10 @@ Hooks, skills, and scripts that keep your context alive through compaction, devi
 | Tedious manual model switching | `/model-switch auto` analyses your task and picks Haiku/Sonnet/Opus |
 | Context rot from undifferentiated compaction | `/compact-smart` preserves code, decisions, and task state at higher fidelity |
 | Hard to hand work off to a fresh session | `/handover` generates a structured `session_handover.md` in one command |
-| Dangerous commands allowed silently | `guard-dangerous.sh` blocks `rm -rf /` and production config writes |
+| Dangerous commands allowed silently | `guard-dangerous.sh` blocks `rm -rf /`, `rm -rf .`, quoted `$HOME`, and production config writes |
 | New repos need manual context-kit setup | `auto_activate_new_repos` bootstraps any new git project automatically |
+| Worktrees fragment/clobber session state | All hooks resolve state through one helper; `state.scope` controls branch vs. worktree behaviour, writes are lock-guarded |
+| Can't find the exact session to `--resume` | SessionStart records the SDK `session_id` + transcript path; handover prints the exact resume command and the cwd caveat |
 
 ---
 
@@ -100,11 +102,12 @@ By default the plugin bootstraps `session_handover.md` and `state.json` in any n
     "tool_failure_log":  true,
     "subagent_tracking": true
   },
-  "skip_repos": ["/path/to/repo-to-skip"]
+  "skip_repos": ["/path/to/repo-to-skip"],
+  "state": { "scope": "auto" }
 }
 ```
 
-Set `auto_activate_new_repos: false` to disable entirely, or add individual project paths to `skip_repos`.
+Set `auto_activate_new_repos: false` to disable entirely, or add individual project paths to `skip_repos`. See [Branch & worktree state scope](#branch--worktree-state-scope) for `state.scope`.
 
 ### Configure subscription type
 
@@ -289,16 +292,18 @@ All hooks fire automatically — you never call them manually.
 | `UserPromptSubmit` | `usage-sentinel.sh` | Before every prompt | Tracks usage; injects warnings at 70/80/85/92% |
 | `PreCompact` | `pre-compact.sh` | Before any compaction | Saves handover + state (merged), commits to git |
 | `PostCompact` | `post-compact.sh` | After any compaction | Re-injects task state so Claude retains context |
-| `Stop` | `extract-state-on-stop.sh` | After every response (async) | Heuristically extracts next_action and active task |
-| `Stop` | `usage-tracker.py` | After every response (async) | Records rate limit %, context %, cost to `daily-usage.json` |
-| `Stop` | `stop.sh` | After every response | Updates `state.json` with timestamp and stop reason |
+| `Stop` | `extract-state-on-stop.sh` | After every response | Heuristically extracts next_action and active task |
+| `Stop` | `usage-tracker.py` | After every response | Records rate limit %, context %, cost to `daily-usage.json` |
+| `Stop` | `stop.sh` | After every response | Updates `state.json` with timestamp, stop reason, session id |
 | `SessionEnd` | `session-end.sh` | When Claude Code closes | Git commits all session state files |
-| `PreToolUse` (Bash) | `guard-dangerous.sh` | Before any bash command | Blocks `rm -rf /`, production config writes |
+| `PreToolUse` (Bash) | `guard-dangerous.sh` | Before any bash command | Blocks `rm -rf /`, `rm -rf .`, quoted `$HOME`, production writes |
 | `PostToolUse` (Edit/Write) | `track-changes.sh` | After every file edit | Logs modified files to `state.json` |
 | `PostToolUseFailure` | `post-tool-failure.sh` | When any tool call fails | Logs error to `tool-failures.jsonl` + `state.json` |
 | `SubagentStart/Stop` | `subagent-lifecycle.sh` | Subagent lifecycle | Tracks delegated work in `subagents.jsonl` |
 | `Notification` | `notify.sh` | On notifications | Cross-platform desktop notification |
-| `PermissionRequest` | `auto-approve-permissions.sh` | Permission dialogs | Auto-approves safe context file writes |
+| `PermissionRequest` | `auto-approve-permissions.sh` | Permission dialogs | Auto-approves context-file writes + kit scripts (echoes back the firing event) |
+
+> The three `Stop` hooks run **sequentially in a single hook entry** (not async) so they can't race on `state.json`. Every hook that mutates `state.json` does so through `state_write()` in `scripts/resolve_state_dir.sh`, which takes a portable lock (`flock`, or a `mkdir` spinlock on macOS) and writes atomically — concurrent writers field-merge instead of clobbering. Permission/deny rules in `.claude/settings.json` use the canonical `Read(./.env)` / `Write(./session_handover.md)` path-anchored form.
 
 ### PreCompact — what gets saved
 
@@ -340,6 +345,50 @@ Works across: Office Windows ↔ Home Mac ↔ Linux · Claude Pro ↔ Max ↔ AP
 
 ---
 
+## Branch & worktree state scope
+
+Every hook resolves where `state.json` lives through one shared helper,
+`scripts/resolve_state_dir.sh`, so the path can never diverge between hooks.
+Behaviour is controlled by `state.scope` in `config/plugin_settings.json`:
+
+- **Branch flow** (no worktrees — the common case): state is one shared file at
+  the repo root, per *project* not per *branch*, so switching branches keeps
+  continuity.
+- **Worktree flow**: linked worktrees are ephemeral, so by default state is
+  redirected to the **main checkout** and survives the worktree being deleted.
+  Choose `local` to keep isolated per-worktree state, or `main` to force
+  cross-worktree continuity.
+
+Concurrent sessions/worktrees are safe: `state_write()` takes a portable lock
+and field-merges, so parallel writers never clobber each other.
+
+If you don't use git worktrees, this is all transparent — leave `state.scope`
+at `auto`.
+
+## Session resume (Agent SDK)
+
+The SDK/CLI stores each conversation transcript at
+`~/.claude/projects/<encoded-cwd>/<session-id>.jsonl` — **resume is cwd-bound**.
+SessionStart and Stop now record the `session_id`, `transcript_path`, and
+`session_cwd` into `state.json`, and `/handover` writes a **Commands to Resume**
+block with:
+
+- the exact `claude --resume <id>` command,
+- the transcript path and computed storage location,
+- a warning that a session started in a worktree can only be resumed from that
+  same directory (resuming from `main` silently starts a fresh session).
+
+Per the [Agent SDK guidance](https://code.claude.com/docs/en/agent-sdk/sessions),
+the robust cross-machine / cross-worktree path is **not** transcript resume —
+it's feeding `session_handover.md` into a fresh session as application state,
+which is exactly what this kit produces.
+
+A full visual map of every hook, trigger, the state-scope decision tree, the
+permission-evaluation flow, and the resume flow lives in
+[`docs/hooks-flowchart.md`](docs/hooks-flowchart.md) (Mermaid diagrams).
+
+---
+
 ## Status line
 
 Live status displayed at the bottom of the Claude Code terminal:
@@ -368,9 +417,20 @@ Global plugin behaviour — controls auto-activation and per-feature toggles:
     "tool_failure_log":  true,
     "subagent_tracking": true
   },
-  "skip_repos": []
+  "skip_repos": [],
+  "state": { "scope": "auto" }
 }
 ```
+
+`state.scope` — where session state lives:
+
+| Value | No worktrees (typical) | Worktree users |
+|-------|------------------------|----------------|
+| `auto` *(default)* | repo root, one shared state | redirect to main checkout (survives worktree deletion) |
+| `main` / `repo` / `shared` | repo root (identical) | always main checkout — cross-worktree continuity |
+| `local` / `worktree` | repo root (identical) | isolated per-worktree state |
+
+If you don't use git worktrees, all values behave identically and you can ignore this setting.
 
 ### `config/usage_budget.json`
 
@@ -414,8 +474,12 @@ Set in Claude Code settings under `"env"`, or export in your shell:
 | `.claude/session/turn-ledger.jsonl` | Per-turn log of extracted next_action hints | Yes |
 | `.claude/session/tool-failures.jsonl` | Failed tool calls (tool, error, path, timestamp) | Yes |
 | `.claude/session/subagents.jsonl` | Subagent invocations (type, description, lifecycle) | No |
+| `.claude/session/state.json.lock` / `.lockd` | Concurrency locks for `state_write()` | No (gitignored) |
 | `session_handover.md` | Structured task handover (human-readable) | Yes |
 | `CLAUDE.md` | Living project context document | Yes |
+
+> In a git **worktree**, these files resolve to the **main checkout** by
+> default (`state.scope: auto`) so they survive the worktree being removed.
 
 ---
 
@@ -434,7 +498,8 @@ context-engineering-kit/
 │   ├── context-updater.md
 │   └── session-scribe.md
 ├── docs/
-│   └── index.html                   ← GitHub Pages landing page
+│   ├── index.html                   ← GitHub Pages landing page
+│   └── hooks-flowchart.md           ← Mermaid maps: hooks, state scope, permissions, resume
 │
 ├── .claude/                         ← CLI standalone config
 │   ├── settings.json                ← CLI hook wiring + env config
@@ -445,6 +510,7 @@ context-engineering-kit/
 │
 ├── scripts/
 │   ├── find_python.sh               ← Python 3 resolver (python3 → python → py)
+│   ├── resolve_state_dir.sh         ← single source of truth for state path + lock-guarded state_write()
 │   ├── auto_init_project.sh         ← bootstraps new repos on SessionStart
 │   ├── generate_session_handover.py
 │   ├── update_context_files.py

@@ -14,18 +14,9 @@ set -euo pipefail
 PROJECT_DIR="${CLAUDE_PROJECT_DIR:-$(pwd)}"
 TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
-# ── Worktree detection — always write state to main checkout ──────────────────
-GIT_DIR=$(git -C "$PROJECT_DIR" rev-parse --git-dir 2>/dev/null || echo "")
-if echo "$GIT_DIR" | grep -q '/worktrees/'; then
-  MAIN_ROOT=$(git -C "$PROJECT_DIR" worktree list --porcelain 2>/dev/null \
-    | awk 'NR==1{sub(/^worktree /,""); print}')
-  [ -n "$MAIN_ROOT" ] && STATE_DIR="$MAIN_ROOT/.claude/session" || STATE_DIR="$PROJECT_DIR/.claude/session"
-else
-  STATE_DIR="$PROJECT_DIR/.claude/session"
-fi
-STATE_FILE="$STATE_DIR/state.json"
-
-mkdir -p "$STATE_DIR"
+# ── Resolve state location (shared worktree-aware helper) ─────────────────────
+# shellcheck source=../../scripts/resolve_state_dir.sh
+source "${CLAUDE_PLUGIN_ROOT:-$PROJECT_DIR}/scripts/resolve_state_dir.sh"
 
 # ── Read Stop event input ────────────────────────────────────────────────────
 INPUT=$(cat)
@@ -112,50 +103,29 @@ if echo "$RESPONSE" | grep -qE "(✅|done|complete|finished|created|written|upda
     || echo "")
 fi
 
-# ── Update state.json ─────────────────────────────────────────────────────────
-# Only write fields we actually extracted — don't clobber existing good data
-if [ -f "$STATE_FILE" ]; then
-  CURRENT=$(cat "$STATE_FILE")
-  CURRENT_TASK=$(echo "$CURRENT" | jq -r '.active_task // ""' 2>/dev/null || echo "")
-  CURRENT_PHASE=$(echo "$CURRENT" | jq -r '.phase // ""' 2>/dev/null || echo "")
-
-  # Use --arg / --argjson to safely pass strings into jq (avoids sed-based escaping)
-  STATE_TMP=$(mktemp "${STATE_FILE}.XXXXXX")
-  echo "$CURRENT" | jq \
-    --argjson turn "$TURN_COUNT" \
-    --arg ts "$TIMESTAMP" \
-    --arg next_action "$NEXT_ACTION" \
-    --arg active_task_hint "$ACTIVE_TASK_HINT" \
-    --arg current_task "$CURRENT_TASK" \
-    --arg phase_hint "$PHASE_HINT" \
-    --arg current_phase "$CURRENT_PHASE" \
-    '.last_stop_turn = $turn
-    | .last_activity = $ts
-    | if $next_action != "" then .next_action = $next_action else . end
-    | if ($active_task_hint != "" and ($current_task == "unknown" or $current_task == "" or $current_task == "initial setup")) then .active_task = $active_task_hint else . end
-    | if ($phase_hint != "" and ($current_phase == "unknown" or $current_phase == "")) then .phase = $phase_hint else . end' \
-    > "$STATE_TMP" \
-    && mv "$STATE_TMP" "$STATE_FILE" \
-    || rm -f "$STATE_TMP"
-
-else
-  # No state file yet — create minimal one using jq for safe string encoding
-  jq -n \
-    --arg ts "$TIMESTAMP" \
-    --argjson turn "$TURN_COUNT" \
-    --arg next_action "${NEXT_ACTION:-check session_handover.md}" \
-    --arg active_task "${ACTIVE_TASK_HINT:-unknown}" \
-    --arg phase "${PHASE_HINT:-unknown}" \
-    '{
-      "last_activity": $ts,
-      "last_stop_turn": $turn,
-      "next_action": $next_action,
-      "active_task": $active_task,
-      "phase": $phase,
-      "compact_count": 0,
-      "state_source": "stop-hook-heuristic"
-    }' > "$STATE_FILE"
-fi
+# ── Update state.json (lock-guarded, concurrency-safe) ───────────────────────
+# Only write fields we actually extracted — don't clobber existing good data.
+# next_action guard: this is a weak heuristic. Only fill it when the stored
+# value is empty or a generic placeholder, so a precise next_action set by
+# /handover is never clobbered by a noisy last-sentence match every turn.
+# state_write treats a missing/corrupt file as {}, so the // defaults below
+# also serve as the "no state file yet" bootstrap path.
+state_write \
+  '.last_stop_turn = $turn
+   | .last_activity = $ts
+   | .state_source = (.state_source // "stop-hook-heuristic")
+   | .compact_count = (.compact_count // 0)
+   | (if ($next_action != "" and ((.next_action // "") == "" or (.next_action // "") == "unknown" or (.next_action // "") == "none" or (.next_action // "") == "read session_handover.md" or (.next_action // "") == "check session_handover.md")) then .next_action = $next_action else . end)
+   | (if ($active_task_hint != "" and ((.active_task // "") == "" or (.active_task // "") == "unknown" or (.active_task // "") == "initial setup")) then .active_task = $active_task_hint else . end)
+   | (if ($phase_hint != "" and ((.phase // "") == "" or (.phase // "") == "unknown")) then .phase = $phase_hint else . end)
+   | .next_action = (.next_action // "check session_handover.md")
+   | .active_task = (.active_task // "unknown")
+   | .phase = (.phase // "unknown")' \
+  --argjson turn "$TURN_COUNT" \
+  --arg ts "$TIMESTAMP" \
+  --arg next_action "$NEXT_ACTION" \
+  --arg active_task_hint "$ACTIVE_TASK_HINT" \
+  --arg phase_hint "$PHASE_HINT" || true
 
 # ── Append to session ledger (lightweight turn log) ──────────────────────────
 LEDGER="$STATE_DIR/turn-ledger.jsonl"

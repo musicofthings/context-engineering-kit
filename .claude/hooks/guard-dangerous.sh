@@ -19,6 +19,12 @@ DANGEROUS_REGEXES=(
   'rm[[:space:]]+--force[[:space:]]+--recursive[[:space:]]+[/~]'
   'rm[[:space:]]+-[a-zA-Z]*r[a-zA-Z]*f[[:space:]]+\$HOME'
   'rm[[:space:]]+-[a-zA-Z]*r[a-zA-Z]*f[[:space:]]+\*'
+  # separate -r -f flags (any order) against / ~ $HOME *
+  'rm[[:space:]]+-[rf][[:space:]]+-[rf][[:space:]]+([/~]|\$HOME|\*)'
+  # quoted destructive targets: rm -rf "/", '~', "$HOME"
+  'rm[[:space:]]+-[a-zA-Z]*r[a-zA-Z]*f[[:space:]]+["'"'"']?(/|~|\$HOME)["'"'"']?([[:space:]]|$|[;&|])'
+  # bare current-directory wipe: rm -rf . | ./ (target alone, not a path prefix)
+  'rm[[:space:]]+-[a-zA-Z]*r[a-zA-Z]*f[[:space:]]+\./?([[:space:]]|$|[;&|])'
   # find -delete on root-ish paths
   'find[[:space:]]+/[[:space:]].*-delete'
   # destructive git operations on remote/main

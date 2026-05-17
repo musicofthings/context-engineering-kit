@@ -11,9 +11,13 @@
 set -euo pipefail
 
 PROJECT_DIR="${CLAUDE_PROJECT_DIR:-$(pwd)}"
-STATE_FILE="$PROJECT_DIR/.claude/session/state.json"
-HISTORY_FILE="$PROJECT_DIR/.claude/session/history.jsonl"
-HANDOVER_FILE="$PROJECT_DIR/session_handover.md"
+# Resolve state the SAME way every hook does (worktree/scope-aware). Without
+# this, /session-sync from a linked worktree would commit the wrong (empty)
+# state.json on the throwaway worktree branch instead of the main checkout.
+# shellcheck source=resolve_state_dir.sh
+source "${CLAUDE_PLUGIN_ROOT:-$PROJECT_DIR}/scripts/resolve_state_dir.sh"
+HISTORY_FILE="$STATE_DIR/history.jsonl"
+HANDOVER_FILE="$MAIN_ROOT/session_handover.md"
 TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 HOSTNAME_ID=$(hostname 2>/dev/null || echo "unknown-host")
 
@@ -39,31 +43,20 @@ esac
 do_save() {
   log "Saving session state from $HOSTNAME_ID ($PLATFORM)..."
 
-  mkdir -p "$PROJECT_DIR/.claude/session"
+  mkdir -p "$STATE_DIR"
 
-  # Update state with device info
-  if [ -f "$STATE_FILE" ]; then
-    STATE_TMP=$(mktemp "${STATE_FILE}.XXXXXX")
-    jq --arg host "$HOSTNAME_ID" \
-       --arg platform "$PLATFORM" \
-       --arg ts "$TIMESTAMP" \
-       '.saved_by = $host | .saved_platform = $platform | .last_save = $ts' \
-       "$STATE_FILE" > "$STATE_TMP" && mv "$STATE_TMP" "$STATE_FILE" || rm -f "$STATE_TMP"
-  else
-    cat > "$STATE_FILE" <<EOF
-{
-  "saved_by": "$HOSTNAME_ID",
-  "saved_platform": "$PLATFORM",
-  "last_save": "$TIMESTAMP",
-  "active_task": "unknown",
-  "phase": "unknown",
-  "next_action": "read session_handover.md",
-  "compact_count": 0
-}
-EOF
-  fi
+  # Update state with device info (lock-guarded, treats missing file as {})
+  state_write \
+    '.saved_by = $host
+     | .saved_platform = $platform
+     | .last_save = $ts
+     | .active_task = (.active_task // "unknown")
+     | .phase = (.phase // "unknown")
+     | .next_action = (.next_action // "read session_handover.md")
+     | .compact_count = (.compact_count // 0)' \
+    --arg host "$HOSTNAME_ID" --arg platform "$PLATFORM" --arg ts "$TIMESTAMP" || true
 
-  cd "$PROJECT_DIR"
+  cd "$MAIN_ROOT"
 
   # Stage session files
   git add .claude/session/state.json 2>/dev/null || true
@@ -99,7 +92,7 @@ do_load() {
   log "Loading session state on $HOSTNAME_ID ($PLATFORM)..."
 
   # Pull latest — rebase to avoid merge commits; autostash handles local changes
-  cd "$PROJECT_DIR"
+  cd "$MAIN_ROOT"
   git pull --rebase --autostash 2>/dev/null && log "Git pull complete" \
     || warn "Git pull failed — using local state (resolve conflicts manually if needed)"
 
@@ -146,7 +139,7 @@ do_status() {
     log "State file    : ❌ not found"
   fi
 
-  cd "$PROJECT_DIR"
+  cd "$MAIN_ROOT"
   GIT_BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "not a git repo")
   GIT_AHEAD=$(git rev-list --count "@{u}..HEAD" 2>/dev/null || git rev-list --count origin/HEAD..HEAD 2>/dev/null || echo "?")
   log ""

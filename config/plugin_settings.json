@@ -13,10 +13,15 @@
 
   "skip_repos": [],
 
+  "state": {
+    "scope": "auto"
+  },
+
   "_notes": [
     "auto_activate_new_repos: when true, SessionStart bootstraps any project that has no session_handover.md",
     "features.*: disable individual features without removing hook wiring",
     "skip_repos: list of absolute project paths to never auto-init (e.g. /home/user/sensitive-repo)",
-    "morning_brief is off by default — enable it after running: pip install feedparser"
+    "morning_brief is off by default — enable it after running: pip install feedparser",
+    "state.scope: where session state lives. 'auto' (default) = plain branch uses repo root, worktree redirects to main checkout. 'main' (aka repo/shared) = always the main checkout even from a worktree. 'local' (aka worktree) = never redirect, state stays isolated in the current working dir. Pick 'main' for cross-worktree continuity, 'local' if you run many parallel worktrees and want them separate."
   ]
 }

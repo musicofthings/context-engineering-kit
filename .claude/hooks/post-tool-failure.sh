@@ -6,11 +6,10 @@
 set -euo pipefail
 
 PROJECT_DIR="${CLAUDE_PROJECT_DIR:-$(pwd)}"
-STATE_FILE="$PROJECT_DIR/.claude/session/state.json"
-FAILURE_LOG="$PROJECT_DIR/.claude/session/tool-failures.jsonl"
+# shellcheck source=../../scripts/resolve_state_dir.sh
+source "${CLAUDE_PLUGIN_ROOT:-$PROJECT_DIR}/scripts/resolve_state_dir.sh"
+FAILURE_LOG="$STATE_DIR/tool-failures.jsonl"
 TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-
-mkdir -p "$PROJECT_DIR/.claude/session"
 
 INPUT=$(cat)
 TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name // "unknown"' 2>/dev/null || echo "unknown")
@@ -26,14 +25,9 @@ jq -n \
   '{"ts":$ts,"tool":$tool,"error":$error,"path":$path}' \
   >> "$FAILURE_LOG" 2>/dev/null || true
 
-# Update last_tool_failure in state.json for handover visibility
-if [ -f "$STATE_FILE" ]; then
-  STATE_TMP=$(mktemp "${STATE_FILE}.XXXXXX")
-  jq --arg ts "$TIMESTAMP" \
-     --arg tool "$TOOL_NAME" \
-     --arg error "$ERROR_MSG" \
-    '.last_tool_failure = {"ts": $ts, "tool": $tool, "error": $error}' \
-    "$STATE_FILE" > "$STATE_TMP" && mv "$STATE_TMP" "$STATE_FILE" 2>/dev/null || rm -f "$STATE_TMP"
-fi
+# Update last_tool_failure (lock-guarded, concurrency-safe)
+state_write \
+  '.last_tool_failure = {"ts": $ts, "tool": $tool, "error": $error}' \
+  --arg ts "$TIMESTAMP" --arg tool "$TOOL_NAME" --arg error "$ERROR_MSG" || true
 
 exit 0
