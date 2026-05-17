@@ -1,7 +1,7 @@
 {
   "name": "context-engineering-kit",
-  "version": "2.4.1",
-  "description": "Automated context preservation for Claude Code across sessions, devices, and subscriptions. Hooks, skills, and scripts to keep your context alive through compaction, device switches, and subscription changes.",
+  "version": "2.5.0",
+  "description": "Automated context preservation for Claude Code across sessions, devices, worktrees, and subscriptions. Hooks, skills, and scripts to keep your context alive through compaction, device switches, git worktrees, and subscription changes.",
   "author": {
     "name": "musicofthings",
     "url": "https://github.com/musicofthings/context-engineering-kit"
@@ -9,5 +9,5 @@
   "homepage": "https://github.com/musicofthings/context-engineering-kit",
   "repository": "https://github.com/musicofthings/context-engineering-kit",
   "license": "MIT",
-  "keywords": ["context", "session", "handover", "token-tracking", "compaction", "multi-device", "usage", "morning-brief"]
+  "keywords": ["context", "session", "handover", "token-tracking", "compaction", "multi-device", "worktree", "session-resume", "usage", "morning-brief"]
 }
