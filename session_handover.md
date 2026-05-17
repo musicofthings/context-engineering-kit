@@ -1,5 +1,5 @@
 # Session Handover
-_Generated: 2026-05-17T04:53:37Z_
+_Generated: 2026-05-17T05:25:45Z_
 _Branch: claude/gallant-boyd-79d6ab_
 _Trigger: auto | Context at compact: unknown%_
 _Compact count this project: 0_
@@ -24,9 +24,11 @@ initial setup
 
 ---
 
+---
+
 ## 🔄 In Progress (Exact Resume Point)
 **Branch:** `claude/gallant-boyd-79d6ab`
-**Last commit:** `0689d1e chore(context): save session state — initial setup [2026-05-17T04:52:36Z]`
+**Last commit:** `d6b9ca5 chore(context): sync from oncophenomics.local — initial setup [2026-05-17T04:53:37Z]`
 **Next immediate action:** run /context-health in Claude Code
 
 ---
@@ -42,6 +44,8 @@ initial setup
 
 ---
 
+---
+
 ## 🏗 Architecture Decisions Made
 | Decision | Rationale | Date |
 |----------|-----------|------|
@@ -49,7 +53,11 @@ initial setup
 |----------|-----------|------|
 | Decision | Rationale | Date |
 |----------|-----------|------|
+| Decision | Rationale | Date |
+|----------|-----------|------|
 | (none yet) | — | — |
+
+---
 
 ---
 
@@ -74,40 +82,44 @@ bash scripts/session_sync.sh --load
 ## 📁 Files Modified This Session
 | File | Status |
 |------|--------|
-| `/Users/theranosis_dx/projects/context-engineering-kit/.claude/hooks/track-changes.sh` | modified |
 | `/Users/theranosis_dx/projects/context-engineering-kit/.claude/hooks/stop.sh` | modified |
-| `/Users/theranosis_dx/projects/context-engineering-kit/.claude/worktrees/adoring-beaver-634d43/scripts/generate_session_handover.py` | modified |
-| `D:\Projects\context-engineering-kit\scripts\morning_brief.py` | modified |
 | `/Users/theranosis_dx/projects/context-engineering-kit/README.md` | modified |
+| `/Users/theranosis_dx/projects/context-engineering-kit/.claude/worktrees/adoring-beaver-634d43/.claude/hooks/session-end.sh` | modified |
 | `/Users/theranosis_dx/projects/context-engineering-kit/.claude/hooks/session-start.sh` | modified |
-| `.claude/session/usage.jsonl` | modified |
-| `/Users/theranosis_dx/projects/context-engineering-kit/.claude/worktrees/adoring-beaver-634d43/.claude/hooks/session-start.sh` | modified |
-| `/Users/theranosis_dx/projects/context-engineering-kit/.claude/hooks/post-tool-failure.sh` | modified |
-| `/Users/theranosis_dx/projects/context-engineering-kit/.claude/worktrees/adoring-beaver-634d43/.claude/hooks/pre-compact.sh` | modified |
 | `/Users/theranosis_dx/projects/context-engineering-kit/.claude/worktrees/adoring-beaver-634d43/.claude/hooks/stop.sh` | modified |
+| `/Users/theranosis_dx/projects/context-engineering-kit/.claude/worktrees/adoring-beaver-634d43/session_handover.md` | modified |
+| `/Users/theranosis_dx/projects/context-engineering-kit/.claude/worktrees/adoring-beaver-634d43/examples/fullstack-web/CLAUDE.md` | modified |
+| `.claude/session/usage.jsonl` | modified |
 | `/Users/theranosis_dx/projects/context-engineering-kit/.claude/hooks/extract-state-on-stop.sh` | modified |
+| `/Users/theranosis_dx/projects/context-engineering-kit/.claude/hooks/post-tool-failure.sh` | modified |
+| `/Users/theranosis_dx/projects/context-engineering-kit/.claude/hooks/track-changes.sh` | modified |
+| `D:\Projects\context-engineering-kit\session_handover.md` | modified |
+| `/Users/theranosis_dx/projects/context-engineering-kit/.claude/hooks/pre-compact.sh` | modified |
 | `/Users/theranosis_dx/projects/context-engineering-kit/.claude/worktrees/adoring-beaver-634d43/templates/CLAUDE.md.template` | modified |
-| `D:\Projects\context-engineering-kit\.claude\settings.json` | modified |
 | `/Users/theranosis_dx/projects/context-engineering-kit/.claude/worktrees/adoring-beaver-634d43/templates/session_handover.template.md` | modified |
-| _(+11 more files not shown)_ | — |
+| _(+13 more files not shown)_ | — |
 
 ---
 
 ## 🌿 Git Context
 ```
 Branch  : claude/gallant-boyd-79d6ab
-Commit  : 0689d1e chore(context): save session state — initial setup [2026-05-17T04:52:36Z]
+Commit  : d6b9ca5 chore(context): sync from oncophenomics.local — initial setup [2026-05-17T04:53:37Z]
 Status  : M .claude/session/state.json
+ M .claude/session/tool-failures.jsonl
  M .claude/session/usage.jsonl
+?? .claude/session/daily-usage.json
+?? .claude/session/usage-forecast.json
+?? docs/hooks-flowchart.md
 ```
 
 Recent commits:
 ```
+d6b9ca5 chore(context): sync from oncophenomics.local — initial setup [2026-05-17T04:53:37Z]
 0689d1e chore(context): save session state — initial setup [2026-05-17T04:52:36Z]
 9d79733 chore(context): save session state — initial setup [2026-05-14T17:35:16Z]
 bdeb32b chore: merge code-review fixes into main
 a38c9d8 fix: apply all code review findings across hooks, scripts, and templates
-80dd749 chore(context): sync from oncophenomics.local — initial setup [2026-05-14T17:18:40Z]
 ```
 
 ---
@@ -115,6 +127,8 @@ a38c9d8 fix: apply all code review findings across hooks, scripts, and templates
 ## ⚠️ Critical Rules
 - Never commit secrets or API keys
 - Run /handover before switching devices
+
+---
 
 ---
 
