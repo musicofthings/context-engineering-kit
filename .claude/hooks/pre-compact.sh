@@ -15,9 +15,10 @@ if ! "$PYTHON" -c "import sys; sys.exit(0)" 2>/dev/null; then
   echo "[pre-compact] FATAL: Python 3 not found — cannot generate handover. Install python3 and retry." >&2
   exit 2
 fi
-STATE_FILE="$PROJECT_DIR/.claude/session/state.json"
+# shellcheck source=../../scripts/resolve_state_dir.sh
+source "${CLAUDE_PLUGIN_ROOT:-$PROJECT_DIR}/scripts/resolve_state_dir.sh"
 HANDOVER_FILE="$PROJECT_DIR/session_handover.md"
-AUDIT_LOG="$PROJECT_DIR/.claude/compact-audit.log"
+AUDIT_LOG="$MAIN_ROOT/.claude/compact-audit.log"
 
 log() { echo "[pre-compact] $*" >&2; }
 
@@ -44,64 +45,31 @@ MODIFIED_FILES=$({ git -C "$PROJECT_DIR" diff --name-only 2>/dev/null || true; }
 # ── Update session state JSON — MERGE with existing, never replace ───────────
 # Preserves session_start_time, last_tool_failure, saved_by, and all other
 # fields written by other hooks. Only updates compaction-specific fields.
-PREV_COMPACT_COUNT=0
-if [ -f "$STATE_FILE" ]; then
-  PREV_COMPACT_COUNT=$(jq -r '.compact_count // 0' "$STATE_FILE" 2>/dev/null || echo "0")
-fi
-COMPACT_COUNT=$(( PREV_COMPACT_COUNT + 1 ))
-
+# compact_count is incremented inside the filter so it stays correct even if
+# another writer touches state.json concurrently (lock-guarded).
 MODIFIED_FILES_JSON=$(echo "$MODIFIED_FILES" | jq -R -s 'split("\n") | map(select(. != ""))' 2>/dev/null || echo "[]")
 
-STATE_TMP=$(mktemp "${STATE_FILE}.XXXXXX")
-if [ -f "$STATE_FILE" ]; then
-  # Merge: keep all existing fields, update only compaction-specific ones
-  jq \
-    --arg ts        "$TIMESTAMP" \
-    --arg trigger   "$TRIGGER" \
-    --arg ctx       "$CONTEXT_PCT" \
-    --arg branch    "$GIT_BRANCH" \
-    --arg commit    "$GIT_COMMIT" \
-    --argjson files "$MODIFIED_FILES_JSON" \
-    --argjson count "$COMPACT_COUNT" \
-    '. + {
-      last_updated:           $ts,
-      trigger:                $trigger,
-      context_pct_at_compact: $ctx,
-      git_branch:             $branch,
-      git_last_commit:        $commit,
-      modified_files:         $files,
-      compact_count:          $count
-    }' "$STATE_FILE" > "$STATE_TMP" \
-    && mv "$STATE_TMP" "$STATE_FILE" \
-    || { rm -f "$STATE_TMP"; log "WARNING: state.json update failed"; }
-else
-  # No existing state — create minimal bootstrap
-  jq -n \
-    --arg ts        "$TIMESTAMP" \
-    --arg trigger   "$TRIGGER" \
-    --arg ctx       "$CONTEXT_PCT" \
-    --arg branch    "$GIT_BRANCH" \
-    --arg commit    "$GIT_COMMIT" \
-    --argjson files "$MODIFIED_FILES_JSON" \
-    --argjson count "$COMPACT_COUNT" \
-    '{
-      last_updated:           $ts,
-      initialized_by:         "pre-compact",
-      trigger:                $trigger,
-      context_pct_at_compact: $ctx,
-      git_branch:             $branch,
-      git_last_commit:        $commit,
-      active_task:            "unknown",
-      phase:                  "unknown",
-      next_action:            "read session_handover.md",
-      modified_files:         $files,
-      compact_count:          $count
-    }' > "$STATE_TMP" \
-    && mv "$STATE_TMP" "$STATE_FILE" \
-    || { rm -f "$STATE_TMP"; log "WARNING: state.json creation failed"; }
-fi
+state_write \
+  '.last_updated           = $ts
+   | .trigger                = $trigger
+   | .context_pct_at_compact = $ctx
+   | .git_branch             = $branch
+   | .git_last_commit        = $commit
+   | .modified_files         = $files
+   | .compact_count          = ((.compact_count // 0) + 1)
+   | .active_task            = (.active_task // "unknown")
+   | .phase                  = (.phase // "unknown")
+   | .next_action            = (.next_action // "read session_handover.md")' \
+  --arg ts        "$TIMESTAMP" \
+  --arg trigger   "$TRIGGER" \
+  --arg ctx       "$CONTEXT_PCT" \
+  --arg branch    "$GIT_BRANCH" \
+  --arg commit    "$GIT_COMMIT" \
+  --argjson files "$MODIFIED_FILES_JSON" \
+  || log "WARNING: state.json update failed"
 
 # Re-read merged state for handover generation
+COMPACT_COUNT=$(jq -r '.compact_count // 1' "$STATE_FILE" 2>/dev/null || echo "1")
 ACTIVE_TASK=$(jq -r '.active_task // "unknown"' "$STATE_FILE" 2>/dev/null || echo "unknown")
 PHASE=$(jq -r '.phase // "unknown"'             "$STATE_FILE" 2>/dev/null || echo "unknown")
 NEXT_ACTION=$(jq -r '.next_action // "unknown"' "$STATE_FILE" 2>/dev/null || echo "unknown")

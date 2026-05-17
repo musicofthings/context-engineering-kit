@@ -32,22 +32,12 @@ fi
 TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 NOW=$(date +%s)
 
-# ── Worktree detection — always read/write state on main checkout ─────────────
-GIT_DIR=$(git -C "$PROJECT_DIR" rev-parse --git-dir 2>/dev/null || echo "")
-if echo "$GIT_DIR" | grep -q '/worktrees/'; then
-  MAIN_ROOT=$(git -C "$PROJECT_DIR" worktree list --porcelain 2>/dev/null \
-    | awk 'NR==1{sub(/^worktree /,""); print}')
-  [ -z "$MAIN_ROOT" ] && MAIN_ROOT="$PROJECT_DIR"
-else
-  MAIN_ROOT="$PROJECT_DIR"
-fi
-
-STATE_FILE="$MAIN_ROOT/.claude/session/state.json"
+# ── Resolve state location (shared worktree-aware helper) ─────────────────────
+# shellcheck source=../../scripts/resolve_state_dir.sh
+source "$PLUGIN_ROOT/scripts/resolve_state_dir.sh"
 BUDGET_FILE="$MAIN_ROOT/config/usage_budget.json"
-USAGE_LOG="$MAIN_ROOT/.claude/session/usage.jsonl"
-SENTINEL_DIR="$MAIN_ROOT/.claude/session"
-
-mkdir -p "$SENTINEL_DIR"
+USAGE_LOG="$STATE_DIR/usage.jsonl"
+SENTINEL_DIR="$STATE_DIR"
 
 # ── Load budget config ────────────────────────────────────────────────────────
 SUB_TYPE="pro"

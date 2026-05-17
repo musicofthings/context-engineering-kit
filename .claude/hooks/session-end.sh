@@ -13,28 +13,24 @@ log() { echo "[session-end] $*" >&2; }
 
 log "Session ending at $TIMESTAMP"
 
-# ── Worktree detection — always commit session state on main checkout ─────────
+# ── Resolve state location (shared worktree-aware helper) ─────────────────────
 # Worktrees are ephemeral; committing to a worktree branch loses state when
 # the worktree is deleted. Redirect all writes to the main checkout instead.
-GIT_DIR=$(git -C "$PROJECT_DIR" rev-parse --git-dir 2>/dev/null || echo "")
-if echo "$GIT_DIR" | grep -q '/worktrees/'; then
-  MAIN_ROOT=$(git -C "$PROJECT_DIR" worktree list --porcelain 2>/dev/null \
-    | awk 'NR==1{sub(/^worktree /,""); print; exit}')
-  if [ -n "$MAIN_ROOT" ]; then
-    log "In linked worktree — redirecting session state to main checkout: $MAIN_ROOT"
-    # Sync session files from worktree into main repo before committing
-    mkdir -p "$MAIN_ROOT/.claude/session"
-    cp -r "$PROJECT_DIR/.claude/session/." "$MAIN_ROOT/.claude/session/" 2>/dev/null || true
-    [ -f "$PROJECT_DIR/session_handover.md" ] \
-      && cp "$PROJECT_DIR/session_handover.md" "$MAIN_ROOT/session_handover.md" 2>/dev/null || true
-    COMMIT_DIR="$MAIN_ROOT"
-  else
-    log "Could not find main worktree root — skipping session-end commit"
-    exit 0
-  fi
-else
-  COMMIT_DIR="$PROJECT_DIR"
+# shellcheck source=../../scripts/resolve_state_dir.sh
+source "${CLAUDE_PLUGIN_ROOT:-$PROJECT_DIR}/scripts/resolve_state_dir.sh"
+
+if [ "$IN_WORKTREE" = true ]; then
+  log "In linked worktree — redirecting session state to main checkout: $MAIN_ROOT"
+  # Sync session files from worktree into main repo before committing.
+  # CLAUDE.md must be copied too — worktree edits to it are otherwise lost.
+  mkdir -p "$MAIN_ROOT/.claude/session"
+  cp -r "$PROJECT_DIR/.claude/session/." "$MAIN_ROOT/.claude/session/" 2>/dev/null || true
+  [ -f "$PROJECT_DIR/session_handover.md" ] \
+    && cp "$PROJECT_DIR/session_handover.md" "$MAIN_ROOT/session_handover.md" 2>/dev/null || true
+  [ -f "$PROJECT_DIR/CLAUDE.md" ] \
+    && cp "$PROJECT_DIR/CLAUDE.md" "$MAIN_ROOT/CLAUDE.md" 2>/dev/null || true
 fi
+COMMIT_DIR="$MAIN_ROOT"
 
 STATE_FILE="$COMMIT_DIR/.claude/session/state.json"
 HISTORY_FILE="$COMMIT_DIR/.claude/session/history.jsonl"

@@ -9,43 +9,29 @@ umask 0077
 PROJECT_DIR="${CLAUDE_PROJECT_DIR:-$(pwd)}"
 TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
-# ── Worktree detection — always write state to main checkout ──────────────────
-GIT_DIR=$(git -C "$PROJECT_DIR" rev-parse --git-dir 2>/dev/null || echo "")
-if echo "$GIT_DIR" | grep -q '/worktrees/'; then
-  MAIN_ROOT=$(git -C "$PROJECT_DIR" worktree list --porcelain 2>/dev/null \
-    | awk 'NR==1{sub(/^worktree /,""); print; exit}')
-  [ -n "$MAIN_ROOT" ] && STATE_DIR="$MAIN_ROOT/.claude/session" || STATE_DIR="$PROJECT_DIR/.claude/session"
-else
-  STATE_DIR="$PROJECT_DIR/.claude/session"
-fi
-STATE_FILE="$STATE_DIR/state.json"
-
-mkdir -p "$STATE_DIR"
+# ── Resolve state location (shared worktree-aware helper) ─────────────────────
+# shellcheck source=../../scripts/resolve_state_dir.sh
+source "${CLAUDE_PLUGIN_ROOT:-$PROJECT_DIR}/scripts/resolve_state_dir.sh"
 
 # Read stop event input
 INPUT=$(cat)
 STOP_REASON=$(echo "$INPUT" | jq -r '.stop_reason // "end_turn"' 2>/dev/null || echo "end_turn")
+SESSION_ID=$(echo "$INPUT" | jq -r '.session_id // ""' 2>/dev/null || echo "")
+TRANSCRIPT_PATH=$(echo "$INPUT" | jq -r '.transcript_path // ""' 2>/dev/null || echo "")
 
-# Only update timestamp and stop reason — don't overwrite task state set by skills
-if [ -f "$STATE_FILE" ]; then
-  CURRENT=$(cat "$STATE_FILE")
-  STATE_TMP=$(mktemp "${STATE_FILE}.XXXXXX")
-  echo "$CURRENT" | jq \
-    --arg ts "$TIMESTAMP" \
-    --arg reason "$STOP_REASON" \
-    '.last_stop = $ts | .last_stop_reason = $reason' \
-    > "$STATE_TMP" && mv "$STATE_TMP" "$STATE_FILE" 2>/dev/null || rm -f "$STATE_TMP"
-else
-  cat > "$STATE_FILE" <<EOF
-{
-  "last_stop": "$TIMESTAMP",
-  "last_stop_reason": "$STOP_REASON",
-  "active_task": "unknown",
-  "phase": "unknown",
-  "next_action": "check session_handover.md",
-  "compact_count": 0
-}
-EOF
-fi
+# Only update timestamp and stop reason — don't overwrite task state set by
+# skills. state_write treats a missing file as {}, so defaults are seeded here.
+# Keep session_id/transcript_path fresh for the handover's resume section.
+state_write \
+  '.last_stop = $ts
+   | .last_stop_reason = $reason
+   | (if $sid != "" then .session_id = $sid else . end)
+   | (if $tx  != "" then .transcript_path = $tx else . end)
+   | .active_task = (.active_task // "unknown")
+   | .phase = (.phase // "unknown")
+   | .next_action = (.next_action // "check session_handover.md")
+   | .compact_count = (.compact_count // 0)' \
+  --arg ts "$TIMESTAMP" --arg reason "$STOP_REASON" \
+  --arg sid "$SESSION_ID" --arg tx "$TRANSCRIPT_PATH" || true
 
 exit 0

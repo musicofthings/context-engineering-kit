@@ -21,9 +21,15 @@ CLAUDE_PROJECT_DIR="${CLAUDE_PROJECT_DIR:-$(pwd)}"
 
 INPUT=$(cat)
 
-# Extract tool name and file path from PermissionRequest input
+# Extract tool name and file path. Works for both PermissionRequest and
+# PreToolUse input shapes (both carry tool_name + tool_input).
 TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name // ""' 2>/dev/null || echo "")
 FILE_PATH=$(echo "$INPUT" | jq -r '.tool_input.file_path // .tool_input.path // ""' 2>/dev/null || echo "")
+# Echo back the ACTUAL incoming event name. Per the Agent SDK hooks docs the
+# hookSpecificOutput must identify which hook type it answers; hardcoding the
+# wrong name makes Claude Code ignore the decision. Default to PermissionRequest
+# (the event this hook is wired to) when the field is absent.
+HOOK_EVENT=$(echo "$INPUT" | jq -r '.hook_event_name // "PermissionRequest"' 2>/dev/null || echo "PermissionRequest")
 
 # ── Auto-approved tool+path combinations ────────────────────────────────────
 # These are all the files that context-engineering-kit hooks and skills write to.
@@ -31,15 +37,13 @@ FILE_PATH=$(echo "$INPUT" | jq -r '.tool_input.file_path // .tool_input.path // 
 
 auto_approve() {
   # Return JSON decision to stdout — Claude Code reads this
-  cat <<JSON
-{
-  "hookSpecificOutput": {
-    "hookEventName": "PermissionRequest",
-    "permissionDecision": "allow",
-    "permissionDecisionReason": "context-kit: auto-approved context file write"
-  }
-}
-JSON
+  jq -nc --arg ev "$HOOK_EVENT" '{
+    hookSpecificOutput: {
+      hookEventName: $ev,
+      permissionDecision: "allow",
+      permissionDecisionReason: "context-kit: auto-approved context file write"
+    }
+  }'
   exit 0
 }
 

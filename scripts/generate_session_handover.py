@@ -30,8 +30,44 @@ def run(cmd, cwd: str = None) -> str:
         return ""
 
 
+def resolve_state_file(project_dir: Path) -> Path:
+    """Mirror scripts/resolve_state_dir.sh so the handover reads the SAME
+    state.json the hooks write. Honours config/plugin_settings.json
+    state.scope (auto|main|local) and the branch-vs-worktree distinction."""
+    pd = str(project_dir)
+    scope = "auto"
+    settings = project_dir / "config" / "plugin_settings.json"
+    if settings.exists():
+        try:
+            scope = (json.loads(settings.read_text(encoding="utf-8", errors="replace"))
+                     .get("state", {}).get("scope", "auto"))
+        except Exception:
+            scope = "auto"
+    scope = {"repo": "main", "shared": "main", "worktree": "local"}.get(scope, scope)
+    if scope not in ("auto", "main", "local"):
+        scope = "auto"
+
+    repo_root = run(["git", "-C", pd, "rev-parse", "--show-toplevel"]) or pd
+    git_dir = run(["git", "-C", pd, "rev-parse", "--git-dir"])
+    in_worktree = "/worktrees/" in git_dir
+    main_root = repo_root
+    if in_worktree:
+        wl = run(["git", "-C", pd, "worktree", "list", "--porcelain"])
+        first = wl.splitlines()[0] if wl else ""
+        if first.startswith("worktree "):
+            main_root = first[len("worktree "):].strip() or repo_root
+
+    if scope == "local":
+        base = repo_root
+    elif scope == "main":
+        base = main_root
+    else:  # auto
+        base = main_root if in_worktree else repo_root
+    return Path(base) / ".claude" / "session" / "state.json"
+
+
 def load_state(project_dir: Path) -> dict:
-    state_file = project_dir / ".claude" / "session" / "state.json"
+    state_file = resolve_state_file(project_dir)
     if state_file.exists():
         try:
             return json.loads(state_file.read_text(encoding="utf-8", errors="replace"))
@@ -116,6 +152,34 @@ def generate(args) -> str:
     compact_count = state.get("compact_count", 0)
     changed_files = state.get("changed_files", [])
 
+    # ── SDK/CLI session identity (see code.claude.com/docs/en/agent-sdk/sessions)
+    session_id = state.get("session_id", "")
+    transcript_path = state.get("transcript_path", "")
+    session_cwd = state.get("session_cwd", "") or str(project_dir)
+    # Sessions are stored at ~/.claude/projects/<encoded-cwd>/<id>.jsonl where
+    # encoded-cwd = absolute cwd with every non-alphanumeric char replaced by '-'.
+    encoded_cwd = re.sub(r"[^a-zA-Z0-9]", "-", session_cwd)
+    if session_id:
+        resume_block = f"""**This exact conversation** (SDK/CLI transcript resume):
+```bash
+# Same machine AND same directory it started in:
+claude --resume {session_id}
+```
+- Session ID    : `{session_id}`
+- Transcript    : `{transcript_path or "(not captured)"}`
+- Bound to cwd  : `{session_cwd}`
+- Stored at     : `~/.claude/projects/{encoded_cwd}/{session_id}.jsonl`
+
+> ⚠️ Transcript resume is **cwd-bound**. It only works from the same directory
+> on the same machine. If this session started in a git **worktree**, that
+> worktree's path is the cwd — resuming from `main` (or after the worktree is
+> deleted) will silently start a *fresh* session. Per the Agent SDK docs, the
+> robust cross-host / cross-worktree path is **not** transcript resume — it's
+> this handover file: read it into a new session's prompt as application state."""
+    else:
+        resume_block = ("_No session ID captured yet (SessionStart hook records it). "
+                        "Use the handover sections below to restore context in a fresh session._")
+
     # Pull from CLI args if provided (hook passes these)
     trigger = args.trigger or state.get("trigger", "auto")
     context_pct = args.context_pct or str(state.get("context_pct_at_compact", "unknown"))
@@ -186,8 +250,11 @@ _Compact count this project: {compact_count}_
 ---
 
 ## 🔧 Commands to Resume
+
+{resume_block}
+
+**Project state** (any machine — the robust path):
 ```bash
-# On any machine after git pull:
 git pull origin {branch}
 bash scripts/session_sync.sh --load
 

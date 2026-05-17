@@ -9,22 +9,22 @@ umask 0077
 PROJECT_DIR="${CLAUDE_PROJECT_DIR:-$(pwd)}"
 TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
-# ── Worktree detection — always read/write state on main checkout ─────────────
-# Worktrees are ephemeral; session state must persist on main, not on the
-# short-lived worktree branch that will be deleted after the task is done.
-GIT_DIR=$(git -C "$PROJECT_DIR" rev-parse --git-dir 2>/dev/null || echo "")
-if echo "$GIT_DIR" | grep -q '/worktrees/'; then
-  MAIN_ROOT=$(git -C "$PROJECT_DIR" worktree list --porcelain 2>/dev/null \
-    | awk 'NR==1{sub(/^worktree /,""); print; exit}')
-  [ -z "$MAIN_ROOT" ] && MAIN_ROOT="$PROJECT_DIR"
-  IN_WORKTREE=true
-else
-  MAIN_ROOT="$PROJECT_DIR"
-  IN_WORKTREE=false
-fi
+# ── Capture the SDK/CLI session identity from hook stdin ─────────────────────
+# Claude Code passes {session_id, transcript_path, cwd, source} as JSON on
+# stdin. Recording it lets the handover hand the user the exact `--resume <id>`
+# and the transcript path. Only read when stdin is a pipe (hook context) so a
+# manual terminal run doesn't block on cat.
+HOOK_INPUT=""
+if [ ! -t 0 ]; then HOOK_INPUT=$(cat 2>/dev/null || true); fi
+SESSION_ID=$(printf '%s' "$HOOK_INPUT" | jq -r '.session_id // ""' 2>/dev/null || echo "")
+TRANSCRIPT_PATH=$(printf '%s' "$HOOK_INPUT" | jq -r '.transcript_path // ""' 2>/dev/null || echo "")
+SESSION_CWD=$(printf '%s' "$HOOK_INPUT" | jq -r '.cwd // ""' 2>/dev/null || echo "")
+SESSION_SOURCE=$(printf '%s' "$HOOK_INPUT" | jq -r '.source // "startup"' 2>/dev/null || echo "startup")
 
-STATE_FILE="$MAIN_ROOT/.claude/session/state.json"
-SENTINEL_DIR="$MAIN_ROOT/.claude/session"
+# ── Resolve state location (shared worktree-aware helper) ─────────────────────
+# shellcheck source=../../scripts/resolve_state_dir.sh
+source "${CLAUDE_PLUGIN_ROOT:-$PROJECT_DIR}/scripts/resolve_state_dir.sh"
+SENTINEL_DIR="$STATE_DIR"
 BUDGET_FILE="$MAIN_ROOT/config/usage_budget.json"
 
 mkdir -p "$SENTINEL_DIR"
@@ -41,30 +41,29 @@ rm -f "$SENTINEL_DIR/.sentinel_warn" \
       "$SENTINEL_DIR/.sentinel_save" \
       "$SENTINEL_DIR/.sentinel_critical" 2>/dev/null || true
 
-# ── Reset subagent counter and record session start (merged in one jq pass) ──
+# ── Reset subagent counter and record session start (lock-guarded) ───────────
 # subagents_running drifts upward across crashes — reset to 0 on session start.
-# Merging both updates into one atomic write avoids a second read-modify-write.
-if [ -f "$STATE_FILE" ]; then
-  STATE_TMP=$(mktemp "${STATE_FILE}.XXXXXX")
-  jq --arg ts "$TIMESTAMP" \
-    '.subagents_running = 0 | .session_start_time = $ts' \
-    "$STATE_FILE" > "$STATE_TMP" \
-    && mv "$STATE_TMP" "$STATE_FILE" \
-    || rm -f "$STATE_TMP"
-else
-  cat > "$STATE_FILE" << STATEOF
-{
-  "session_start_time": "$TIMESTAMP",
-  "last_updated": "$TIMESTAMP",
-  "active_task": "unknown",
-  "phase": "unknown",
-  "next_action": "read session_handover.md",
-  "compact_count": 0,
-  "session_cost_usd": "0",
-  "changed_files": []
-}
-STATEOF
-fi
+# state_write treats a missing file as {}, so the // defaults below double as
+# the bootstrap path for a brand-new project.
+state_write \
+  '.subagents_running = 0
+   | .session_start_time = $ts
+   | .last_updated = $ts
+   | (if $sid  != "" then .session_id = $sid else . end)
+   | (if $tx   != "" then .transcript_path = $tx else . end)
+   | (if $scwd != "" then .session_cwd = $scwd else . end)
+   | .session_source = $ssrc
+   | .active_task = (.active_task // "unknown")
+   | .phase = (.phase // "unknown")
+   | .next_action = (.next_action // "read session_handover.md")
+   | .compact_count = (.compact_count // 0)
+   | .session_cost_usd = (.session_cost_usd // "0")
+   | .changed_files = (.changed_files // [])' \
+  --arg ts "$TIMESTAMP" \
+  --arg sid "$SESSION_ID" \
+  --arg tx "$TRANSCRIPT_PATH" \
+  --arg scwd "$SESSION_CWD" \
+  --arg ssrc "$SESSION_SOURCE" || true
 
 # ── Load state for display ────────────────────────────────────────────────────
 ACTIVE_TASK=$(jq -r '.active_task // "none"' "$STATE_FILE" 2>/dev/null || echo "none")
@@ -94,6 +93,7 @@ cat << INJECT
 📦 Compactions  : $COMPACT_COUNT this project
 ⏱  Session start: $TIMESTAMP
 📊 Plan         : $SUB_TYPE (${WINDOW_MINUTES}min window)
+🔑 Session      : ${SESSION_ID:-unknown} (${SESSION_SOURCE})$([ "$IN_WORKTREE" = true ] && echo " ⚠ worktree cwd — resume only from this dir")
 
 ── Last session ─────────────────────────────────────────────
 Task   : $ACTIVE_TASK

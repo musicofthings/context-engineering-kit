@@ -5,20 +5,16 @@
 set -euo pipefail
 
 PROJECT_DIR="${CLAUDE_PROJECT_DIR:-$(pwd)}"
-STATE_FILE="$PROJECT_DIR/.claude/session/state.json"
+# shellcheck source=../../scripts/resolve_state_dir.sh
+source "${CLAUDE_PLUGIN_ROOT:-$PROJECT_DIR}/scripts/resolve_state_dir.sh"
 INPUT=$(cat)
 FILE_PATH=$(echo "$INPUT" | jq -r '.tool_input.file_path // ""' 2>/dev/null || echo "")
 
 [ -z "$FILE_PATH" ] && exit 0
 
-mkdir -p "$PROJECT_DIR/.claude/session"
-
-# Append to changed_files list in state.json
-if [ -f "$STATE_FILE" ]; then
-  STATE_TMP=$(mktemp "${STATE_FILE}.XXXXXX")
-  jq --arg f "$FILE_PATH" \
-    'if (.changed_files | index($f)) then . else .changed_files += [$f] end' \
-    "$STATE_FILE" > "$STATE_TMP" && mv "$STATE_TMP" "$STATE_FILE" 2>/dev/null || rm -f "$STATE_TMP"
-fi
+# Append to changed_files list (lock-guarded, concurrency-safe)
+state_write \
+  'if ((.changed_files // []) | index($f)) then . else .changed_files = ((.changed_files // []) + [$f]) end' \
+  --arg f "$FILE_PATH" || true
 
 exit 0

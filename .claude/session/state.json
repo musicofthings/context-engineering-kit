@@ -19,18 +19,30 @@
     "/Users/theranosis_dx/projects/context-engineering-kit/.claude/hooks/stop.sh",
     "/Users/theranosis_dx/projects/context-engineering-kit/.claude/hooks/track-changes.sh",
     "/Users/theranosis_dx/projects/context-engineering-kit/.claude/hooks/session-start.sh",
-    "/Users/theranosis_dx/projects/context-engineering-kit/.claude/hooks/pre-compact.sh"
+    "/Users/theranosis_dx/projects/context-engineering-kit/.claude/hooks/pre-compact.sh",
+    "/Users/theranosis_dx/projects/context-engineering-kit/.claude/worktrees/adoring-beaver-634d43/session_handover.md",
+    "/Users/theranosis_dx/projects/context-engineering-kit/.claude/worktrees/adoring-beaver-634d43/templates/CLAUDE.md.template",
+    "/Users/theranosis_dx/projects/context-engineering-kit/.claude/worktrees/adoring-beaver-634d43/templates/session_handover.template.md",
+    "/Users/theranosis_dx/projects/context-engineering-kit/.claude/worktrees/adoring-beaver-634d43/.claude/hooks/session-start.sh",
+    "/Users/theranosis_dx/projects/context-engineering-kit/.claude/worktrees/adoring-beaver-634d43/.claude/hooks/session-end.sh",
+    "/Users/theranosis_dx/projects/context-engineering-kit/.claude/worktrees/adoring-beaver-634d43/.claude/hooks/stop.sh",
+    "/Users/theranosis_dx/projects/context-engineering-kit/.claude/worktrees/adoring-beaver-634d43/.claude/hooks/pre-compact.sh",
+    "/Users/theranosis_dx/projects/context-engineering-kit/.claude/worktrees/adoring-beaver-634d43/scripts/session_sync.sh",
+    "/Users/theranosis_dx/projects/context-engineering-kit/.claude/worktrees/adoring-beaver-634d43/scripts/generate_session_handover.py",
+    "/Users/theranosis_dx/projects/context-engineering-kit/.claude/worktrees/adoring-beaver-634d43/examples/fullstack-web/CLAUDE.md",
+    "/Users/theranosis_dx/projects/context-engineering-kit/.claude/worktrees/gallant-boyd-79d6ab/docs/hooks-flowchart.md"
   ],
-  "last_stop": "2026-05-14T17:23:33Z",
+  "last_stop": "2026-05-17T04:55:40Z",
   "last_stop_reason": "end_turn",
-  "session_start_time": "2026-05-14T17:15:06Z",
+  "session_start_time": "2026-05-17T04:53:22Z",
   "saved_by": "oncophenomics.local",
   "saved_platform": "mac",
-  "last_save": "2026-05-03T13:18:58Z",
+  "last_save": "2026-05-17T05:25:45Z",
   "last_tool_failure": {
-    "ts": "2026-05-03T13:35:10Z",
+    "ts": "2026-05-17T04:53:56Z",
     "tool": "Bash",
-    "error": "Exit code 1\nerror: Your local changes to the following files would be overwritten by checkout:\n\t.claude/session/state.json\nPlease commit your changes or stash them before you switch branches.\nAborting"
+    "error": "Exit code 1\n(eval):cd:1: no such file or directory: .claude/hooks\nwc: /tmp/hooks2.txt: open: No such file or directory"
   },
-  "subagents_running": 0
+  "subagents_running": 0,
+  "subagents_started": 1
 }
