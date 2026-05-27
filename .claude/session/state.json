@@ -1,5 +1,5 @@
 {
-  "last_updated": "2026-04-03T00:00:00Z",
+  "last_updated": "2026-05-27T19:31:45Z",
   "initialized_by": "setup",
   "active_task": "initial setup",
   "phase": "Phase 0 — Setup",
@@ -30,11 +30,15 @@
     "/Users/theranosis_dx/projects/context-engineering-kit/.claude/worktrees/adoring-beaver-634d43/scripts/session_sync.sh",
     "/Users/theranosis_dx/projects/context-engineering-kit/.claude/worktrees/adoring-beaver-634d43/scripts/generate_session_handover.py",
     "/Users/theranosis_dx/projects/context-engineering-kit/.claude/worktrees/adoring-beaver-634d43/examples/fullstack-web/CLAUDE.md",
-    "/Users/theranosis_dx/projects/context-engineering-kit/.claude/worktrees/gallant-boyd-79d6ab/docs/hooks-flowchart.md"
+    "/Users/theranosis_dx/projects/context-engineering-kit/.claude/worktrees/gallant-boyd-79d6ab/docs/hooks-flowchart.md",
+    "C:\\Users\\shibi\\Projects\\context-engineering-kit\\scripts\\resolve_state_dir.sh",
+    "C:\\Users\\shibi\\Projects\\context-engineering-kit\\.claude\\hooks\\extract-state-on-stop.sh",
+    "C:\\Users\\shibi\\Projects\\context-engineering-kit\\.claude\\hooks\\pre-compact.sh",
+    "C:\\Users\\shibi\\Projects\\context-engineering-kit\\.claude\\hooks\\session-end.sh"
   ],
-  "last_stop": "2026-05-27T19:04:29Z",
+  "last_stop": "2026-05-27T19:15:22Z",
   "last_stop_reason": "end_turn",
-  "session_start_time": "2026-05-17T04:53:22Z",
+  "session_start_time": "2026-05-27T19:31:45Z",
   "saved_by": "Apollo-Diagnostics",
   "saved_platform": "windows",
   "last_save": "2026-05-27T19:08:58Z",
@@ -46,5 +50,8 @@
   "subagents_running": 0,
   "subagents_started": 1,
   "session_id": "67c7397f-edba-4a76-9fd8-7689cdae3f38",
-  "transcript_path": "C:\\Users\\shibi\\.claude\\projects\\C--Users-shibi-Projects-context-engineering-kit\\67c7397f-edba-4a76-9fd8-7689cdae3f38.jsonl"
+  "transcript_path": "C:\\Users\\shibi\\.claude\\projects\\C--Users-shibi-Projects-context-engineering-kit\\67c7397f-edba-4a76-9fd8-7689cdae3f38.jsonl",
+  "session_cwd": "C:\\Users\\shibi\\Projects\\context-engineering-kit",
+  "session_source": "resume",
+  "session_cost_usd": "0"
 }
