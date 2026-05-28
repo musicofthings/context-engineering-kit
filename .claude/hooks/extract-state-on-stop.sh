@@ -21,15 +21,35 @@ source "${CLAUDE_PLUGIN_ROOT:-$PROJECT_DIR}/scripts/resolve_state_dir.sh"
 # ── Read Stop event input ────────────────────────────────────────────────────
 INPUT=$(cat)
 
-# Extract the assistant's response text from the Stop event
-# Stop input contains: session_id, stop_reason, turn_count, response text
-RESPONSE=$(printf '%s' "$INPUT" | jq -r '.response // ""' 2>/dev/null || echo "")
+# Stop hook payload schema (Claude Code):
+#   { session_id, transcript_path, hook_event_name, stop_hook_active }
+# It does NOT include the assistant response text — that lives in the
+# transcript JSONL at transcript_path. Read the last assistant message there.
+TRANSCRIPT_PATH=$(printf '%s' "$INPUT" | jq -r '.transcript_path // ""' 2>/dev/null || echo "")
 TURN_COUNT=$(printf '%s' "$INPUT" | jq -r '.turn_count // 0' 2>/dev/null || echo "0")
 # Coerce TURN_COUNT to a numeric value — argjson aborts on non-integer.
 case "$TURN_COUNT" in ''|*[!0-9]*) TURN_COUNT=0 ;; esac
 
-# If response is empty, nothing to extract
-[ -z "$RESPONSE" ] && exit 0
+RESPONSE=""
+if [ -n "$TRANSCRIPT_PATH" ] && [ -f "$TRANSCRIPT_PATH" ]; then
+  # Grep-prefilter so jq doesn't slurp a multi-MB transcript when only the
+  # last assistant turn matters. Each line is one JSON object.
+  RESPONSE=$(grep '"type":"assistant"' "$TRANSCRIPT_PATH" 2>/dev/null \
+    | tail -1 \
+    | jq -r '.message.content[]? | select(.type == "text") | .text' 2>/dev/null \
+    | tr '\n' ' ' \
+    || echo "")
+fi
+
+# Even when we can't extract response text, keep state.json heartbeat fresh.
+if [ -z "$RESPONSE" ]; then
+  state_write \
+    '.last_stop_turn = $turn | .last_activity = $ts' \
+    --argjson turn "$TURN_COUNT" \
+    --arg ts "$TIMESTAMP" \
+    >/dev/null 2>&1 || true
+  exit 0
+fi
 
 # ── Pattern: extract next_action ─────────────────────────────────────────────
 # Look for phrases that signal the next intended action

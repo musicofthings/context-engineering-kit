@@ -21,6 +21,8 @@ DANGEROUS_REGEXES=(
   'rm[[:space:]]+-[a-zA-Z]*r[a-zA-Z]*f[[:space:]]+\*'
   # separate -r -f flags (any order) against / ~ $HOME *
   'rm[[:space:]]+-[rf][[:space:]]+-[rf][[:space:]]+([/~]|\$HOME|\*)'
+  # separate -r -f flags with QUOTED destructive target — e.g. rm -r -f "$HOME"
+  'rm[[:space:]]+-[rf][[:space:]]+-[rf][[:space:]]+["'"'"']?(/|~|\$HOME)["'"'"']?([[:space:]]|$|[;&|])'
   # quoted destructive targets: rm -rf "/", '~', "$HOME"
   'rm[[:space:]]+-[a-zA-Z]*r[a-zA-Z]*f[[:space:]]+["'"'"']?(/|~|\$HOME)["'"'"']?([[:space:]]|$|[;&|])'
   # bare current-directory wipe: rm -rf . | ./ (target alone, not a path prefix)

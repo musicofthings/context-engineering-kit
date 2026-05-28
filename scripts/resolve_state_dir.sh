@@ -63,7 +63,9 @@ esac
 # ── Git topology ─────────────────────────────────────────────────────────────
 REPO_ROOT=$(git -C "$PROJECT_DIR" rev-parse --show-toplevel 2>/dev/null || echo "$PROJECT_DIR")
 _rsd_git_dir=$(git -C "$PROJECT_DIR" rev-parse --git-dir 2>/dev/null || echo "")
-if echo "$_rsd_git_dir" | grep -q '/worktrees/'; then
+# Match both forward-slash (Git-Bash/MSYS, normal Linux/macOS) and backslash
+# (some Windows-native git configurations) worktree paths.
+if echo "$_rsd_git_dir" | grep -qE '[/\\]worktrees[/\\]'; then
   IN_WORKTREE=true
   MAIN_ROOT=$(git -C "$PROJECT_DIR" worktree list --porcelain 2>/dev/null \
     | awk 'NR==1{sub(/^worktree /,""); print; exit}')
@@ -84,60 +86,93 @@ esac
 STATE_DIR="$_rsd_base/.claude/session"
 STATE_FILE="$STATE_DIR/state.json"
 unset _rsd_base
-mkdir -p "$STATE_DIR" 2>/dev/null || true
+if ! mkdir -p "$STATE_DIR" 2>/dev/null; then
+  echo "[resolve_state_dir] WARNING: could not create $STATE_DIR — state writes will fail" >&2
+fi
 
 # ── Portable lock around STATE_FILE ──────────────────────────────────────────
 # flock when available (Linux / Git-Bash). macOS has no flock(1): fall back to
 # an atomic mkdir spinlock with a bounded wait so a crashed writer can't wedge
 # every future hook.
-_state_lock_dir="${STATE_FILE}.lockd"
+#
+# NOTE: flock (file lock) and mkdir (directory lock) are NOT cross-process
+# compatible. A Linux writer and a macOS writer sharing one state.json via
+# NFS / iCloud / Dropbox lock on different paths and won't see each other.
+# Do not share a single state.json across OSes via cloud-sync filesystems.
 _state_lock_file="${STATE_FILE}.lock"
+_state_lock_dir="${STATE_FILE}.lockd"
+_state_lock_held=""
 
 _state_acquire() {
+  _state_lock_held=""
   if command -v flock &>/dev/null; then
-    exec 9>"$_state_lock_file" 2>/dev/null || return 0
-    flock -w 5 9 2>/dev/null || true
+    if ! exec 9>"$_state_lock_file" 2>/dev/null; then
+      echo "[resolve_state_dir] WARNING: cannot open lock file $_state_lock_file" >&2
+      return 1
+    fi
+    if ! flock -w 5 9 2>/dev/null; then
+      exec 9>&- 2>/dev/null || true
+      echo "[resolve_state_dir] WARNING: flock timeout on $_state_lock_file — aborting write" >&2
+      return 1
+    fi
+    _state_lock_held="flock"
     return 0
   fi
   local tries=0
   while ! mkdir "$_state_lock_dir" 2>/dev/null; do
     tries=$((tries + 1))
-    if [ "$tries" -ge 50 ]; then            # ~5s: assume stale, steal the lock
+    if [ "$tries" -ge 50 ]; then
+      # Looks stale — try to steal, but only proceed if WE win the mkdir race
       rm -rf "$_state_lock_dir" 2>/dev/null || true
-      mkdir "$_state_lock_dir" 2>/dev/null || true
-      break
+      if mkdir "$_state_lock_dir" 2>/dev/null; then
+        _state_lock_held="mkdir"
+        return 0
+      fi
+      echo "[resolve_state_dir] WARNING: mkdir-spinlock contention on $_state_lock_dir — aborting write" >&2
+      return 1
     fi
     sleep 0.1
   done
+  _state_lock_held="mkdir"
+  return 0
 }
 
 _state_release() {
-  if command -v flock &>/dev/null; then
-    exec 9>&- 2>/dev/null || true
-  else
-    rmdir "$_state_lock_dir" 2>/dev/null || true
-  fi
+  case "$_state_lock_held" in
+    flock) exec 9>&- 2>/dev/null || true ;;
+    mkdir) rmdir "$_state_lock_dir" 2>/dev/null || true ;;
+  esac
+  _state_lock_held=""
 }
 
 # state_write '<jq filter>' [jq args...]
 # Lock-guarded, atomic read-modify-write of STATE_FILE. Missing/corrupt file is
 # treated as {} so the filter always has a base object to merge into.
+# Returns 0 on success, 1 on any failure (lock not acquired, mktemp failed,
+# jq filter empty). Callers should propagate the return value — do NOT mask
+# with `|| true` if you care whether the write landed.
 state_write() {
   local filter="$1"; shift
   local tmp base
-  _state_acquire
+  if ! _state_acquire; then
+    return 1
+  fi
   if [ -s "$STATE_FILE" ] && jq -e . "$STATE_FILE" >/dev/null 2>&1; then
     base=$(cat "$STATE_FILE")
   else
     base='{}'
   fi
-  tmp=$(mktemp "${STATE_FILE}.XXXXXX" 2>/dev/null) || { _state_release; return 1; }
-  if printf '%s' "$base" | jq "$@" "$filter" > "$tmp" 2>/dev/null && [ -s "$tmp" ]; then
-    mv "$tmp" "$STATE_FILE"
-  else
-    rm -f "$tmp"
+  tmp=$(mktemp "${STATE_FILE}.XXXXXX" 2>/dev/null) || {
+    echo "[resolve_state_dir] WARNING: mktemp failed under $STATE_DIR" >&2
     _state_release
     return 1
+  }
+  if printf '%s' "$base" | jq "$@" "$filter" > "$tmp" 2>/dev/null && [ -s "$tmp" ]; then
+    mv "$tmp" "$STATE_FILE"
+    _state_release
+    return 0
   fi
+  rm -f "$tmp"
   _state_release
+  return 1
 }
