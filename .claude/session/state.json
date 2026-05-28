@@ -1,5 +1,5 @@
 {
-  "last_updated": "2026-05-28T05:36:51Z",
+  "last_updated": "2026-05-28T06:05:56Z",
   "initialized_by": "setup",
   "active_task": "initial setup",
   "phase": "Phase 0 — Setup",
@@ -34,11 +34,14 @@
     "C:\\Users\\shibi\\Projects\\context-engineering-kit\\scripts\\resolve_state_dir.sh",
     "C:\\Users\\shibi\\Projects\\context-engineering-kit\\.claude\\hooks\\extract-state-on-stop.sh",
     "C:\\Users\\shibi\\Projects\\context-engineering-kit\\.claude\\hooks\\pre-compact.sh",
-    "C:\\Users\\shibi\\Projects\\context-engineering-kit\\.claude\\hooks\\session-end.sh"
+    "C:\\Users\\shibi\\Projects\\context-engineering-kit\\.claude\\hooks\\session-end.sh",
+    "C:\\Users\\shibi\\Projects\\context-engineering-kit\\.claude\\hooks\\guard-dangerous.sh",
+    "C:\\Users\\shibi\\Projects\\context-engineering-kit\\.claude\\skills\\context-health\\SKILL.md",
+    "C:\\Users\\shibi\\Projects\\context-engineering-kit\\.git\\COMMIT_MSG_FIXES"
   ],
-  "last_stop": "2026-05-27T19:15:22Z",
+  "last_stop": "2026-05-28T06:35:49Z",
   "last_stop_reason": "end_turn",
-  "session_start_time": "2026-05-28T05:36:51Z",
+  "session_start_time": "2026-05-28T06:05:56Z",
   "saved_by": "Apollo-Diagnostics",
   "saved_platform": "windows",
   "last_save": "2026-05-27T19:08:58Z",
@@ -49,9 +52,12 @@
   },
   "subagents_running": 0,
   "subagents_started": 1,
-  "session_id": "6adab652-3424-4b68-85df-9f3484dcf948",
-  "transcript_path": "C:\\Users\\shibi\\.claude\\projects\\C--Users-shibi-Projects-context-engineering-kit\\6adab652-3424-4b68-85df-9f3484dcf948.jsonl",
+  "session_id": "67c7397f-edba-4a76-9fd8-7689cdae3f38",
+  "transcript_path": "C:\\Users\\shibi\\.claude\\projects\\C--Users-shibi-Projects-context-engineering-kit\\67c7397f-edba-4a76-9fd8-7689cdae3f38.jsonl",
   "session_cwd": "C:\\Users\\shibi\\Projects\\context-engineering-kit",
-  "session_source": "startup",
-  "session_cost_usd": "0"
+  "session_source": "resume",
+  "session_cost_usd": "0",
+  "last_stop_turn": 0,
+  "last_activity": "2026-05-28T06:35:49Z",
+  "state_source": "stop-hook-heuristic"
 }
