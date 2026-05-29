@@ -1,98 +1,58 @@
 # Session Handover
-_Generated: 2026-05-27T19:08:49Z_
+_Generated: 2026-05-29T15:51:24Z_
 _Branch: main_
-_Trigger: auto | Context at compact: unknown%_
+_Trigger: post-cleanup reset | Context at compact: n/a_
 _Compact count this project: 0_
 
 ---
 
 ## 🎯 Active Task
 **What we're building/fixing:**
-initial setup
+Code review and production hardening of context-engineering-kit v2.5.0.
 
 **Phase:** Phase 0 — Setup
-**Next action:** run /context-health in Claude Code
+**Next action:** run /context-health to verify cleanup
 
 ---
 
 ## ✅ Completed This Session
-- [x] Session handover generated (usage critical — 100% of pro limit)
-
----
-
----
-
----
-
----
+- [x] Deep audit of hooks, skills, scripts, and config
+- [x] Cleaned cross-machine pollution from state.json (32 stale changed_files entries removed)
+- [x] Rewrote session_handover.md (had orphaned separators and duplicate table headers)
+- [x] Gitignored rotating session jsonl files (tool-failures, turn-ledger, usage, subagents, daily-usage, usage-forecast)
+- [x] Truncated stale config-audit.log
+- [x] Aligned plugin hooks.json with standalone settings.json (added SubagentStart/Stop, PostToolUseFailure, full PermissionRequest matcher)
+- [x] Bumped marketplace.json version 2.4.1 → 2.5.0
+- [x] Added bounded growth to track-changes.sh (cap at 50 entries, path-normalised dedup)
 
 ---
 
 ## 🔄 In Progress (Exact Resume Point)
 **Branch:** `main`
-**Last commit:** `ce602e1 v2.5.0 release: align versions, refresh README + landing page (#10)`
-**Next immediate action:** run /context-health in Claude Code
+**Last commit:** `62e5dcc chore(context): save session state — initial setup [2026-05-29T15:50:08Z]`
+**Next immediate action:** run /context-health to verify cleanup
 
 ---
 
 ## 📋 Remaining Work
-1. Complete code review of current branch
-2. Address any issues found in review
-3. Merge to main when ready
-
----
-
----
-
----
-
----
+1. Run /context-health to verify all checks pass after cleanup
+2. Commit cleanup changes if review looks good
+3. Consider whether per-machine state.json should split (currently single file, machine-tagged via `saved_by`)
 
 ---
 
 ## 🏗 Architecture Decisions Made
 | Decision | Rationale | Date |
 |----------|-----------|------|
-| Decision | Rationale | Date |
-|----------|-----------|------|
-| Decision | Rationale | Date |
-|----------|-----------|------|
-| Decision | Rationale | Date |
-|----------|-----------|------|
-| Decision | Rationale | Date |
-|----------|-----------|------|
-| (none yet) | — | — |
-
----
-
----
-
----
-
----
+| Rotating jsonl files gitignored | They mutate every session and produced a perpetually-dirty tree | 2026-05-29 |
+| state.json kept tracked | It's the cross-device handover anchor — needed for /session-sync | 2026-05-29 |
+| changed_files capped at 50 in track-changes.sh | Prior runs accumulated 30+ entries spanning 3 machines and deleted worktrees | 2026-05-29 |
 
 ---
 
 ## 🔧 Commands to Resume
 
-**This exact conversation** (SDK/CLI transcript resume):
-```bash
-# Same machine AND same directory it started in:
-claude --resume 67c7397f-edba-4a76-9fd8-7689cdae3f38
-```
-- Session ID    : `67c7397f-edba-4a76-9fd8-7689cdae3f38`
-- Transcript    : `C:\Users\shibi\.claude\projects\C--Users-shibi-Projects-context-engineering-kit\67c7397f-edba-4a76-9fd8-7689cdae3f38.jsonl`
-- Bound to cwd  : `C:\Users\shibi\Projects\context-engineering-kit`
-- Stored at     : `~/.claude/projects/C--Users-shibi-Projects-context-engineering-kit/67c7397f-edba-4a76-9fd8-7689cdae3f38.jsonl`
-
-> ⚠️ Transcript resume is **cwd-bound**. It only works from the same directory
-> on the same machine. If this session started in a git **worktree**, that
-> worktree's path is the cwd — resuming from `main` (or after the worktree is
-> deleted) will silently start a *fresh* session. Per the Agent SDK docs, the
-> robust cross-host / cross-worktree path is **not** transcript resume — it's
-> this handover file: read it into a new session's prompt as application state.
-
-**Project state** (any machine — the robust path):
+**Project state** (any machine):
 ```bash
 git pull origin main
 bash scripts/session_sync.sh --load
@@ -108,43 +68,29 @@ bash scripts/session_sync.sh --load
 ## 📁 Files Modified This Session
 | File | Status |
 |------|--------|
-| `/Users/theranosis_dx/projects/context-engineering-kit/.claude/worktrees/adoring-beaver-634d43/scripts/generate_session_handover.py` | modified |
-| `/Users/theranosis_dx/projects/context-engineering-kit/.claude/hooks/session-start.sh` | modified |
-| `/Users/theranosis_dx/projects/context-engineering-kit/.claude/worktrees/adoring-beaver-634d43/templates/session_handover.template.md` | modified |
-| `/Users/theranosis_dx/projects/context-engineering-kit/README.md` | modified |
-| `D:\Projects\context-engineering-kit\.claude\settings.json` | modified |
-| `D:\Projects\context-engineering-kit\session_handover.md` | modified |
-| `/Users/theranosis_dx/projects/context-engineering-kit/.claude/worktrees/adoring-beaver-634d43/.claude/hooks/stop.sh` | modified |
-| `.claude/session/tool-failures.jsonl` | modified |
-| `D:\Projects\context-engineering-kit\config\morning_brief.json` | modified |
-| `/Users/theranosis_dx/projects/context-engineering-kit/.claude/hooks/track-changes.sh` | modified |
-| `/Users/theranosis_dx/projects/context-engineering-kit/.claude/worktrees/adoring-beaver-634d43/session_handover.md` | modified |
-| `/Users/theranosis_dx/projects/context-engineering-kit/.claude/worktrees/adoring-beaver-634d43/scripts/session_sync.sh` | modified |
-| `/Users/theranosis_dx/projects/context-engineering-kit/.claude/worktrees/adoring-beaver-634d43/examples/fullstack-web/CLAUDE.md` | modified |
-| `D:\Projects\context-engineering-kit\scripts\morning_brief.py` | modified |
-| `/Users/theranosis_dx/projects/context-engineering-kit/.claude/hooks/stop.sh` | modified |
-| _(+13 more files not shown)_ | — |
+| `.gitignore` | modified |
+| `.claude/session/state.json` | reset (pollution removed) |
+| `session_handover.md` | rewritten |
+| `.claude/config-audit.log` | truncated |
+| `.claude/hooks/track-changes.sh` | bounded growth + path normalisation |
+| `hooks/hooks.json` | synced with standalone settings.json |
+| `.claude-plugin/marketplace.json` | version 2.4.1 → 2.5.0 |
 
 ---
 
 ## 🌿 Git Context
 ```
 Branch  : main
-Commit  : ce602e1 v2.5.0 release: align versions, refresh README + landing page (#10)
-Status  : M .claude/session/state.json
- M .claude/session/tool-failures.jsonl
- M .claude/session/usage.jsonl
-?? .claude/session/daily-usage.json
-?? .claude/session/usage-forecast.json
+Commit  : 62e5dcc chore(context): save session state — initial setup [2026-05-29T15:50:08Z]
 ```
 
 Recent commits:
 ```
-ce602e1 v2.5.0 release: align versions, refresh README + landing page (#10)
-549e01f Unify state resolution, harden hooks/permissions, align with Agent SDK (#9)
-bdeb32b chore: merge code-review fixes into main
-a38c9d8 fix: apply all code review findings across hooks, scripts, and templates
-80dd749 chore(context): sync from oncophenomics.local â€” initial setup [2026-05-14T17:18:40Z]
+62e5dcc chore(context): save session state — initial setup [2026-05-29T15:50:08Z]
+b2ece29 chore(context): save session state — initial setup [2026-05-29T15:49:00Z]
+1607d4f chore(context): save session state — initial setup [2026-05-28T11:33:12Z]
+581c85e fix: apply all 15 code review findings from v2.5.0 review
+88673ab chore(context): save session state — initial setup [2026-05-28T05:36:55Z]
 ```
 
 ---
@@ -152,14 +98,7 @@ a38c9d8 fix: apply all code review findings across hooks, scripts, and templates
 ## ⚠️ Critical Rules
 - Never commit secrets or API keys
 - Run /handover before switching devices
-
----
-
----
-
----
-
----
+- Do NOT re-track .jsonl session files (they bloat git history)
 
 ---
 

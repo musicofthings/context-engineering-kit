@@ -47,7 +47,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/.claude/hooks/usage-sentinel.sh"
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/.claude/hooks/usage-sentinel.sh",
+            "async": false
           }
         ]
       }
@@ -55,7 +56,7 @@
 
     "PermissionRequest": [
       {
-        "matcher": "Write|Edit",
+        "matcher": "Write|Edit|MultiEdit|Bash",
         "hooks": [
           {
             "type": "command",
@@ -95,24 +96,12 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/.claude/hooks/extract-state-on-stop.sh",
-            "async": true
-          }
-        ]
-      },
-      {
-        "matcher": "",
-        "hooks": [
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/.claude/hooks/extract-state-on-stop.sh"
+          },
           {
             "type": "command",
-            "command": "bash -c 'source \"${CLAUDE_PLUGIN_ROOT}/scripts/find_python.sh\" && \"$PYTHON\" \"${CLAUDE_PLUGIN_ROOT}/scripts/usage-tracker.py\"'",
-            "async": true
-          }
-        ]
-      },
-      {
-        "matcher": "",
-        "hooks": [
+            "command": "bash -c 'source \"${CLAUDE_PLUGIN_ROOT}/scripts/find_python.sh\" && \"$PYTHON\" \"${CLAUDE_PLUGIN_ROOT}/scripts/usage-tracker.py\"'"
+          },
           {
             "type": "command",
             "command": "bash ${CLAUDE_PLUGIN_ROOT}/.claude/hooks/stop.sh"
@@ -152,6 +141,45 @@
           {
             "type": "command",
             "command": "bash ${CLAUDE_PLUGIN_ROOT}/.claude/hooks/track-changes.sh"
+          }
+        ]
+      }
+    ],
+
+    "PostToolUseFailure": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/.claude/hooks/post-tool-failure.sh",
+            "async": true
+          }
+        ]
+      }
+    ],
+
+    "SubagentStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "CLAUDE_HOOK_EVENT=SubagentStart bash ${CLAUDE_PLUGIN_ROOT}/.claude/hooks/subagent-lifecycle.sh",
+            "async": true
+          }
+        ]
+      }
+    ],
+
+    "SubagentStop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "CLAUDE_HOOK_EVENT=SubagentStop bash ${CLAUDE_PLUGIN_ROOT}/.claude/hooks/subagent-lifecycle.sh",
+            "async": true
           }
         ]
       }
