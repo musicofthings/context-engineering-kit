@@ -2,9 +2,10 @@
 
 > **Automated context preservation for Claude Code — across sessions, devices, and subscriptions.**
 
-Hooks, skills, and scripts that keep your context alive through compaction, device switches, and subscription changes. Works as a **Claude Code Desktop plugin** or a **Claude Code CLI standalone install**.
+Hooks, skills, and scripts that keep your context alive through compaction, device switches, and subscription changes. Works in **Claude Cowork**, the **Claude Code Desktop** plugin slot, or as a **Claude Code CLI** standalone install.
 
 🌐 **[Landing page & full docs →](https://musicofthings.github.io/context-engineering-kit/)**
+📦 **[Download plugin zip (v2.5.0) →](https://github.com/musicofthings/context-engineering-kit/releases/latest)** — for Cowork or Desktop Plugin upload
 
 ---
 
@@ -51,50 +52,70 @@ Hooks, skills, and scripts that keep your context alive through compaction, devi
 
 ## Installation
 
-Choose the install path that matches how you use Claude Code:
+Choose the install path that matches how you use Claude:
 
-| | Claude Code Desktop | Claude Code CLI |
-|--|---------------------|-----------------|
-| **How** | Upload zip via Customize UI | Clone repo + `bash setup.sh` |
-| **Skill names** | `/context-engineering-kit:handover` | `/handover` |
-| **Hooks wired by** | `hooks/hooks.json` (auto) | `.claude/settings.json` |
-| **Auto-activates on new repos** | ✅ Yes (plugin toggle) | Manual per-project |
-| **Best for** | Always-on across all projects | One specific project |
+| | Claude Cowork | Claude Code Desktop | Claude Code CLI |
+|--|--------------|---------------------|-----------------|
+| **How** | Upload zip via Plugins UI | Upload zip via Customize UI | Clone repo + `bash setup.sh` |
+| **Audience** | Cowork users (any role) | Developers (desktop app) | Developers (terminal) |
+| **Skill names** | `/context-engineering-kit:handover` | `/context-engineering-kit:handover` | `/handover` |
+| **Hooks active?** | Skills only (Cowork has no shell) | ✅ All 15 hooks fire | ✅ All 15 hooks fire |
+| **Auto-activates on new repos** | n/a | ✅ Yes (plugin toggle) | Manual per-project |
+| **Best for** | Conversation context management | Always-on across all projects | One specific project |
+
+> **Cowork vs. Claude Code:** the same zip works for both Cowork and Claude Code Desktop because the plugin format is identical. The difference is what runs — Cowork executes the **skills** (`/handover`, `/token-status`, etc.) but doesn't run the **hooks** (which need a shell environment). Claude Code runs both.
 
 ---
 
-## Option A — Claude Code Desktop (plugin)
+## Option A — Download the plugin zip (Cowork or Desktop)
 
-The recommended path if you use the **Claude Code desktop app**. The plugin loads automatically in every project — no per-project setup needed. New projects are bootstrapped automatically on first open.
+The easiest path. One zip works in both **Claude Cowork** and **Claude Code Desktop**.
 
-### Prerequisites
+### Step 1 — Get the zip
 
-- Claude Code desktop app (latest)
-- `jq`, `bash`, `git`
-- `python3` or `python` (v3.x) — the kit auto-detects the right command
-- `feedparser` for morning brief: `pip install feedparser`
+**Either** download the prebuilt zip from the [latest GitHub release](https://github.com/musicofthings/context-engineering-kit/releases/latest):
 
-### Install steps
+```
+context-engineering-kit-2.5.0.zip
+```
 
-1. **Download** `context-engineering-kit-plugin.zip` from the [latest release](https://github.com/musicofthings/context-engineering-kit/releases)
+**Or** build it from source (requires Python 3):
 
-   Or build from source:
-   ```bash
-   git clone https://github.com/musicofthings/context-engineering-kit.git
-   cd context-engineering-kit
-   zip -r ../context-engineering-kit-plugin.zip . --exclude "*.git*" --exclude "briefs/*" --exclude "*.pyc"
-   ```
+```bash
+git clone https://github.com/musicofthings/context-engineering-kit.git
+cd context-engineering-kit
+python scripts/package_plugin.py
+# → writes context-engineering-kit-2.5.0.zip in the project root
+```
 
-2. **Open Claude Code Desktop** → click **Customize** (bottom-left gear icon) → **Upload Plugin** → select the zip
+The packaging script reads the version from `.claude-plugin/plugin.json` and excludes git history, runtime session state, audit logs, and caches automatically.
 
-3. **Restart Claude Code Desktop**
+### Step 2a — Upload to Claude Cowork
 
-4. **Verify** — in any project:
+1. Open Cowork → **Settings** → **Plugins** (or **Skills** → **Add plugin**)
+2. Click **Upload plugin** → select `context-engineering-kit-2.5.0.zip`
+3. Confirm install — the eight skills appear as `/context-engineering-kit:*` commands
+4. Type `/context-engineering-kit:handover` in any conversation to use it
+
+> Cowork installs only enable the **skills** layer (the slash commands). Hooks, auto-save, usage sentinel, and git-sync are no-ops in Cowork because there's no shell environment. For the full hook-driven experience, use Claude Code (Option B or C below).
+
+### Step 2b — Upload to Claude Code Desktop
+
+1. Open **Claude Code Desktop** → click **Customize** (bottom-left gear) → **Upload Plugin**
+2. Select `context-engineering-kit-2.5.0.zip` and restart Claude Code
+3. Verify in any project:
    ```
    /context-engineering-kit:context-health
    ```
 
-### Skills in Desktop mode
+### Prerequisites for Desktop (not needed for Cowork)
+
+- Claude Code desktop app (latest)
+- `jq`, `bash`, `git` on PATH
+- `python3` or `python` (v3.x) — the kit auto-detects the right command
+- `feedparser` for morning brief: `pip install feedparser` (optional)
+
+### Skills in Cowork / Desktop mode
 
 All skills are namespaced with the plugin name:
 
@@ -147,7 +168,7 @@ Valid tiers: `pro` | `max` | `api` | `team`
 
 ---
 
-## Option B — Claude Code CLI (standalone, per-project)
+## Option B — Claude Code CLI (standalone, per-project, full hooks)
 
 Use this if you run `claude` from the terminal. Hooks wire directly into the project's `.claude/settings.json`. Skill names are short (`/handover` instead of `/context-engineering-kit:handover`).
 
@@ -209,8 +230,8 @@ Short names — no prefix needed:
 
 ## Skills reference
 
-| Skill | Desktop | CLI | Description |
-|-------|---------|-----|-------------|
+| Skill | Cowork / Desktop | CLI | Description |
+|-------|------------------|-----|-------------|
 | `/context-health` | `/context-engineering-kit:context-health` | `/context-health` | Full audit: hooks, scripts, state, git, config |
 | `/handover` | `/context-engineering-kit:handover` | `/handover` | Generate `session_handover.md` with full task state |
 | `/token-status` | `/context-engineering-kit:token-status` | `/token-status` | Context %, burn rate, subscription window, cost |
