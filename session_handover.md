@@ -1,80 +1,56 @@
 # Session Handover
-_Generated: 2026-05-17T05:25:45Z_
-_Branch: claude/gallant-boyd-79d6ab_
-_Trigger: auto | Context at compact: unknown%_
+_Generated: 2026-05-31T08:41:30Z_
+_Branch: main_
+_Trigger: usage critical (100% of pro limit) | Context at compact: ~5%_
 _Compact count this project: 0_
 
 ---
 
 ## 🎯 Active Task
 **What we're building/fixing:**
-initial setup
+Sync local repo with remote (git pull/push on `main`). Session triggered the usage-critical handover directive before processing the user's git sync request.
 
-**Phase:** Phase 0 — Setup
-**Next action:** run /context-health in Claude Code
+**Phase:** Maintenance — repo sync
+**Next action:** Run `git fetch && git pull --ff-only origin main`, then push any local commits.
 
 ---
 
 ## ✅ Completed This Session
-- [x] Session handover generated (usage critical — 100% of pro limit)
-
----
-
----
-
----
+- [x] Started session, hooks fired (v2.4.1 + v2.5.0)
+- [x] Generated handover doc due to usage threshold
 
 ---
 
 ## 🔄 In Progress (Exact Resume Point)
-**Branch:** `claude/gallant-boyd-79d6ab`
-**Last commit:** `d6b9ca5 chore(context): sync from oncophenomics.local — initial setup [2026-05-17T04:53:37Z]`
-**Next immediate action:** run /context-health in Claude Code
+**Branch:** `main`
+**Last commit:** `d07c6f1 chore(context): save session state — initial setup [2026-05-31T08:40:21Z]`
+**Next immediate action:** `git fetch origin && git pull --ff-only origin main && git push origin main`
 
 ---
 
 ## 📋 Remaining Work
-1. Complete code review of current branch
-2. Address any issues found in review
-3. Merge to main when ready
-
----
-
----
-
----
+1. Fetch from remote and fast-forward `main`
+2. Push local commits (if any after session-state commit)
+3. Verify clean status
 
 ---
 
 ## 🏗 Architecture Decisions Made
 | Decision | Rationale | Date |
 |----------|-----------|------|
-| Decision | Rationale | Date |
-|----------|-----------|------|
-| Decision | Rationale | Date |
-|----------|-----------|------|
-| Decision | Rationale | Date |
-|----------|-----------|------|
-| (none yet) | — | — |
-
----
-
----
-
----
+| (none this session) | — | 2026-05-31 |
 
 ---
 
 ## 🔧 Commands to Resume
 ```bash
-# On any machine after git pull:
-git pull origin claude/gallant-boyd-79d6ab
+git pull origin main
 bash scripts/session_sync.sh --load
 
 # In Claude Code:
-# /context-health     — verify hooks are wired
-# /handover           — review this file
-# /token-status       — check context usage
+# /context-health
+# /handover
+# /token-status
 ```
 
 ---
@@ -82,44 +58,29 @@ bash scripts/session_sync.sh --load
 ## 📁 Files Modified This Session
 | File | Status |
 |------|--------|
-| `/Users/theranosis_dx/projects/context-engineering-kit/.claude/hooks/stop.sh` | modified |
-| `/Users/theranosis_dx/projects/context-engineering-kit/README.md` | modified |
-| `/Users/theranosis_dx/projects/context-engineering-kit/.claude/worktrees/adoring-beaver-634d43/.claude/hooks/session-end.sh` | modified |
-| `/Users/theranosis_dx/projects/context-engineering-kit/.claude/hooks/session-start.sh` | modified |
-| `/Users/theranosis_dx/projects/context-engineering-kit/.claude/worktrees/adoring-beaver-634d43/.claude/hooks/stop.sh` | modified |
-| `/Users/theranosis_dx/projects/context-engineering-kit/.claude/worktrees/adoring-beaver-634d43/session_handover.md` | modified |
-| `/Users/theranosis_dx/projects/context-engineering-kit/.claude/worktrees/adoring-beaver-634d43/examples/fullstack-web/CLAUDE.md` | modified |
-| `.claude/session/usage.jsonl` | modified |
-| `/Users/theranosis_dx/projects/context-engineering-kit/.claude/hooks/extract-state-on-stop.sh` | modified |
-| `/Users/theranosis_dx/projects/context-engineering-kit/.claude/hooks/post-tool-failure.sh` | modified |
-| `/Users/theranosis_dx/projects/context-engineering-kit/.claude/hooks/track-changes.sh` | modified |
-| `D:\Projects\context-engineering-kit\session_handover.md` | modified |
-| `/Users/theranosis_dx/projects/context-engineering-kit/.claude/hooks/pre-compact.sh` | modified |
-| `/Users/theranosis_dx/projects/context-engineering-kit/.claude/worktrees/adoring-beaver-634d43/templates/CLAUDE.md.template` | modified |
-| `/Users/theranosis_dx/projects/context-engineering-kit/.claude/worktrees/adoring-beaver-634d43/templates/session_handover.template.md` | modified |
-| _(+13 more files not shown)_ | — |
+| .claude/session/state.json | modified |
+| .claude/session/tool-failures.jsonl | modified |
+| .claude/session/usage.jsonl | modified |
+| .claude/session/daily-usage.json | untracked |
+| .claude/session/subagents.jsonl | untracked |
+| .claude/session/usage-forecast.json | untracked |
 
 ---
 
 ## 🌿 Git Context
 ```
-Branch  : claude/gallant-boyd-79d6ab
-Commit  : d6b9ca5 chore(context): sync from oncophenomics.local — initial setup [2026-05-17T04:53:37Z]
-Status  : M .claude/session/state.json
- M .claude/session/tool-failures.jsonl
- M .claude/session/usage.jsonl
-?? .claude/session/daily-usage.json
-?? .claude/session/usage-forecast.json
-?? docs/hooks-flowchart.md
+Branch  : main
+Commit  : d07c6f1
+Status  : dirty (session state files only)
 ```
 
 Recent commits:
 ```
-d6b9ca5 chore(context): sync from oncophenomics.local — initial setup [2026-05-17T04:53:37Z]
+d07c6f1 chore(context): save session state — initial setup [2026-05-31T08:40:21Z]
+3f99f4c chore(context): save session state — initial setup [2026-05-17T07:28:12Z]
+f0cb8c2 chore(context): save session state — initial setup [2026-05-17T06:46:45Z]
 0689d1e chore(context): save session state — initial setup [2026-05-17T04:52:36Z]
 9d79733 chore(context): save session state — initial setup [2026-05-14T17:35:16Z]
-bdeb32b chore: merge code-review fixes into main
-a38c9d8 fix: apply all code review findings across hooks, scripts, and templates
 ```
 
 ---
@@ -127,12 +88,7 @@ a38c9d8 fix: apply all code review findings across hooks, scripts, and templates
 ## ⚠️ Critical Rules
 - Never commit secrets or API keys
 - Run /handover before switching devices
-
----
-
----
-
----
+- Use `--ff-only` on pull to avoid accidental merge commits
 
 ---
 
