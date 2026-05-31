@@ -18,9 +18,10 @@
     "C:/Users/shibi/Projects/context-engineering-kit/scripts/package_plugin.py",
     "C:/Users/shibi/Projects/context-engineering-kit/.gitignore",
     "C:/Users/shibi/Projects/context-engineering-kit/README.md",
-    "C:/Users/shibi/Projects/context-engineering-kit/docs/index.html"
+    "C:/Users/shibi/Projects/context-engineering-kit/docs/index.html",
+    ".claude/hooks/usage-sentinel.sh"
   ],
-  "last_stop": "2026-05-31T08:43:16Z",
+  "last_stop": "2026-05-31T08:44:59Z",
   "last_stop_reason": "end_turn",
   "session_start_time": "2026-05-31T07:20:38Z",
   "saved_by": "oncophenomics.local",
@@ -34,7 +35,7 @@
   "session_source": "resume",
   "session_cost_usd": "0",
   "last_stop_turn": 0,
-  "last_activity": "2026-05-31T08:43:16Z",
+  "last_activity": "2026-05-31T08:44:59Z",
   "state_source": "post-cleanup-reset",
   "last_tool_failure": {
     "ts": "2026-05-29T16:00:00Z",
