@@ -79,8 +79,11 @@ parse_epoch() {
   local ts="$1"
   if date -d "$ts" +%s &>/dev/null 2>&1; then
     date -d "$ts" +%s          # GNU/Linux
-  elif date -j -f "%Y-%m-%dT%H:%M:%SZ" "$ts" +%s &>/dev/null 2>&1; then
-    date -j -f "%Y-%m-%dT%H:%M:%SZ" "$ts" +%s   # macOS
+  elif TZ=UTC date -j -f "%Y-%m-%dT%H:%M:%SZ" "$ts" +%s &>/dev/null 2>&1; then
+    # macOS BSD `date -j -f` silently ignores the trailing `Z` — it has no
+    # format specifier for it, so the timestamp is read in local TZ and the
+    # epoch comes out off by the local TZ offset. TZ=UTC forces UTC parsing.
+    TZ=UTC date -j -f "%Y-%m-%dT%H:%M:%SZ" "$ts" +%s   # macOS
   else
     "$PYTHON" -c "from datetime import datetime,timezone; print(int(datetime.fromisoformat('${ts}'.replace('Z','+00:00')).timestamp()))" 2>/dev/null || echo "0"
   fi
