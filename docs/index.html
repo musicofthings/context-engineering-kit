@@ -688,20 +688,25 @@
 
     <p class="hero-sub">
       Automated hooks and skills that save your session state before compaction,
-      sync it across devices, and restore it on every session start —
-      so Claude always knows exactly where you left off.
+      sync it across devices and git worktrees, and restore it on every session
+      start — so Claude always knows exactly where you left off.
     </p>
 
     <div class="hero-actions">
-      <a href="#install" class="btn btn-primary">
+      <a href="https://github.com/musicofthings/context-engineering-kit/releases/latest" class="btn btn-primary">
         <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M7.47 10.78a.75.75 0 0 0 1.06 0l3.75-3.75a.75.75 0 0 0-1.06-1.06L8.75 8.44V1.75a.75.75 0 0 0-1.5 0v6.69L4.78 5.97a.75.75 0 0 0-1.06 1.06l3.75 3.75ZM3.75 13a.75.75 0 0 0 0 1.5h8.5a.75.75 0 0 0 0-1.5h-8.5Z"/></svg>
-        Install Plugin
+        Download Plugin Zip (v2.5.0)
       </a>
+      <a href="#install" class="btn btn-secondary">Install instructions</a>
       <a href="https://github.com/musicofthings/context-engineering-kit" class="btn btn-secondary">
         <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>
         View on GitHub
       </a>
     </div>
+    <p style="font-size:0.82rem; color:var(--muted); margin-bottom:60px; max-width:620px;">
+      Works in <strong>Claude Cowork</strong>, <strong>Claude Code Desktop</strong>, or <strong>Claude Code CLI</strong>.
+      Cowork &amp; Desktop use the zip above; CLI uses <code>git clone + setup.sh</code>.
+    </p>
 
     <div class="hero-terminal">
       <div class="terminal-bar">
@@ -711,13 +716,13 @@
       <div class="terminal-body">
         <code>
 <span class="t-info">╔══════════════════════════════════════════════════════════╗</span><br>
-<span class="t-info">║  context-engineering-kit v2.5 — Session Started          ║</span><br>
+<span class="t-info">║  context-engineering-kit v2.5.0 — Session Started        ║</span><br>
 <span class="t-info">╚══════════════════════════════════════════════════════════╝</span><br>
 <br>
-<span class="t-out">📅 Date/Time    : Thursday May 07 2026, 09:30 UTC</span><br>
-<span class="t-out">🌿 Branch       : main</span><br>
-<span class="t-out">📝 Last task    : implementing auth middleware</span><br>
-<span class="t-out">⏱  Session start: 2026-05-07T09:30:00Z</span><br>
+<span class="t-out">📅 Date/Time    : Saturday May 17 2026, 06:05 UTC</span><br>
+<span class="t-out">🌿 Branch       : feature/auth (worktree — state on main)</span><br>
+<span class="t-out">🔑 Session      : 9f3a-21c7 (resume) ⚠ worktree cwd</span><br>
+<span class="t-out">⏱  Session start: 2026-05-17T06:05:00Z</span><br>
 <span class="t-out">📊 Plan         : pro (300min window)</span><br>
 <br>
 <span class="t-out">── Last session ─────────────────────────────────────────</span><br>
@@ -725,7 +730,7 @@
 <span class="t-out">Phase  : Phase 3 — Testing</span><br>
 <span class="t-out">Next   : write integration tests for /auth/refresh</span><br>
 <br>
-<span class="t-ok">✅ Hooks verified · State restored · Ready to continue</span>
+<span class="t-ok">✅ Hooks verified · State restored · Resume: claude --resume 9f3a-21c7</span>
         </code>
       </div>
     </div>
@@ -776,6 +781,18 @@
         <p>Default /compact summarises everything uniformly. Important code decisions get compressed the same as exploration noise.</p>
         <p class="solution">→ /compact-smart preserves code and decisions at higher fidelity</p>
       </div>
+      <div class="problem-card">
+        <div class="icon">🌲</div>
+        <h3>Git worktrees fragment state</h3>
+        <p>You spin up a worktree for a feature branch. Its state lives on a throwaway branch and vanishes when the worktree is removed — or worse, parallel sessions clobber each other's state.</p>
+        <p class="solution">→ One resolver + <code>state.scope</code> + lock-guarded writes keep state coherent</p>
+      </div>
+      <div class="problem-card">
+        <div class="icon">🔑</div>
+        <h3>Can't find the session to resume</h3>
+        <p>You want to <code>claude --resume</code> the exact conversation but don't know the session ID — and transcript resume silently breaks when the cwd changed.</p>
+        <p class="solution">→ Captures the SDK session ID; handover prints the exact resume command + cwd caveat</p>
+      </div>
     </div>
   </div>
 </section>
@@ -822,9 +839,29 @@
   <div class="container">
     <p class="section-label">Features</p>
     <h2>Everything context preservation needs.</h2>
-    <p class="section-sub">14 hooks, 8 skills, and a suite of scripts — all working together silently.</p>
+    <p class="section-sub">15+ hooks, 8 skills, and a suite of scripts — all working together silently, now worktree-aware and concurrency-safe.</p>
 
     <div class="features-grid">
+      <div class="feature-card">
+        <span class="tag tag-config">Core · v2.5</span>
+        <h3>resolve_state_dir.sh</h3>
+        <p>Single source of truth for where session state lives. Config-driven <code>state.scope</code> (auto / main / local) handles branch vs. git-worktree flows, with a portable lock-guarded <code>state_write()</code> so parallel sessions field-merge instead of clobbering.</p>
+      </div>
+      <div class="feature-card">
+        <span class="tag tag-skill">Skill · v2.5 · Agent SDK</span>
+        <h3>Session resume</h3>
+        <p>SessionStart and Stop capture the SDK <code>session_id</code> and transcript path. <code>/handover</code> prints the exact <code>claude --resume &lt;id&gt;</code> command and warns when transcript resume is cwd-bound (e.g. started in a worktree).</p>
+      </div>
+      <div class="feature-card">
+        <span class="tag tag-hook">Hook · PreToolUse</span>
+        <h3>guard-dangerous.sh</h3>
+        <p>Blocks destructive shell before it runs: <code>rm -rf /</code>, <code>rm -rf .</code>, quoted <code>$HOME</code>, separate <code>-r -f</code> flags, fork bombs, disk wipers, and writes to <code>production.*</code>. Defense-in-depth alongside canonical deny rules.</p>
+      </div>
+      <div class="feature-card">
+        <span class="tag tag-hook">Hook · PermissionRequest</span>
+        <h3>auto-approve-permissions.sh</h3>
+        <p>Silently approves writes to context files and kit scripts (metachar-rejecting, anchored), so /handover and the hooks never interrupt you for permission — while <code>.env</code> and production paths stay denied.</p>
+      </div>
       <div class="feature-card">
         <span class="tag tag-hook">Hook · PreCompact</span>
         <h3>pre-compact.sh</h3>
@@ -893,8 +930,20 @@
 <section id="install">
   <div class="container">
     <p class="section-label">Installation</p>
-    <h2>Two ways to install.</h2>
-    <p class="section-sub">Plugin mode activates in every project automatically. CLI mode wires into a single project.</p>
+    <h2>Three ways to install.</h2>
+    <p class="section-sub">Cowork &amp; Desktop both take the same zip — easiest path. CLI gives you the full hook layer in a single project.</p>
+
+    <!-- Direct zip download callout -->
+    <div style="background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 22px; margin-bottom: 28px; display: flex; gap: 14px; align-items: center; flex-wrap: wrap; justify-content: space-between;">
+      <div>
+        <div style="font-size: 0.95rem; font-weight: 600; margin-bottom: 4px;">📦 Plugin zip — v2.5.0</div>
+        <div style="font-size: 0.85rem; color: var(--muted);">One zip, works in Claude Cowork and Claude Code Desktop. ~143 KB.</div>
+      </div>
+      <a href="https://github.com/musicofthings/context-engineering-kit/releases/latest" class="btn btn-primary" style="padding: 10px 18px; font-size: 0.88rem;">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M7.47 10.78a.75.75 0 0 0 1.06 0l3.75-3.75a.75.75 0 0 0-1.06-1.06L8.75 8.44V1.75a.75.75 0 0 0-1.5 0v6.69L4.78 5.97a.75.75 0 0 0-1.06 1.06l3.75 3.75ZM3.75 13a.75.75 0 0 0 0 1.5h8.5a.75.75 0 0 0 0-1.5h-8.5Z"/></svg>
+        Download from GitHub Releases
+      </a>
+    </div>
 
     <!-- OS selector -->
     <div class="os-selector">
@@ -913,38 +962,57 @@
     </div>
 
     <div class="install-tabs">
-      <button class="tab-btn active" onclick="showTab('plugin')">🔌 Desktop Plugin</button>
-      <button class="tab-btn" onclick="showTab('cli')">⌨️ CLI Standalone</button>
+      <button class="tab-btn active" onclick="showTab('cowork')">🤝 Claude Cowork</button>
+      <button class="tab-btn" onclick="showTab('plugin')">🔌 Code Desktop</button>
+      <button class="tab-btn" onclick="showTab('cli')">⌨️ Code CLI</button>
     </div>
 
-    <!-- ── Plugin tab ───────────────────────────────── -->
-    <div id="tab-plugin" class="tab-content active">
-      <p style="color:var(--muted); font-size:0.9rem; margin-bottom:24px;">Recommended. Installs once, activates automatically in every project you open in Claude Code Desktop.</p>
+    <!-- ── Cowork tab ───────────────────────────────── -->
+    <div id="tab-cowork" class="tab-content active">
+      <p style="color:var(--muted); font-size:0.9rem; margin-bottom:24px;">For Cowork users (any role). The skills layer (slash commands) installs cleanly; shell hooks are no-ops in Cowork because there's no shell environment.</p>
       <div class="steps">
         <div class="step">
           <div class="step-num">1</div>
           <div>
             <h4>Download the plugin zip</h4>
-            <p>From the <a href="https://github.com/musicofthings/context-engineering-kit/releases">latest release</a>, or build from source:</p>
+            <p>Grab the prebuilt zip from <a href="https://github.com/musicofthings/context-engineering-kit/releases/latest">GitHub Releases</a> — no clone, no build needed.</p>
+            <div class="code-block"><pre>context-engineering-kit-2.5.0.zip   <span class="comment"># ~143 KB</span></pre></div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div>
+            <h4>Upload to Claude Cowork</h4>
+            <p>Open <strong>Cowork</strong> → <strong>Settings</strong> → <strong>Plugins</strong> (or <strong>Skills → Add plugin</strong>) → <strong>Upload plugin</strong> → select the zip.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div>
+            <h4>Use a skill</h4>
+            <p>Type any of the eight skills as a slash command in a Cowork conversation:</p>
+            <div class="code-block"><pre>/context-engineering-kit:handover
+/context-engineering-kit:token-status
+/context-engineering-kit:context-health</pre></div>
+            <p style="margin-top:12px; font-size:0.82rem;">Want the full hook layer (auto-save before compaction, git sync, usage sentinel)? Switch to the <strong>Code Desktop</strong> or <strong>Code CLI</strong> tab — Cowork doesn't run shell hooks.</p>
+          </div>
+        </div>
+      </div>
+    </div>
 
-            <div class="os-win">
-              <div class="os-label">Windows PowerShell</div>
-              <div class="code-block"><pre><span class="cmd">git clone</span> https://github.com/musicofthings/context-engineering-kit.git
+    <!-- ── Plugin tab (Claude Code Desktop) ─────────── -->
+    <div id="tab-plugin" class="tab-content">
+      <p style="color:var(--muted); font-size:0.9rem; margin-bottom:24px;">Recommended for Claude Code Desktop users. Installs once, activates automatically in every project — skills <em>and</em> all 15 hooks.</p>
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div>
+            <h4>Get the plugin zip</h4>
+            <p><strong>Either</strong> download the prebuilt zip from the <a href="https://github.com/musicofthings/context-engineering-kit/releases/latest">latest release</a>, <strong>or</strong> build it from source (works the same on Windows, macOS, Linux):</p>
+            <div class="code-block"><pre><span class="cmd">git clone</span> https://github.com/musicofthings/context-engineering-kit.git
 <span class="cmd">cd</span> context-engineering-kit
-<span class="cmd">Compress-Archive</span> -Path . -DestinationPath ..\cek-plugin.zip -Force</pre></div>
-            </div>
-            <div class="os-mac">
-              <div class="os-label">macOS</div>
-              <div class="code-block"><pre><span class="cmd">git clone</span> https://github.com/musicofthings/context-engineering-kit.git
-<span class="cmd">cd</span> context-engineering-kit
-<span class="cmd">zip -r</span> ../cek-plugin.zip . --exclude "*.git*" --exclude "briefs/*"</pre></div>
-            </div>
-            <div class="os-linux">
-              <div class="os-label">Linux</div>
-              <div class="code-block"><pre><span class="cmd">git clone</span> https://github.com/musicofthings/context-engineering-kit.git
-<span class="cmd">cd</span> context-engineering-kit
-<span class="cmd">zip -r</span> ../cek-plugin.zip . --exclude "*.git*" --exclude "briefs/*"</pre></div>
-            </div>
+<span class="cmd">python</span> scripts/package_plugin.py   <span class="comment"># → context-engineering-kit-2.5.0.zip</span></pre></div>
+            <p style="margin-top:8px; font-size:0.82rem; color:var(--muted);">The script reads the version from <code>plugin.json</code> and excludes git history, runtime state, audit logs, and caches.</p>
           </div>
         </div>
         <div class="step">
@@ -959,22 +1027,8 @@
           <div>
             <h4>Set your subscription tier</h4>
             <p>In Claude Code settings, add to the <code>"env"</code> section:</p>
-
-            <div class="os-win">
-              <div class="os-label">Windows PowerShell</div>
-              <div class="code-block"><pre><span class="comment"># Claude Code Desktop → Customize → Advanced → env</span>
-{ <span class="cmd">"CEK_SUBSCRIPTION_TIER"</span>: <span class="t-ok">"pro"</span> }  <span class="comment"># pro | max | api | team</span></pre></div>
-            </div>
-            <div class="os-mac">
-              <div class="os-label">macOS</div>
-              <div class="code-block"><pre><span class="comment">// Claude Code Desktop → Customize → Advanced → env</span>
+            <div class="code-block"><pre><span class="comment">// Claude Code Desktop → Customize → Advanced → env</span>
 { <span class="cmd">"CEK_SUBSCRIPTION_TIER"</span>: <span class="t-ok">"pro"</span> }  <span class="comment">// pro | max | api | team</span></pre></div>
-            </div>
-            <div class="os-linux">
-              <div class="os-label">Linux</div>
-              <div class="code-block"><pre><span class="comment">// Claude Code Desktop → Customize → Advanced → env</span>
-{ <span class="cmd">"CEK_SUBSCRIPTION_TIER"</span>: <span class="t-ok">"pro"</span> }  <span class="comment">// pro | max | api | team</span></pre></div>
-            </div>
           </div>
         </div>
         <div class="step">
@@ -1211,9 +1265,13 @@
 <section id="cta">
   <div class="container">
     <h2>Start where you left off.<br>Every time.</h2>
-    <p>Install in 4 steps. Works with Pro, Max, and API billing.</p>
+    <p>One zip for Cowork &amp; Desktop. <code>git clone</code> for CLI. Works with Pro, Max, and API billing.</p>
     <div class="cta-actions">
-      <a href="#install" class="btn btn-primary">Install the Plugin</a>
+      <a href="https://github.com/musicofthings/context-engineering-kit/releases/latest" class="btn btn-primary">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" style="margin-right:6px;"><path d="M7.47 10.78a.75.75 0 0 0 1.06 0l3.75-3.75a.75.75 0 0 0-1.06-1.06L8.75 8.44V1.75a.75.75 0 0 0-1.5 0v6.69L4.78 5.97a.75.75 0 0 0-1.06 1.06l3.75 3.75ZM3.75 13a.75.75 0 0 0 0 1.5h8.5a.75.75 0 0 0 0-1.5h-8.5Z"/></svg>
+        Download Plugin Zip
+      </a>
+      <a href="#install" class="btn btn-secondary">Install instructions</a>
       <a href="https://github.com/musicofthings/context-engineering-kit" class="btn btn-secondary">
         <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>
         View Source

@@ -64,7 +64,9 @@ Report as: `hooks wired  ✅ 7/7 (plugin mode — hooks.json)`
 
 #### Standalone mode
 Check `.claude/settings.json` for a `hooks` block with these events:
-`PreCompact`, `SessionStart` (compact matcher), `Stop`, `SessionEnd`, `PreToolUse` (Bash), `PostToolUse` (Edit|Write), `Notification`
+`SessionStart`, `PreCompact`, `PostCompact`, `Stop`, `SessionEnd`, `PreToolUse` (Bash), `PostToolUse` (Edit|Write), `Notification`
+
+Note: prior to v2.5.0 a separate `SessionStart` entry with `matcher: "compact"` also wired `post-compact.sh` on resume. That double-registration was removed in v2.5.0 — `PostCompact` is now the sole trigger for `post-compact.sh`. Do not flag the missing `compact` matcher as a problem on v2.5+.
 
 ### 4. Hook scripts
 
@@ -88,15 +90,26 @@ Check `.claude/hooks/*.sh` exist and are executable.
 If missing: "Run `bash setup.sh` to populate hook scripts"
 
 ### 5. Session state
-Run:
+Source the shared resolver so this check looks at the SAME state.json the
+hooks write — important under worktree mode where state lives at the main
+checkout, not the worktree's own directory.
+
 ```bash
-# Check project-level state (where hooks write to)
-STATE="${CLAUDE_PROJECT_DIR:-$(pwd)}/.claude/session/state.json"
-if [ -f "$STATE" ]; then
-  echo "found: $STATE"
-  python3 -c "import sys,json; d=json.load(open('$STATE')); print('task:', d.get('active_task','?')); print('updated:', d.get('last_activity') or d.get('last_stop','?'))"
+PROJECT_DIR="${CLAUDE_PROJECT_DIR:-$(pwd)}"
+PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$PROJECT_DIR}"
+RESOLVER="$PLUGIN_ROOT/scripts/resolve_state_dir.sh"
+if [ -f "$RESOLVER" ]; then
+  # shellcheck disable=SC1090
+  source "$RESOLVER"
 else
-  echo "missing: $STATE"
+  STATE_FILE="$PROJECT_DIR/.claude/session/state.json"
+  STATE_DIR="$PROJECT_DIR/.claude/session"
+fi
+if [ -f "$STATE_FILE" ]; then
+  echo "found: $STATE_FILE"
+  python3 -c "import sys,json; d=json.load(open('$STATE_FILE')); print('task:', d.get('active_task','?')); print('updated:', d.get('last_activity') or d.get('last_stop','?'))"
+else
+  echo "missing: $STATE_FILE  (scope=$STATE_SCOPE, in_worktree=$IN_WORKTREE)"
 fi
 ```
 - state.json exists? ✅/⚠️ (absent = expected outside a project)
@@ -104,7 +117,10 @@ fi
 - `active_task` is set → ✅
 - Last updated timestamp
 
-Note: state.json is written to the **current project directory** (not the plugin directory). It will be absent until the first session-start hook fires in a project directory.
+Note: state.json is resolved via `scripts/resolve_state_dir.sh`. Under
+`state.scope=auto` from a linked worktree, the live state file is in the
+main checkout (`$MAIN_ROOT/.claude/session/state.json`), not the worktree
+itself. The resolver handles this; do not hardcode the worktree path.
 
 ### 6. Git sync status
 Run: `git -C "${CLAUDE_PROJECT_DIR:-$(pwd)}" status --short 2>/dev/null || echo "not a git repo"`
@@ -141,9 +157,10 @@ done
 ```
 
 ### 9. Usage tracking
-Run:
+Run (reusing `$STATE_DIR` from check #5 — same worktree-aware resolution):
 ```bash
-STATE_DIR="${CLAUDE_PROJECT_DIR:-$(pwd)}/.claude/session"
+# Expect STATE_DIR populated by resolve_state_dir.sh sourced above.
+: "${STATE_DIR:=${CLAUDE_PROJECT_DIR:-$(pwd)}/.claude/session}"
 for f in daily-usage.json usage-forecast.json; do
   [ -f "$STATE_DIR/$f" ] && echo "✅  $f" || echo "❌  $f (created automatically after a few turns)"
 done
@@ -164,7 +181,7 @@ For `CEK_SUBSCRIPTION_TIER`:
 ║  Context Health Report — YYYY-MM-DD    ║
 ╚════════════════════════════════════════╝
 
-Install mode       : plugin (context-engineering-kit v2.4.1)
+Install mode       : plugin (context-engineering-kit v2.5.0)
                      Plugin root: ~/.claude/plugins/cache/...
 
 CLAUDE.md          ✅ fresh (2h ago)

@@ -4,21 +4,21 @@
   "bash_path": "bash",
   "permissions": {
     "allow": [
-      "Write(session_handover.md)",
-      "Edit(session_handover.md)",
-      "Write(CLAUDE.md)",
-      "Edit(CLAUDE.md)",
-      "Write(agents.md)",
-      "Edit(agents.md)",
-      "Write(briefs/*.md)",
-      "Write(.claude/session/state.json)",
-      "Write(.claude/session/history.jsonl)",
-      "Write(.claude/session/turn-ledger.jsonl)",
-      "Write(.claude/session/usage.jsonl)",
-      "Write(.claude/session/tool-failures.jsonl)",
-      "Write(.claude/session/subagents.jsonl)",
-      "Write(.claude/compact-audit.log)",
-      "Write(.claude/config-audit.log)",
+      "Write(./session_handover.md)",
+      "Edit(./session_handover.md)",
+      "Write(./CLAUDE.md)",
+      "Edit(./CLAUDE.md)",
+      "Write(./agents.md)",
+      "Edit(./agents.md)",
+      "Write(./briefs/*.md)",
+      "Write(./.claude/session/state.json)",
+      "Write(./.claude/session/history.jsonl)",
+      "Write(./.claude/session/turn-ledger.jsonl)",
+      "Write(./.claude/session/usage.jsonl)",
+      "Write(./.claude/session/tool-failures.jsonl)",
+      "Write(./.claude/session/subagents.jsonl)",
+      "Write(./.claude/compact-audit.log)",
+      "Write(./.claude/config-audit.log)",
       "Bash(python3 scripts/generate_session_handover.py*)",
       "Bash(python3 scripts/update_context_files.py*)",
       "Bash(python3 scripts/usage-tracker.py*)",
@@ -27,15 +27,14 @@
       "Bash(python scripts/usage-tracker.py*)",
       "Bash(bash scripts/session_sync.sh*)",
       "Bash(bash .claude/hooks/*.sh*)",
-      "Bash(git add .claude/session/* session_handover.md CLAUDE.md)",
-      "Bash(git commit -m chore(context)*)"
+      "Bash(git add .claude/session/*)"
     ],
     "deny": [
-      "Read(.env)",
-      "Read(.env.*)",
-      "Write(.env)",
-      "Write(.env.*)",
-      "Write(production.*)",
+      "Read(./.env)",
+      "Read(./.env.*)",
+      "Write(./.env)",
+      "Write(./.env.*)",
+      "Write(./production.*)",
       "Bash(rm -rf *)"
     ]
   },
@@ -59,20 +58,11 @@
             "async": true
           }
         ]
-      },
-      {
-        "matcher": "compact",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/post-compact.sh"
-          }
-        ]
       }
     ],
     "PermissionRequest": [
       {
-        "matcher": "Write|Edit|MultiEdit",
+        "matcher": "Write|Edit|MultiEdit|Bash",
         "hooks": [
           {
             "type": "command",
@@ -121,24 +111,12 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/extract-state-on-stop.sh",
-            "async": true
-          }
-        ]
-      },
-      {
-        "matcher": "",
-        "hooks": [
+            "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/extract-state-on-stop.sh"
+          },
           {
             "type": "command",
-            "command": "bash -c 'source \"$CLAUDE_PROJECT_DIR/scripts/find_python.sh\" && \"$PYTHON\" \"$CLAUDE_PROJECT_DIR/scripts/usage-tracker.py\"'",
-            "async": true
-          }
-        ]
-      },
-      {
-        "matcher": "",
-        "hooks": [
+            "command": "bash -c 'source \"$CLAUDE_PROJECT_DIR/scripts/find_python.sh\" && \"$PYTHON\" \"$CLAUDE_PROJECT_DIR/scripts/usage-tracker.py\"'"
+          },
           {
             "type": "command",
             "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/stop.sh"
@@ -250,7 +228,7 @@
     ]
   },
   "env": {
-    "CEK_VERSION": "2.4.1",
+    "CEK_VERSION": "2.5.0",
     "CEK_TOKEN_WARN_PCT": "70",
     "CEK_TOKEN_COMPACT_PCT": "85",
     "CEK_TOKEN_CRITICAL_PCT": "92",

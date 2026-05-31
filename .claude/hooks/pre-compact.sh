@@ -11,18 +11,26 @@ PROJECT_DIR="${CLAUDE_PROJECT_DIR:-$(pwd)}"
 TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 # shellcheck source=../../scripts/find_python.sh
 source "${CLAUDE_PLUGIN_ROOT:-$PROJECT_DIR}/scripts/find_python.sh"
+# Python is preferred but optional — if absent we degrade to a heredoc-based
+# fallback handover rather than blocking the compaction (exit 2 would wedge
+# the session at high context for any user without python3).
+PYTHON_OK=true
 if ! "$PYTHON" -c "import sys; sys.exit(0)" 2>/dev/null; then
-  echo "[pre-compact] FATAL: Python 3 not found — cannot generate handover. Install python3 and retry." >&2
-  exit 2
+  echo "[pre-compact] WARNING: Python 3 not found — using fallback handover (limited fidelity)" >&2
+  PYTHON_OK=false
 fi
-STATE_FILE="$PROJECT_DIR/.claude/session/state.json"
-HANDOVER_FILE="$PROJECT_DIR/session_handover.md"
-AUDIT_LOG="$PROJECT_DIR/.claude/compact-audit.log"
+# shellcheck source=../../scripts/resolve_state_dir.sh
+source "${CLAUDE_PLUGIN_ROOT:-$PROJECT_DIR}/scripts/resolve_state_dir.sh"
+# Handover lives at MAIN_ROOT under auto/main scope so it survives worktree
+# deletion. Under scope=local it stays in the worktree by design.
+case "$STATE_SCOPE" in
+  local) HANDOVER_DIR="$REPO_ROOT" ;;
+  *)     HANDOVER_DIR="$MAIN_ROOT" ;;
+esac
+HANDOVER_FILE="$HANDOVER_DIR/session_handover.md"
+AUDIT_LOG="$MAIN_ROOT/.claude/compact-audit.log"
 
 log() { echo "[pre-compact] $*" >&2; }
-
-STATE_TMP=""
-trap 'rm -f "$STATE_TMP"' EXIT
 
 log "PreCompact triggered at $TIMESTAMP"
 
@@ -33,8 +41,10 @@ CONTEXT_PCT=$(echo "$INPUT" | jq -r '.context_percent // "unknown"' 2>/dev/null 
 
 log "Trigger: $TRIGGER | Context: $CONTEXT_PCT%"
 
-# ── Ensure session state directory exists ───────────────────────────────────
-mkdir -p "$PROJECT_DIR/.claude/session"
+# ── Ensure state directory exists (resolve_state_dir.sh already did this for
+#    $STATE_DIR, but in worktree+auto mode the worktree's own dir may also be
+#    referenced by other code paths — guarantee it). ──────────────────────────
+mkdir -p "$STATE_DIR"
 
 # ── Capture git context ──────────────────────────────────────────────────────
 GIT_BRANCH=$(git -C "$PROJECT_DIR" rev-parse --abbrev-ref HEAD 2>/dev/null || echo "unknown")
@@ -44,78 +54,52 @@ MODIFIED_FILES=$({ git -C "$PROJECT_DIR" diff --name-only 2>/dev/null || true; }
 # ── Update session state JSON — MERGE with existing, never replace ───────────
 # Preserves session_start_time, last_tool_failure, saved_by, and all other
 # fields written by other hooks. Only updates compaction-specific fields.
-PREV_COMPACT_COUNT=0
-if [ -f "$STATE_FILE" ]; then
-  PREV_COMPACT_COUNT=$(jq -r '.compact_count // 0' "$STATE_FILE" 2>/dev/null || echo "0")
-fi
-COMPACT_COUNT=$(( PREV_COMPACT_COUNT + 1 ))
-
+# compact_count is incremented inside the filter so it stays correct even if
+# another writer touches state.json concurrently (lock-guarded).
 MODIFIED_FILES_JSON=$(echo "$MODIFIED_FILES" | jq -R -s 'split("\n") | map(select(. != ""))' 2>/dev/null || echo "[]")
 
-STATE_TMP=$(mktemp "${STATE_FILE}.XXXXXX")
-if [ -f "$STATE_FILE" ]; then
-  # Merge: keep all existing fields, update only compaction-specific ones
-  jq \
-    --arg ts        "$TIMESTAMP" \
-    --arg trigger   "$TRIGGER" \
-    --arg ctx       "$CONTEXT_PCT" \
-    --arg branch    "$GIT_BRANCH" \
-    --arg commit    "$GIT_COMMIT" \
-    --argjson files "$MODIFIED_FILES_JSON" \
-    --argjson count "$COMPACT_COUNT" \
-    '. + {
-      last_updated:           $ts,
-      trigger:                $trigger,
-      context_pct_at_compact: $ctx,
-      git_branch:             $branch,
-      git_last_commit:        $commit,
-      modified_files:         $files,
-      compact_count:          $count
-    }' "$STATE_FILE" > "$STATE_TMP" \
-    && mv "$STATE_TMP" "$STATE_FILE" \
-    || { rm -f "$STATE_TMP"; log "WARNING: state.json update failed"; }
-else
-  # No existing state — create minimal bootstrap
-  jq -n \
-    --arg ts        "$TIMESTAMP" \
-    --arg trigger   "$TRIGGER" \
-    --arg ctx       "$CONTEXT_PCT" \
-    --arg branch    "$GIT_BRANCH" \
-    --arg commit    "$GIT_COMMIT" \
-    --argjson files "$MODIFIED_FILES_JSON" \
-    --argjson count "$COMPACT_COUNT" \
-    '{
-      last_updated:           $ts,
-      initialized_by:         "pre-compact",
-      trigger:                $trigger,
-      context_pct_at_compact: $ctx,
-      git_branch:             $branch,
-      git_last_commit:        $commit,
-      active_task:            "unknown",
-      phase:                  "unknown",
-      next_action:            "read session_handover.md",
-      modified_files:         $files,
-      compact_count:          $count
-    }' > "$STATE_TMP" \
-    && mv "$STATE_TMP" "$STATE_FILE" \
-    || { rm -f "$STATE_TMP"; log "WARNING: state.json creation failed"; }
-fi
+state_write \
+  '.last_updated           = $ts
+   | .trigger                = $trigger
+   | .context_pct_at_compact = $ctx
+   | .git_branch             = $branch
+   | .git_last_commit        = $commit
+   | .modified_files         = $files
+   | .compact_count          = ((.compact_count // 0) + 1)
+   | .active_task            = (.active_task // "unknown")
+   | .phase                  = (.phase // "unknown")
+   | .next_action            = (.next_action // "read session_handover.md")' \
+  --arg ts        "$TIMESTAMP" \
+  --arg trigger   "$TRIGGER" \
+  --arg ctx       "$CONTEXT_PCT" \
+  --arg branch    "$GIT_BRANCH" \
+  --arg commit    "$GIT_COMMIT" \
+  --argjson files "$MODIFIED_FILES_JSON" \
+  || log "WARNING: state.json update failed"
 
 # Re-read merged state for handover generation
+COMPACT_COUNT=$(jq -r '.compact_count // 1' "$STATE_FILE" 2>/dev/null || echo "1")
 ACTIVE_TASK=$(jq -r '.active_task // "unknown"' "$STATE_FILE" 2>/dev/null || echo "unknown")
 PHASE=$(jq -r '.phase // "unknown"'             "$STATE_FILE" 2>/dev/null || echo "unknown")
 NEXT_ACTION=$(jq -r '.next_action // "unknown"' "$STATE_FILE" 2>/dev/null || echo "unknown")
 
 # ── Generate/update session_handover.md ─────────────────────────────────────
-log "Generating session_handover.md..."
-"$PYTHON" "$PROJECT_DIR/scripts/generate_session_handover.py" \
-  --trigger "$TRIGGER" \
-  --context-pct "$CONTEXT_PCT" \
-  --branch "$GIT_BRANCH" \
-  --commit "$GIT_COMMIT" \
-  2>&1 | while IFS= read -r line; do log "$line"; done \
-|| {
-  log "WARNING: generate_session_handover.py failed — writing minimal fallback"
+log "Generating session_handover.md -> $HANDOVER_FILE"
+_HANDOVER_OK=false
+if [ "$PYTHON_OK" = true ]; then
+  if "$PYTHON" "$PROJECT_DIR/scripts/generate_session_handover.py" \
+       --trigger "$TRIGGER" \
+       --context-pct "$CONTEXT_PCT" \
+       --branch "$GIT_BRANCH" \
+       --commit "$GIT_COMMIT" \
+       --output "$HANDOVER_FILE" \
+       2>&1 | while IFS= read -r line; do log "$line"; done; then
+    _HANDOVER_OK=true
+  else
+    log "WARNING: generate_session_handover.py failed — falling back to heredoc"
+  fi
+fi
+if [ "$_HANDOVER_OK" != true ]; then
   cat > "$HANDOVER_FILE" <<HANDOVER
 # Session Handover
 _Auto-generated by pre-compact hook at ${TIMESTAMP}_
@@ -138,35 +122,50 @@ $MODIFIED_FILES
 ## Notes
 Context was compacted. Check git log for work completed this session.
 HANDOVER
-}
+fi
 
 # ── Update CLAUDE.md active work context section ─────────────────────────────
-"$PYTHON" "$PROJECT_DIR/scripts/update_context_files.py" \
-  --mode compact \
-  --timestamp "$TIMESTAMP" \
-  --branch "$GIT_BRANCH" \
-  --task "$ACTIVE_TASK" \
-  --phase "$PHASE" \
-  --next-action "$NEXT_ACTION" \
-  2>&1 | while IFS= read -r line; do log "$line"; done || true
+if [ "$PYTHON_OK" = true ]; then
+  "$PYTHON" "$PROJECT_DIR/scripts/update_context_files.py" \
+    --mode compact \
+    --timestamp "$TIMESTAMP" \
+    --branch "$GIT_BRANCH" \
+    --task "$ACTIVE_TASK" \
+    --phase "$PHASE" \
+    --next-action "$NEXT_ACTION" \
+    2>&1 | while IFS= read -r line; do log "$line"; done || true
+fi
 
 # ── Commit session files to git so session-sync can push them ────────────────
 # Uses --no-verify: hooks already ran; this is a mechanical snapshot commit.
-log "Committing session snapshot to git..."
+# Commit from MAIN_ROOT because under worktree+auto scope state.json and the
+# handover live there. CLAUDE.md is added from whichever root owns it.
+log "Committing session snapshot to git (cwd=$MAIN_ROOT)..."
 (
-  cd "$PROJECT_DIR"
-  git add session_handover.md CLAUDE.md \
-          .claude/session/state.json \
+  cd "$MAIN_ROOT" || exit 0
+  # Stage files relative to MAIN_ROOT — git add ignores missing paths under || true.
+  git add .claude/session/state.json \
           .claude/session/turn-ledger.jsonl \
           .claude/session/tool-failures.jsonl \
+          session_handover.md \
+          CLAUDE.md \
           2>/dev/null || true
-  git diff --cached --quiet 2>/dev/null && {
+  # If we're in a worktree under auto scope and the worktree itself has fresher
+  # CLAUDE.md / session_handover.md edits, sync them to MAIN_ROOT now so they
+  # land in this snapshot rather than waiting for SessionEnd.
+  if [ "$IN_WORKTREE" = true ] && [ "$STATE_SCOPE" != "local" ]; then
+    if [ -f "$PROJECT_DIR/CLAUDE.md" ] && [ "$PROJECT_DIR/CLAUDE.md" -nt "$MAIN_ROOT/CLAUDE.md" ]; then
+      cp "$PROJECT_DIR/CLAUDE.md" "$MAIN_ROOT/CLAUDE.md" 2>/dev/null \
+        && git add CLAUDE.md 2>/dev/null || true
+    fi
+  fi
+  if git diff --cached --quiet 2>/dev/null; then
     log "No changes to commit (files unchanged)"
-  } || {
+  else
     git commit --no-verify -m "chore(context): pre-compact snapshot [$TIMESTAMP] ctx=${CONTEXT_PCT}%" \
       2>&1 | while IFS= read -r line; do log "$line"; done \
     || log "WARNING: git commit failed (not blocking)"
-  }
+  fi
 ) || true
 
 # ── Append to audit log ──────────────────────────────────────────────────────

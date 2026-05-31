@@ -1,56 +1,66 @@
 # Session Handover
-_Generated: 2026-05-31T08:41:30Z_
+_Generated: 2026-05-29T15:51:24Z_
 _Branch: main_
-_Trigger: usage critical (100% of pro limit) | Context at compact: ~5%_
+_Trigger: post-cleanup reset | Context at compact: n/a_
 _Compact count this project: 0_
 
 ---
 
 ## 🎯 Active Task
 **What we're building/fixing:**
-Sync local repo with remote (git pull/push on `main`). Session triggered the usage-critical handover directive before processing the user's git sync request.
+Code review and production hardening of context-engineering-kit v2.5.0.
 
-**Phase:** Maintenance — repo sync
-**Next action:** Run `git fetch && git pull --ff-only origin main`, then push any local commits.
+**Phase:** Phase 0 — Setup
+**Next action:** run /context-health to verify cleanup
 
 ---
 
 ## ✅ Completed This Session
-- [x] Started session, hooks fired (v2.4.1 + v2.5.0)
-- [x] Generated handover doc due to usage threshold
+- [x] Deep audit of hooks, skills, scripts, and config
+- [x] Cleaned cross-machine pollution from state.json (32 stale changed_files entries removed)
+- [x] Rewrote session_handover.md (had orphaned separators and duplicate table headers)
+- [x] Gitignored rotating session jsonl files (tool-failures, turn-ledger, usage, subagents, daily-usage, usage-forecast)
+- [x] Truncated stale config-audit.log
+- [x] Aligned plugin hooks.json with standalone settings.json (added SubagentStart/Stop, PostToolUseFailure, full PermissionRequest matcher)
+- [x] Bumped marketplace.json version 2.4.1 → 2.5.0
+- [x] Added bounded growth to track-changes.sh (cap at 50 entries, path-normalised dedup)
 
 ---
 
 ## 🔄 In Progress (Exact Resume Point)
 **Branch:** `main`
-**Last commit:** `d07c6f1 chore(context): save session state — initial setup [2026-05-31T08:40:21Z]`
-**Next immediate action:** `git fetch origin && git pull --ff-only origin main && git push origin main`
+**Last commit:** `62e5dcc chore(context): save session state — initial setup [2026-05-29T15:50:08Z]`
+**Next immediate action:** run /context-health to verify cleanup
 
 ---
 
 ## 📋 Remaining Work
-1. Fetch from remote and fast-forward `main`
-2. Push local commits (if any after session-state commit)
-3. Verify clean status
+1. Run /context-health to verify all checks pass after cleanup
+2. Commit cleanup changes if review looks good
+3. Consider whether per-machine state.json should split (currently single file, machine-tagged via `saved_by`)
 
 ---
 
 ## 🏗 Architecture Decisions Made
 | Decision | Rationale | Date |
 |----------|-----------|------|
-| (none this session) | — | 2026-05-31 |
+| Rotating jsonl files gitignored | They mutate every session and produced a perpetually-dirty tree | 2026-05-29 |
+| state.json kept tracked | It's the cross-device handover anchor — needed for /session-sync | 2026-05-29 |
+| changed_files capped at 50 in track-changes.sh | Prior runs accumulated 30+ entries spanning 3 machines and deleted worktrees | 2026-05-29 |
 
 ---
 
 ## 🔧 Commands to Resume
+
+**Project state** (any machine):
 ```bash
 git pull origin main
 bash scripts/session_sync.sh --load
 
 # In Claude Code:
-# /context-health
-# /handover
-# /token-status
+# /context-health     — verify hooks are wired
+# /handover           — review this file
+# /token-status       — check context usage
 ```
 
 ---
@@ -58,29 +68,29 @@ bash scripts/session_sync.sh --load
 ## 📁 Files Modified This Session
 | File | Status |
 |------|--------|
-| .claude/session/state.json | modified |
-| .claude/session/tool-failures.jsonl | modified |
-| .claude/session/usage.jsonl | modified |
-| .claude/session/daily-usage.json | untracked |
-| .claude/session/subagents.jsonl | untracked |
-| .claude/session/usage-forecast.json | untracked |
+| `.gitignore` | modified |
+| `.claude/session/state.json` | reset (pollution removed) |
+| `session_handover.md` | rewritten |
+| `.claude/config-audit.log` | truncated |
+| `.claude/hooks/track-changes.sh` | bounded growth + path normalisation |
+| `hooks/hooks.json` | synced with standalone settings.json |
+| `.claude-plugin/marketplace.json` | version 2.4.1 → 2.5.0 |
 
 ---
 
 ## 🌿 Git Context
 ```
 Branch  : main
-Commit  : d07c6f1
-Status  : dirty (session state files only)
+Commit  : 62e5dcc chore(context): save session state — initial setup [2026-05-29T15:50:08Z]
 ```
 
 Recent commits:
 ```
-d07c6f1 chore(context): save session state — initial setup [2026-05-31T08:40:21Z]
-3f99f4c chore(context): save session state — initial setup [2026-05-17T07:28:12Z]
-f0cb8c2 chore(context): save session state — initial setup [2026-05-17T06:46:45Z]
-0689d1e chore(context): save session state — initial setup [2026-05-17T04:52:36Z]
-9d79733 chore(context): save session state — initial setup [2026-05-14T17:35:16Z]
+62e5dcc chore(context): save session state — initial setup [2026-05-29T15:50:08Z]
+b2ece29 chore(context): save session state — initial setup [2026-05-29T15:49:00Z]
+1607d4f chore(context): save session state — initial setup [2026-05-28T11:33:12Z]
+581c85e fix: apply all 15 code review findings from v2.5.0 review
+88673ab chore(context): save session state — initial setup [2026-05-28T05:36:55Z]
 ```
 
 ---
@@ -88,7 +98,7 @@ f0cb8c2 chore(context): save session state — initial setup [2026-05-17T06:46:4
 ## ⚠️ Critical Rules
 - Never commit secrets or API keys
 - Run /handover before switching devices
-- Use `--ff-only` on pull to avoid accidental merge commits
+- Do NOT re-track .jsonl session files (they bloat git history)
 
 ---
 

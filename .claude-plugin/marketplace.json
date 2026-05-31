@@ -12,14 +12,14 @@
       "name": "context-engineering-kit",
       "source": "./",
       "description": "Automated context preservation for Claude Code across sessions, devices, and subscriptions.",
-      "version": "2.4.1",
+      "version": "2.5.0",
       "author": {
         "name": "musicofthings"
       },
       "homepage": "https://github.com/musicofthings/context-engineering-kit",
       "repository": "https://github.com/musicofthings/context-engineering-kit",
       "license": "MIT",
-      "keywords": ["context", "session", "handover", "token-tracking", "compaction", "multi-device"]
+      "keywords": ["context", "session", "handover", "token-tracking", "compaction", "multi-device", "worktree", "session-resume", "usage", "morning-brief"]
     }
   ]
 }
