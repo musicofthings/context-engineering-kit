@@ -24,6 +24,10 @@ SESSION_SOURCE=$(printf '%s' "$HOOK_INPUT" | jq -r '.source // "startup"' 2>/dev
 # ── Resolve state location (shared worktree-aware helper) ─────────────────────
 # shellcheck source=../../scripts/resolve_state_dir.sh
 source "${CLAUDE_PLUGIN_ROOT:-$PROJECT_DIR}/scripts/resolve_state_dir.sh"
+
+# Collapse a double fire when the kit is active as both plugin and opened repo.
+hook_once session-start || exit 0
+
 SENTINEL_DIR="$STATE_DIR"
 BUDGET_FILE="$MAIN_ROOT/config/usage_budget.json"
 
@@ -41,13 +45,59 @@ rm -f "$SENTINEL_DIR/.sentinel_warn" \
       "$SENTINEL_DIR/.sentinel_save" \
       "$SENTINEL_DIR/.sentinel_critical" 2>/dev/null || true
 
+# ── Load budget/window config (also reused by the display block below) ────────
+SUB_TYPE="pro"
+WINDOW_MINUTES=300
+if [ -f "$BUDGET_FILE" ]; then
+  SUB_TYPE=$(jq -r '.subscription_type // "pro"' "$BUDGET_FILE" 2>/dev/null || echo "pro")
+  WINDOW_MINUTES=$(jq -r ".subscriptions.${SUB_TYPE}.window_minutes // 300" "$BUDGET_FILE" 2>/dev/null || echo "300")
+fi
+
+# ── Decide session_start_time — keep the usage clock honest ──────────────────
+# Resetting this on every SessionStart (fresh AND resumed) made usage-sentinel
+# measure wall-clock since the last start, not the real rolling Pro/Max window —
+# producing false "100% / CRITICAL" banners once elapsed exceeded the window.
+#   • resume / compact  → never restart the clock (same window continues).
+#   • startup / clear   → keep the existing window unless it has fully elapsed;
+#                         only then start a fresh window from now.
+# A brand-new project (no prior start time) always starts now.
+_parse_epoch() {
+  local ts="$1"
+  if date -d "$ts" +%s >/dev/null 2>&1; then
+    date -d "$ts" +%s
+  elif TZ=UTC date -j -f "%Y-%m-%dT%H:%M:%SZ" "$ts" +%s >/dev/null 2>&1; then
+    TZ=UTC date -j -f "%Y-%m-%dT%H:%M:%SZ" "$ts" +%s
+  elif command -v python3 >/dev/null 2>&1; then
+    python3 -c "from datetime import datetime; print(int(datetime.fromisoformat('${ts}'.replace('Z','+00:00')).timestamp()))" 2>/dev/null || echo "0"
+  else
+    echo "0"
+  fi
+}
+
+PREV_START=$(jq -r '.session_start_time // ""' "$STATE_FILE" 2>/dev/null || echo "")
+NEW_START="$TIMESTAMP"
+if [ -n "$PREV_START" ]; then
+  case "$SESSION_SOURCE" in
+    resume|compact)
+      NEW_START="$PREV_START" ;;
+    *)
+      PREV_EPOCH=$(_parse_epoch "$PREV_START")
+      NOW_EPOCH=$(date +%s)
+      WINDOW_SEC=$(( WINDOW_MINUTES * 60 ))
+      case "$PREV_EPOCH" in ''|*[!0-9]*) PREV_EPOCH=0 ;; esac
+      if [ "$PREV_EPOCH" -gt 0 ] && [ "$(( NOW_EPOCH - PREV_EPOCH ))" -lt "$WINDOW_SEC" ]; then
+        NEW_START="$PREV_START"   # window still active — keep its start
+      fi ;;
+  esac
+fi
+
 # ── Reset subagent counter and record session start (lock-guarded) ───────────
 # subagents_running drifts upward across crashes — reset to 0 on session start.
 # state_write treats a missing file as {}, so the // defaults below double as
 # the bootstrap path for a brand-new project.
 state_write \
   '.subagents_running = 0
-   | .session_start_time = $ts
+   | .session_start_time = $start
    | .last_updated = $ts
    | (if $sid  != "" then .session_id = $sid else . end)
    | (if $tx   != "" then .transcript_path = $tx else . end)
@@ -60,6 +110,7 @@ state_write \
    | .session_cost_usd = (.session_cost_usd // "0")
    | .changed_files = (.changed_files // [])' \
   --arg ts "$TIMESTAMP" \
+  --arg start "$NEW_START" \
   --arg sid "$SESSION_ID" \
   --arg tx "$TRANSCRIPT_PATH" \
   --arg scwd "$SESSION_CWD" \
@@ -71,14 +122,7 @@ PHASE=$(jq -r '.phase // "none"' "$STATE_FILE" 2>/dev/null || echo "none")
 NEXT_ACTION=$(jq -r '.next_action // "none"' "$STATE_FILE" 2>/dev/null || echo "none")
 LAST_UPDATED=$(jq -r '.last_updated // "unknown"' "$STATE_FILE" 2>/dev/null || echo "unknown")
 COMPACT_COUNT=$(jq -r '.compact_count // 0' "$STATE_FILE" 2>/dev/null || echo "0")
-
-# Load budget config for display
-SUB_TYPE="pro"
-WINDOW_MINUTES=300
-if [ -f "$BUDGET_FILE" ]; then
-  SUB_TYPE=$(jq -r '.subscription_type // "pro"' "$BUDGET_FILE" 2>/dev/null || echo "pro")
-  WINDOW_MINUTES=$(jq -r ".subscriptions.${SUB_TYPE}.window_minutes // 300" "$BUDGET_FILE" 2>/dev/null || echo "300")
-fi
+# SUB_TYPE / WINDOW_MINUTES were already loaded above for the window calc.
 
 cat << INJECT
 

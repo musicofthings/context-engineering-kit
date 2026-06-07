@@ -19,6 +19,9 @@ log "Session ending at $TIMESTAMP"
 # shellcheck source=../../scripts/resolve_state_dir.sh
 source "${CLAUDE_PLUGIN_ROOT:-$PROJECT_DIR}/scripts/resolve_state_dir.sh"
 
+# Collapse a double fire (plugin + opened repo) so we don't commit twice.
+hook_once session-end || exit 0
+
 if [ "$IN_WORKTREE" = true ]; then
   log "In linked worktree — sync mode depends on STATE_SCOPE=$STATE_SCOPE"
   mkdir -p "$MAIN_ROOT/.claude/session"

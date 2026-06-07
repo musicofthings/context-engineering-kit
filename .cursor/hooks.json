@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "hooks": {
+    "sessionStart": [
+      { "command": "bash .cursor/hooks/on-session-start.sh" }
+    ],
+    "sessionEnd": [
+      { "command": "bash .cursor/hooks/on-session-end.sh" }
+    ],
+    "beforeSubmitPrompt": [
+      { "command": "bash .cursor/hooks/on-prompt.sh" }
+    ],
+    "beforeShellExecution": [
+      { "command": "bash .cursor/hooks/guard-shell.sh", "failClosed": false }
+    ],
+    "afterFileEdit": [
+      { "command": "bash .cursor/hooks/track-edit.sh" }
+    ],
+    "stop": [
+      { "command": "bash .cursor/hooks/on-stop.sh" }
+    ],
+    "postToolUseFailure": [
+      { "command": "bash .cursor/hooks/on-tool-failure.sh" }
+    ],
+    "subagentStart": [
+      { "command": "bash .cursor/hooks/on-subagent.sh SubagentStart" }
+    ],
+    "subagentStop": [
+      { "command": "bash .cursor/hooks/on-subagent.sh SubagentStop" }
+    ],
+    "preCompact": [
+      { "command": "bash .cursor/hooks/on-precompact.sh" }
+    ]
+  }
+}

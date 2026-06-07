@@ -1,7 +1,20 @@
 # Hooks & Triggers — Visual Logic Map
 
 > Rendered Mermaid diagrams. Edit the blocks below to change the wiring, then
-> mirror the change into `.claude/settings.json` and the relevant hook script.
+> mirror the change into `.claude/settings.json` (Claude Code) **and**
+> `.cursor/hooks.json` (Cursor) and the relevant hook script.
+
+> **Runtimes:** the kit's logic lives in `.claude/hooks/*.sh`. Two runtimes
+> dispatch to it:
+> - **Claude Code** — events wired in `.claude/settings.json` (project) and
+>   `hooks/hooks.json` (plugin). Scripts read Claude Code's stdin JSON directly.
+> - **Cursor** — events wired in `.cursor/hooks.json`; thin adapters in
+>   `.cursor/hooks/*.sh` translate Cursor's payloads into the Claude Code shape
+>   and exec the same underlying scripts. See §7.
+>
+> **Removed (do not re-add):** `InstructionsLoaded` and `ConfigChange` are NOT
+> real Claude Code events (not in the [hooks reference](https://code.claude.com/docs/en/hooks)),
+> so those entries never fired and were deleted from both configs.
 
 ---
 
@@ -286,6 +299,62 @@ auto-approve hook because deny is evaluated independently of hook `allow`.
 and `PreToolUse` (event echoed correctly); non-context writes and arbitrary /
 metachar-smuggled Bash fall through to a normal prompt; a `.env` write is
 **not** approved by the hook (the deny rule owns that, by SDK design).
+
+---
+
+## 7. Cursor runtime support (`.cursor/hooks.json`)
+
+Cursor uses a different event model and stdin schema than Claude Code, so the
+kit ships thin adapters in `.cursor/hooks/*.sh`. Each adapter exports
+`CLAUDE_PROJECT_DIR`/`CLAUDE_PLUGIN_ROOT` (resolved from its own location),
+reshapes Cursor's payload into the Claude Code shape where field names differ,
+and execs the **same** underlying `.claude/hooks/*.sh` — one logic core, two
+runtimes. Banner/injection stdout is routed to stderr (the Hooks output
+channel) since Cursor does not inject arbitrary hook stdout as context; the
+load-bearing side effects (state writes, git snapshot, guards) still run.
+
+```mermaid
+flowchart LR
+    classDef cur fill:#1f6feb,color:#fff
+    classDef ad fill:#8957e5,color:#fff
+    classDef core fill:#2d6a4f,color:#fff
+
+    subgraph Cursor events
+      cs([sessionStart]):::cur
+      ce([sessionEnd]):::cur
+      bp([beforeSubmitPrompt]):::cur
+      bs([beforeShellExecution]):::cur
+      fe([afterFileEdit]):::cur
+      st([stop]):::cur
+      tf([postToolUseFailure]):::cur
+      sa([subagentStart/Stop]):::cur
+      pc([preCompact]):::cur
+    end
+
+    cs --> a1[on-session-start.sh]:::ad --> c1[session-start.sh + morning-brief]:::core
+    ce --> a2[on-session-end.sh]:::ad --> c2[session-end.sh]:::core
+    bp --> a3[on-prompt.sh]:::ad --> c3[usage-sentinel.sh]:::core
+    bs --> a4["guard-shell.sh\nreshape .command → .tool_input.command\nexit 2 = block"]:::ad --> c4[guard-dangerous.sh]:::core
+    fe --> a5["track-edit.sh\nreshape .file_path"]:::ad --> c5[track-changes.sh]:::core
+    st --> a6[on-stop.sh]:::ad --> c6[extract-state-on-stop.sh → usage-tracker.py → stop.sh]:::core
+    tf --> a7[on-tool-failure.sh]:::ad --> c7[post-tool-failure.sh]:::core
+    sa --> a8["on-subagent.sh $EVENT"]:::ad --> c8[subagent-lifecycle.sh]:::core
+    pc --> a9[on-precompact.sh]:::ad --> c9[pre-compact.sh]:::core
+```
+
+**Field reshape needed** (Cursor top-level → Claude Code nested):
+`beforeShellExecution.command → tool_input.command`,
+`afterFileEdit.file_path → tool_input.file_path`. Other scripts default missing
+fields gracefully, so their adapters pass the payload through unchanged.
+
+**Cursor has no equivalent for** `PostCompact` (re-injection) or
+`PermissionRequest` (auto-approve) — those Claude Code behaviors are intentionally
+not mapped. Dangerous-command blocking instead rides `beforeShellExecution`
+(exit code 2 = deny).
+
+**De-dupe:** `hook_once` in `resolve_state_dir.sh` collapses a double fire of
+`session-start` / `session-end` / `pre-compact` / `post-compact` when the kit is
+active simultaneously as an installed plugin and as the opened repo.
 
 ---
 

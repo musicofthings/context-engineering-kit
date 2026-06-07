@@ -195,30 +195,6 @@
           }
         ]
       }
-    ],
-
-    "InstructionsLoaded": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "echo '[context-kit] Ready. /context-engineering-kit:token-status  /context-engineering-kit:handover  /context-engineering-kit:context-health'"
-          }
-        ]
-      }
-    ],
-
-    "ConfigChange": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "jq -c '{ts: now|todate, file: .file_path}' >> \"${CLAUDE_PLUGIN_DATA}/config-audit.log\" 2>/dev/null || true"
-          }
-        ]
-      }
     ]
   }
 }

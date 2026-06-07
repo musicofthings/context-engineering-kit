@@ -1,8 +1,8 @@
 # context-engineering-kit
 
-> **Automated context preservation for Claude Code — across sessions, devices, and subscriptions.**
+> **Automated context preservation for Claude Code and Cursor — across sessions, devices, and subscriptions.**
 
-Hooks, skills, and scripts that keep your context alive through compaction, device switches, and subscription changes. Works in **Claude Cowork**, the **Claude Code Desktop** plugin slot, or as a **Claude Code CLI** standalone install.
+Hooks, skills, and scripts that keep your context alive through compaction, device switches, and subscription changes. Works in **Claude Cowork**, the **Claude Code Desktop** plugin slot, the **Claude Code CLI** standalone install, or **Cursor IDE** via project hooks.
 
 🌐 **[Landing page & full docs →](https://musicofthings.github.io/context-engineering-kit/)**
 📦 **[Download plugin zip (v2.5.0) →](https://github.com/musicofthings/context-engineering-kit/releases/latest)** — for Cowork or Desktop Plugin upload
@@ -11,6 +11,11 @@ Hooks, skills, and scripts that keep your context alive through compaction, devi
 
 ## What's new in v2.5.0
 
+- **Cursor IDE support.** New `.cursor/hooks.json` + adapter scripts map the
+  kit's logic onto Cursor's hook events (`sessionStart`, `beforeSubmitPrompt`,
+  `beforeShellExecution`, `afterFileEdit`, `stop`, etc.). One logic core in
+  `.claude/hooks/*.sh`, two runtimes — Claude Code and Cursor share the same
+  `state.json`, handover, and git snapshot pipeline.
 - **Unified state resolution.** Every hook *and* script now resolves session
   state through one helper (`scripts/resolve_state_dir.sh`) — no more path
   divergence between components.
@@ -26,8 +31,15 @@ Hooks, skills, and scripts that keep your context alive through compaction, devi
   race), removed a double `post-compact` registration, tougher
   `guard-dangerous` patterns, and canonicalized `settings.json` permission
   rules so the `.env` deny and context-file allow rules actually match.
+- **Hook de-dupe guard.** `hook_once()` in `resolve_state_dir.sh` collapses
+  double-fires when the kit is active as both an installed plugin and the
+  opened repo (prevents duplicate git commits and context injections).
+- **Usage-sentinel clock fix.** `session_start_time` is no longer reset on
+  every SessionStart — resume and within-window restarts preserve the rolling
+  Pro/Max window clock, eliminating false "100% / CRITICAL" banners.
 - **New visual docs.** `docs/hooks-flowchart.md` — Mermaid maps of hooks,
-  the state-scope decision tree, permission evaluation, and resume flow.
+  the state-scope decision tree, permission evaluation, resume flow, and
+  the Cursor event mapping.
 
 ---
 
@@ -47,21 +59,22 @@ Hooks, skills, and scripts that keep your context alive through compaction, devi
 | New repos need manual context-kit setup | `auto_activate_new_repos` bootstraps any new git project automatically |
 | Worktrees fragment/clobber session state | All hooks resolve state through one helper; `state.scope` controls branch vs. worktree behaviour, writes are lock-guarded |
 | Can't find the exact session to `--resume` | SessionStart records the SDK `session_id` + transcript path; handover prints the exact resume command and the cwd caveat |
+| Using Cursor instead of Claude Code | `.cursor/hooks.json` adapters exec the same kit scripts — state tracking, dangerous-command guard, compaction snapshots all work |
 
 ---
 
 ## Installation
 
-Choose the install path that matches how you use Claude:
+Choose the install path that matches how you use Claude or Cursor:
 
-| | Claude Cowork | Claude Code Desktop | Claude Code CLI |
-|--|--------------|---------------------|-----------------|
-| **How** | Upload zip via Plugins UI | Upload zip via Customize UI | Clone repo + `bash setup.sh` |
-| **Audience** | Cowork users (any role) | Developers (desktop app) | Developers (terminal) |
-| **Skill names** | `/context-engineering-kit:handover` | `/context-engineering-kit:handover` | `/handover` |
-| **Hooks active?** | Skills only (Cowork has no shell) | ✅ All 15 hooks fire | ✅ All 15 hooks fire |
-| **Auto-activates on new repos** | n/a | ✅ Yes (plugin toggle) | Manual per-project |
-| **Best for** | Conversation context management | Always-on across all projects | One specific project |
+| | Claude Cowork | Claude Code Desktop | Claude Code CLI | Cursor IDE |
+|--|--------------|---------------------|-----------------|------------|
+| **How** | Upload zip via Plugins UI | Upload zip via Customize UI | Clone repo + `bash setup.sh` | Clone repo (hooks ship in `.cursor/`) |
+| **Audience** | Cowork users (any role) | Developers (desktop app) | Developers (terminal) | Cursor users |
+| **Skill names** | `/context-engineering-kit:handover` | `/context-engineering-kit:handover` | `/handover` | n/a (use Agent rules / manual `/handover` via chat) |
+| **Hooks active?** | Skills only (Cowork has no shell) | ✅ All hooks fire | ✅ All hooks fire | ✅ 10 Cursor events via adapters |
+| **Auto-activates on new repos** | n/a | ✅ Yes (plugin toggle) | Manual per-project | On first open (sessionStart adapter) |
+| **Best for** | Conversation context management | Always-on across all projects | One specific project | Cursor-native agent workflows |
 
 > **Cowork vs. Claude Code:** the same zip works for both Cowork and Claude Code Desktop because the plugin format is identical. The difference is what runs — Cowork executes the **skills** (`/handover`, `/token-status`, etc.) but doesn't run the **hooks** (which need a shell environment). Claude Code runs both.
 
@@ -228,6 +241,76 @@ Short names — no prefix needed:
 
 ---
 
+## Option D — Cursor IDE (project hooks)
+
+Use this if you work in **Cursor** rather than Claude Code. The kit ships a
+`.cursor/hooks.json` manifest and thin adapter scripts that translate Cursor's
+hook events and stdin JSON into the shape the kit's existing `.claude/hooks/*.sh`
+scripts expect — so you get the same `state.json`, `session_handover.md`, git
+snapshots, and dangerous-command guard without maintaining two codebases.
+
+### Prerequisites
+
+- [Cursor](https://cursor.com) (latest — hooks require a recent build)
+- `bash`, `git`, `jq` on PATH
+- `python3` or `python` (v3.x) — for `usage-tracker.py` and handover generation
+
+### Install steps
+
+```bash
+# 1. Clone into your project (or add as a submodule)
+git clone https://github.com/musicofthings/context-engineering-kit.git my-project
+cd my-project
+
+# 2. Make hook scripts executable (adapters + kit scripts)
+chmod +x .cursor/hooks/*.sh .claude/hooks/*.sh scripts/*.sh
+
+# 3. Open the project in Cursor — hooks load automatically from .cursor/hooks.json
+#    Cursor watches hooks.json and reloads on save; restart Cursor if they don't appear.
+```
+
+No separate plugin upload is needed. The `.cursor/` directory is part of the
+repo and is picked up as **project hooks** when you open the folder in Cursor.
+
+### Verify hooks are firing
+
+1. Open **Cursor Settings → Hooks** (or the **Hooks** output channel).
+2. Start a new Agent session — you should see `on-session-start.sh` run.
+3. Edit a file — `track-edit.sh` should append the path to `state.json`'s
+   `changed_files`.
+4. Check `.claude/session/state.json` — `last_updated` and `session_start_time`
+   should advance on session start.
+
+### What runs under Cursor
+
+| Cursor event | Adapter | Kit script | What it does |
+|--------------|---------|------------|--------------|
+| `sessionStart` | `on-session-start.sh` | `session-start.sh` | Init state, clear sentinels, record session metadata |
+| `sessionEnd` | `on-session-end.sh` | `session-end.sh` | Git-commit session state on close |
+| `beforeSubmitPrompt` | `on-prompt.sh` | `usage-sentinel.sh` | Log usage %, arm threshold sentinels |
+| `beforeShellExecution` | `guard-shell.sh` | `guard-dangerous.sh` | Block destructive shell (exit 2 = deny) |
+| `afterFileEdit` | `track-edit.sh` | `track-changes.sh` | Append edited paths to `changed_files` |
+| `stop` | `on-stop.sh` | extract → usage-tracker → stop | Heuristic state extract + usage log |
+| `postToolUseFailure` | `on-tool-failure.sh` | `post-tool-failure.sh` | Log failures to `tool-failures.jsonl` |
+| `subagentStart/Stop` | `on-subagent.sh` | `subagent-lifecycle.sh` | Track delegated subagent work |
+| `preCompact` | `on-precompact.sh` | `pre-compact.sh` | Handover + CLAUDE.md + git snapshot |
+
+**Not mapped to Cursor** (Claude Code only): `PostCompact` context re-injection,
+`PermissionRequest` auto-approve, `Notification` desktop alerts. Dangerous-command
+blocking uses Cursor's `beforeShellExecution` instead of Claude Code's `PreToolUse`.
+
+### Cursor vs Claude Code — same state, different runtime
+
+Both runtimes write to the same `state.json` via `resolve_state_dir.sh`. You can
+switch between Cursor and Claude Code on the same repo and pick up continuity
+from `session_handover.md` and git-committed state. Skill slash commands
+(`/handover`, `/token-status`, etc.) are Claude Code features — in Cursor, ask
+the Agent to read `session_handover.md` or run the underlying scripts manually.
+
+Full event-mapping diagram: [`docs/hooks-flowchart.md` §7](docs/hooks-flowchart.md).
+
+---
+
 ## Skills reference
 
 | Skill | Cowork / Desktop | CLI | Description |
@@ -327,6 +410,14 @@ Requires `pip install feedparser`. If not installed, the auto hook skips silentl
 
 All hooks fire automatically — you never call them manually.
 
+> **Dual runtime:** Claude Code reads `.claude/settings.json` (CLI) or
+> `hooks/hooks.json` (plugin). Cursor reads `.cursor/hooks.json` and routes
+> through adapters in `.cursor/hooks/*.sh`. Both exec the same scripts in
+> `.claude/hooks/`. See [Option D](#option-d--cursor-ide-project-hooks) for the
+> Cursor event mapping.
+
+### Claude Code events
+
 | Hook event | Script | When it fires | What it does |
 |------------|--------|--------------|--------------|
 | `SessionStart` | `auto_init_project.sh` | First open of any new project | Auto-bootstraps `session_handover.md` + `state.json` |
@@ -346,7 +437,7 @@ All hooks fire automatically — you never call them manually.
 | `Notification` | `notify.sh` | On notifications | Cross-platform desktop notification |
 | `PermissionRequest` | `auto-approve-permissions.sh` | Permission dialogs | Auto-approves context-file writes + kit scripts (echoes back the firing event) |
 
-> The three `Stop` hooks run **sequentially in a single hook entry** (not async) so they can't race on `state.json`. Every hook that mutates `state.json` does so through `state_write()` in `scripts/resolve_state_dir.sh`, which takes a portable lock (`flock`, or a `mkdir` spinlock on macOS) and writes atomically — concurrent writers field-merge instead of clobbering. Permission/deny rules in `.claude/settings.json` use the canonical `Read(./.env)` / `Write(./session_handover.md)` path-anchored form.
+> The three `Stop` hooks run **sequentially in a single hook entry** (not async) so they can't race on `state.json`. Every hook that mutates `state.json` does so through `state_write()` in `scripts/resolve_state_dir.sh`, which takes a portable lock (`flock`, or a `mkdir` spinlock on macOS) and writes atomically — concurrent writers field-merge instead of clobbering. `hook_once()` de-dupes session-start / session-end / pre-compact / post-compact when the kit is active as both plugin and opened repo. Permission/deny rules in `.claude/settings.json` use the canonical `Read(./.env)` / `Write(./session_handover.md)` path-anchored form.
 
 ### PreCompact — what gets saved
 
@@ -367,6 +458,8 @@ Every compaction triggers a full save sequence:
 | 92% | Urgent: Claude saves immediately, then notifies you |
 
 Each threshold fires once per session (sentinel files prevent repeated injections).
+`session_start_time` is preserved across resume and within-window restarts so the
+clock measures the real rolling window, not wall-clock since the last SessionStart.
 
 ---
 
@@ -530,6 +623,19 @@ Set in Claude Code settings under `"env"`, or export in your shell:
 
 ```
 context-engineering-kit/
+├── .cursor/                         ← Cursor IDE project hooks
+│   ├── hooks.json                   ← Cursor event wiring (10 events)
+│   └── hooks/                       ← adapters → .claude/hooks/*.sh
+│       ├── _common.sh               ← exports CLAUDE_PROJECT_DIR from repo root
+│       ├── on-session-start.sh
+│       ├── on-session-end.sh
+│       ├── on-prompt.sh
+│       ├── guard-shell.sh
+│       ├── track-edit.sh
+│       ├── on-stop.sh
+│       ├── on-tool-failure.sh
+│       ├── on-subagent.sh
+│       └── on-precompact.sh
 ├── .claude-plugin/
 │   ├── plugin.json                  ← plugin manifest (name, version, metadata)
 │   └── marketplace.json             ← marketplace listing metadata
@@ -611,10 +717,11 @@ Resuming on another device
 
 | Platform | Notes |
 |----------|-------|
-| macOS | Full support — `bash setup.sh` |
-| Linux | Full support — `bash setup.sh` |
+| macOS | Full support — `bash setup.sh`; Cursor hooks via `.cursor/hooks.json` |
+| Linux | Full support — `bash setup.sh`; Cursor hooks via `.cursor/hooks.json` |
 | Windows (Git Bash) | `bash.exe setup.sh`; use `claude.cmd` not `claude` |
 | Windows (no `python3`) | `scripts/find_python.sh` auto-detects `python` and `py.exe` |
+| Cursor IDE | Project hooks in `.cursor/` — no plugin upload; open repo in Cursor |
 | CI/CD | Hooks run headlessly; GitHub Actions handle state validation |
 
 ---
@@ -677,4 +784,4 @@ Then in Claude Code: `/my-skill`
 
 ---
 
-*context-engineering-kit v2.5.0 — Built for multi-device, multi-subscription Claude Code workflows.*
+*context-engineering-kit v2.5.0 — Built for multi-device, multi-subscription Claude Code and Cursor workflows.*

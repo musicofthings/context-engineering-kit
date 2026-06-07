@@ -3,10 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>context-engineering-kit — Never lose context in Claude Code again</title>
-  <meta name="description" content="Automated context preservation for Claude Code. Hooks, skills, and scripts that keep your work alive through compaction, device switches, and subscription changes." />
+  <title>context-engineering-kit — Never lose context in Claude Code or Cursor again</title>
+  <meta name="description" content="Automated context preservation for Claude Code and Cursor. Hooks, skills, and scripts that keep your work alive through compaction, device switches, and subscription changes." />
   <meta property="og:title" content="context-engineering-kit" />
-  <meta property="og:description" content="Never lose context in Claude Code again. Auto-saves session state, syncs across devices, and survives compaction." />
+  <meta property="og:description" content="Never lose context in Claude Code or Cursor again. Auto-saves session state, syncs across devices, and survives compaction." />
   <meta property="og:url" content="https://musicofthings.github.io/context-engineering-kit/" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
@@ -666,6 +666,7 @@
       <a href="#how-it-works">How it works</a>
       <a href="#features">Features</a>
       <a href="#install">Install</a>
+      <a href="#cursor">Cursor</a>
       <a href="#skills">Skills</a>
       <a href="#hooks">Hooks</a>
       <a href="https://github.com/musicofthings/context-engineering-kit" class="nav-cta">GitHub →</a>
@@ -681,15 +682,16 @@
   <div class="container">
     <div class="hero-badge">
       <span class="dot"></span>
-      v2.5.0 — Claude Code Plugin + CLI
+      v2.5.0 — Claude Code + Cursor
     </div>
 
-    <h1>Never lose context<br>in <em>Claude Code</em> again.</h1>
+    <h1>Never lose context<br>in <em>Claude Code</em> or <em>Cursor</em> again.</h1>
 
     <p class="hero-sub">
       Automated hooks and skills that save your session state before compaction,
       sync it across devices and git worktrees, and restore it on every session
-      start — so Claude always knows exactly where you left off.
+      start — so your agent always knows exactly where you left off. One logic
+      core, two runtimes.
     </p>
 
     <div class="hero-actions">
@@ -704,8 +706,8 @@
       </a>
     </div>
     <p style="font-size:0.82rem; color:var(--muted); margin-bottom:60px; max-width:620px;">
-      Works in <strong>Claude Cowork</strong>, <strong>Claude Code Desktop</strong>, or <strong>Claude Code CLI</strong>.
-      Cowork &amp; Desktop use the zip above; CLI uses <code>git clone + setup.sh</code>.
+      Works in <strong>Claude Cowork</strong>, <strong>Claude Code Desktop</strong>, <strong>Claude Code CLI</strong>, or <strong>Cursor IDE</strong>.
+      Cowork &amp; Desktop use the zip above; CLI and Cursor use <code>git clone</code> — Cursor hooks ship in <code>.cursor/</code>.
     </p>
 
     <div class="hero-terminal">
@@ -793,6 +795,12 @@
         <p>You want to <code>claude --resume</code> the exact conversation but don't know the session ID — and transcript resume silently breaks when the cwd changed.</p>
         <p class="solution">→ Captures the SDK session ID; handover prints the exact resume command + cwd caveat</p>
       </div>
+      <div class="problem-card">
+        <div class="icon">🖱️</div>
+        <h3>Cursor has no context kit</h3>
+        <p>You switched from Claude Code to Cursor and lost auto-save, compaction snapshots, and the dangerous-command guard — different hook system, no shared state.</p>
+        <p class="solution">→ <code>.cursor/hooks.json</code> adapters exec the same kit scripts; one <code>state.json</code>, two runtimes</p>
+      </div>
     </div>
   </div>
 </section>
@@ -801,8 +809,8 @@
 <section id="how-it-works">
   <div class="container">
     <p class="section-label">How It Works</p>
-    <h2>Hooks wire into Claude Code automatically.</h2>
-    <p class="section-sub">You install once. After that, every session start, compaction, and stop event is handled silently in the background.</p>
+    <h2>Hooks wire in automatically.</h2>
+    <p class="section-sub">You install once. After that, every session start, compaction, and stop event is handled silently — in Claude Code or Cursor.</p>
 
     <div class="flow">
       <div class="flow-step">
@@ -839,9 +847,14 @@
   <div class="container">
     <p class="section-label">Features</p>
     <h2>Everything context preservation needs.</h2>
-    <p class="section-sub">15+ hooks, 8 skills, and a suite of scripts — all working together silently, now worktree-aware and concurrency-safe.</p>
+    <p class="section-sub">15+ hooks, 8 skills, and a suite of scripts — all working together silently, now worktree-aware, concurrency-safe, and available in Cursor.</p>
 
     <div class="features-grid">
+      <div class="feature-card">
+        <span class="tag tag-platform">Platform · v2.5 · Cursor</span>
+        <h3>.cursor/hooks.json</h3>
+        <p>Cursor IDE project hooks: 10 events (<code>sessionStart</code>, <code>beforeSubmitPrompt</code>, <code>beforeShellExecution</code>, <code>afterFileEdit</code>, <code>stop</code>, …) routed through thin adapters in <code>.cursor/hooks/</code> that exec the same <code>.claude/hooks/*.sh</code> logic. No plugin upload — open the repo in Cursor.</p>
+      </div>
       <div class="feature-card">
         <span class="tag tag-config">Core · v2.5</span>
         <h3>resolve_state_dir.sh</h3>
@@ -930,8 +943,8 @@
 <section id="install">
   <div class="container">
     <p class="section-label">Installation</p>
-    <h2>Three ways to install.</h2>
-    <p class="section-sub">Cowork &amp; Desktop both take the same zip — easiest path. CLI gives you the full hook layer in a single project.</p>
+    <h2>Four ways to install.</h2>
+    <p class="section-sub">Cowork &amp; Desktop both take the same zip — easiest path. CLI gives you the full hook layer in a single project. Cursor ships project hooks in <code>.cursor/</code>.</p>
 
     <!-- Direct zip download callout -->
     <div style="background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 22px; margin-bottom: 28px; display: flex; gap: 14px; align-items: center; flex-wrap: wrap; justify-content: space-between;">
@@ -965,6 +978,7 @@
       <button class="tab-btn active" onclick="showTab('cowork')">🤝 Claude Cowork</button>
       <button class="tab-btn" onclick="showTab('plugin')">🔌 Code Desktop</button>
       <button class="tab-btn" onclick="showTab('cli')">⌨️ Code CLI</button>
+      <button class="tab-btn" onclick="showTab('cursor')">🖱️ Cursor IDE</button>
     </div>
 
     <!-- ── Cowork tab ───────────────────────────────── -->
@@ -1120,6 +1134,147 @@
         </div>
       </div>
     </div>
+
+    <!-- ── Cursor tab ───────────────────────────────── -->
+    <div id="tab-cursor" class="tab-content">
+      <p style="color:var(--muted); font-size:0.9rem; margin-bottom:24px;">For Cursor IDE users. Project hooks in <code>.cursor/hooks.json</code> route through adapters to the same kit scripts — no plugin upload, no separate codebase.</p>
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div>
+            <h4>Clone the repo</h4>
+            <p>Open your project folder in Cursor, or clone the kit into an existing project:</p>
+            <div class="code-block"><pre><span class="cmd">git clone</span> https://github.com/musicofthings/context-engineering-kit.git my-project
+<span class="cmd">cd</span> my-project</pre></div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div>
+            <h4>Make hook scripts executable</h4>
+            <div class="code-block"><pre><span class="cmd">chmod</span> +x .cursor/hooks/*.sh .claude/hooks/*.sh scripts/*.sh</pre></div>
+            <p style="margin-top:8px; font-size:0.82rem; color:var(--muted);">Requires <code>bash</code>, <code>jq</code>, and <code>python3</code> on PATH — same as the CLI install.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div>
+            <h4>Open in Cursor</h4>
+            <p>Cursor loads <code>.cursor/hooks.json</code> automatically as <strong>project hooks</strong>. It watches the file and reloads on save — restart Cursor if hooks don't appear in <strong>Settings → Hooks</strong>.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">4</div>
+          <div>
+            <h4>Verify</h4>
+            <p>Start an Agent session and check the <strong>Hooks</strong> output channel. Edit a file — <code>state.json</code>'s <code>changed_files</code> should update. See the <a href="#cursor">Cursor integration</a> section for the full event map.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Cursor integration ─────────────────────────────────── -->
+<section id="cursor">
+  <div class="container">
+    <p class="section-label">Cursor Integration</p>
+    <h2>Same kit. Different runtime.</h2>
+    <p class="section-sub">Cursor uses its own hook event model. The kit ships thin adapters that translate Cursor's payloads and exec the same <code>.claude/hooks/*.sh</code> scripts — one logic core, shared <code>state.json</code>.</p>
+
+    <table class="hooks-table" style="margin-top:32px;">
+      <thead>
+        <tr>
+          <th>Cursor event</th>
+          <th>Adapter</th>
+          <th>Kit script</th>
+          <th>What it does</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="event-tag">sessionStart</span></td>
+          <td><span class="script-name">on-session-start.sh</span></td>
+          <td><span class="script-name">session-start.sh</span></td>
+          <td>Init state, clear sentinels, record session metadata</td>
+        </tr>
+        <tr>
+          <td><span class="event-tag">sessionEnd</span></td>
+          <td><span class="script-name">on-session-end.sh</span></td>
+          <td><span class="script-name">session-end.sh</span></td>
+          <td>Git-commit session state on close</td>
+        </tr>
+        <tr>
+          <td><span class="event-tag">beforeSubmitPrompt</span></td>
+          <td><span class="script-name">on-prompt.sh</span></td>
+          <td><span class="script-name">usage-sentinel.sh</span></td>
+          <td>Log usage %, arm threshold sentinels</td>
+        </tr>
+        <tr>
+          <td><span class="event-tag">beforeShellExecution</span></td>
+          <td><span class="script-name">guard-shell.sh</span></td>
+          <td><span class="script-name">guard-dangerous.sh</span></td>
+          <td>Block destructive shell — exit 2 = deny</td>
+        </tr>
+        <tr>
+          <td><span class="event-tag">afterFileEdit</span></td>
+          <td><span class="script-name">track-edit.sh</span></td>
+          <td><span class="script-name">track-changes.sh</span></td>
+          <td>Append edited paths to <code>changed_files</code></td>
+        </tr>
+        <tr>
+          <td><span class="event-tag">stop</span></td>
+          <td><span class="script-name">on-stop.sh</span></td>
+          <td><span class="script-name">extract → tracker → stop</span></td>
+          <td>Heuristic state extract + usage log + heartbeat</td>
+        </tr>
+        <tr>
+          <td><span class="event-tag">postToolUseFailure</span></td>
+          <td><span class="script-name">on-tool-failure.sh</span></td>
+          <td><span class="script-name">post-tool-failure.sh</span></td>
+          <td>Log failures to <code>tool-failures.jsonl</code></td>
+        </tr>
+        <tr>
+          <td><span class="event-tag">subagentStart/Stop</span></td>
+          <td><span class="script-name">on-subagent.sh</span></td>
+          <td><span class="script-name">subagent-lifecycle.sh</span></td>
+          <td>Track delegated subagent work</td>
+        </tr>
+        <tr>
+          <td><span class="event-tag">preCompact</span></td>
+          <td><span class="script-name">on-precompact.sh</span></td>
+          <td><span class="script-name">pre-compact.sh</span></td>
+          <td>Handover + CLAUDE.md + git snapshot before compaction</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div style="margin-top:32px; background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius); padding:20px 24px;">
+      <h3 style="font-size:0.95rem; font-weight:600; margin-bottom:10px;">Claude Code vs Cursor — what's shared, what's different</h3>
+      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:16px; font-size:0.88rem; color:var(--muted);">
+        <div>
+          <strong style="color:var(--green);">✅ Shared (both runtimes)</strong>
+          <ul style="margin-top:8px; padding-left:18px; line-height:1.8;">
+            <li><code>state.json</code> via <code>resolve_state_dir.sh</code></li>
+            <li><code>session_handover.md</code> + git snapshot commits</li>
+            <li>Dangerous-command guard</li>
+            <li>File-change tracking</li>
+            <li>Subagent lifecycle logging</li>
+            <li>Usage sentinel logging</li>
+          </ul>
+        </div>
+        <div>
+          <strong style="color:var(--yellow);">⚠️ Claude Code only</strong>
+          <ul style="margin-top:8px; padding-left:18px; line-height:1.8;">
+            <li><code>PostCompact</code> context re-injection</li>
+            <li><code>PermissionRequest</code> auto-approve</li>
+            <li>Skill slash commands (<code>/handover</code>, etc.)</li>
+            <li>Desktop notification hook</li>
+          </ul>
+        </div>
+      </div>
+      <p style="margin-top:16px; font-size:0.85rem;">Full Mermaid diagram: <a href="https://github.com/musicofthings/context-engineering-kit/blob/main/docs/hooks-flowchart.md">docs/hooks-flowchart.md §7</a></p>
+    </div>
   </div>
 </section>
 
@@ -1190,7 +1345,7 @@
   <div class="container">
     <p class="section-label">Hooks Reference</p>
     <h2>Fires automatically. You do nothing.</h2>
-    <p class="section-sub">Every hook is wired in <code>hooks/hooks.json</code> (plugin) or <code>.claude/settings.json</code> (CLI standalone).</p>
+    <p class="section-sub">Claude Code: wired in <code>hooks/hooks.json</code> (plugin) or <code>.claude/settings.json</code> (CLI). Cursor: wired in <code>.cursor/hooks.json</code> via adapters. Same scripts in <code>.claude/hooks/</code>.</p>
 
     <table class="hooks-table">
       <thead>
@@ -1227,14 +1382,19 @@
           <td>Re-injects task/branch/state so Claude retains awareness</td>
         </tr>
         <tr>
-          <td><span class="event-tag">Stop (async)</span></td>
+          <td><span class="event-tag">Stop (sequential)</span></td>
           <td><span class="script-name">extract-state-on-stop.sh</span></td>
           <td>Extracts next_action and active task hint from response text</td>
         </tr>
         <tr>
-          <td><span class="event-tag">Stop (async)</span></td>
+          <td><span class="event-tag">Stop (sequential)</span></td>
           <td><span class="script-name">usage-tracker.py</span></td>
           <td>Records rate_limits %, context %, cost per turn to daily-usage.json</td>
+        </tr>
+        <tr>
+          <td><span class="event-tag">Stop (sequential)</span></td>
+          <td><span class="script-name">stop.sh</span></td>
+          <td>Updates state.json timestamp, stop reason, session id</td>
         </tr>
         <tr>
           <td><span class="event-tag">SessionEnd</span></td>
@@ -1265,7 +1425,7 @@
 <section id="cta">
   <div class="container">
     <h2>Start where you left off.<br>Every time.</h2>
-    <p>One zip for Cowork &amp; Desktop. <code>git clone</code> for CLI. Works with Pro, Max, and API billing.</p>
+    <p>One zip for Cowork &amp; Desktop. <code>git clone</code> for CLI and Cursor. Works with Pro, Max, and API billing.</p>
     <div class="cta-actions">
       <a href="https://github.com/musicofthings/context-engineering-kit/releases/latest" class="btn btn-primary">
         <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" style="margin-right:6px;"><path d="M7.47 10.78a.75.75 0 0 0 1.06 0l3.75-3.75a.75.75 0 0 0-1.06-1.06L8.75 8.44V1.75a.75.75 0 0 0-1.5 0v6.69L4.78 5.97a.75.75 0 0 0-1.06 1.06l3.75 3.75ZM3.75 13a.75.75 0 0 0 0 1.5h8.5a.75.75 0 0 0 0-1.5h-8.5Z"/></svg>
@@ -1285,7 +1445,7 @@
   <div class="container">
     <div class="inner">
       <span>context-engineering-kit v2.5.0 · MIT License · <a href="https://github.com/musicofthings/context-engineering-kit">github.com/musicofthings/context-engineering-kit</a></span>
-      <span>Built for <a href="https://claude.ai/code">Claude Code</a></span>
+      <span>Built for <a href="https://claude.ai/code">Claude Code</a> &amp; <a href="https://cursor.com">Cursor</a></span>
     </div>
   </div>
 </footer>

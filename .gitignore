@@ -59,6 +59,9 @@ briefs/
 # Usage sentinel state files (session-local)
 .claude/session/.sentinel_*
 
+# Hook de-dupe guard markers (machine-local, written by hook_once)
+.claude/session/.hookfire_*
+
 # state.json concurrency locks (machine-local, never commit)
 .claude/session/*.lock
 .claude/session/*.lockd

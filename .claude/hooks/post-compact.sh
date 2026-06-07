@@ -8,6 +8,10 @@ set -euo pipefail
 PROJECT_DIR="${CLAUDE_PROJECT_DIR:-$(pwd)}"
 # shellcheck source=../../scripts/resolve_state_dir.sh
 source "${CLAUDE_PLUGIN_ROOT:-$PROJECT_DIR}/scripts/resolve_state_dir.sh"
+
+# Collapse a double fire (plugin + opened repo) so context is injected once.
+hook_once post-compact || exit 0
+
 HANDOVER_FILE="$PROJECT_DIR/session_handover.md"
 
 log() { echo "[post-compact] $*" >&2; }

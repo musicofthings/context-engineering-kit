@@ -193,17 +193,6 @@
         ]
       }
     ],
-    "InstructionsLoaded": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "echo '[context-kit] Ready. /token-status /handover /context-health'"
-          }
-        ]
-      }
-    ],
     "Notification": [
       {
         "matcher": "",
@@ -211,17 +200,6 @@
           {
             "type": "command",
             "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/notify.sh"
-          }
-        ]
-      }
-    ],
-    "ConfigChange": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "jq -c '{ts: now|todate, file: .file_path}' >> \"$CLAUDE_PROJECT_DIR\"/.claude/config-audit.log 2>/dev/null || true"
           }
         ]
       }
