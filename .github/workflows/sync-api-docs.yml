@@ -35,8 +35,11 @@ jobs:
           BRANCH="chore/api-docs-refresh"
           git checkout -b "$BRANCH"
           git add -f api_docs.md
-          if git diff --cached --quiet; then
-            echo "No doc changes — nothing to commit"
+          # -I: ignore the volatile header lines (fetch timestamp, runner
+          # path) so a refresh with identical doc content is a no-op instead
+          # of a weekly timestamp-only PR.
+          if git diff --cached --quiet -I '^_Auto-fetched:' -I '^_Source:'; then
+            echo "No content changes (timestamp-only) — nothing to commit"
             exit 0
           fi
           git commit -m "chore(docs): refresh API documentation [skip ci] $(date -u +%Y-%m-%d)"
