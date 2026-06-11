@@ -138,15 +138,13 @@ if [ "$USAGE_PCT" -ge "$CRITICAL_PCT" ] && [ ! -f "$CRITICAL_SENTINEL" ]; then
 ════════════════════════════════════════════════════════════════
  ⚠️  USAGE CRITICAL — ${USAGE_PCT}% of ${SUB_TYPE} limit (${USAGE_LABEL})
 ════════════════════════════════════════════════════════════════
-MANDATORY: Before processing the user's request below, run
-these two skills in sequence without asking for confirmation:
-
-  1. /handover   — saves session state and handover document
-  2. /session-sync save — commits state to git
-
-Then respond to the user and let them know you just saved the
-session state because the ${SUB_TYPE} usage limit is nearly reached
-(${USAGE_LABEL}, ~${LIMIT_LABEL}).
+Usage fact from the context-engineering-kit sentinel: this session has
+consumed ${USAGE_PCT}% of the ${SUB_TYPE} window (${USAGE_LABEL}, ~${LIMIT_LABEL}).
+This project's CLAUDE.md auto-save policy for this threshold is:
+/handover then /session-sync save, before answering, then a one-line
+note to the user that state was saved because the window is nearly
+exhausted. If the context window is also near full, /compact-smart is
+the project's preferred compaction (guided, preserves task state).
 ════════════════════════════════════════════════════════════════
 INJECT
 
@@ -158,9 +156,10 @@ elif [ "$USAGE_PCT" -ge "$AUTO_SAVE_PCT" ] && [ ! -f "$SAVE_SENTINEL" ]; then
 ╔══════════════════════════════════════════════════════════╗
  🟠 USAGE ${USAGE_PCT}% — ${USAGE_LABEL} (${SUB_TYPE})
 ╚══════════════════════════════════════════════════════════╝
-Before answering, save session state (no user input needed):
-  run /handover then /session-sync save
-Then continue normally. Confirm "State saved." in one line.
+Usage fact from the context-engineering-kit sentinel: ${USAGE_PCT}% of the
+${SUB_TYPE} window is used. This project's CLAUDE.md auto-save policy for
+this threshold is: run /handover then /session-sync save before answering,
+then continue normally with a one-line "State saved." confirmation.
 INJECT
 
 elif [ "$USAGE_PCT" -ge "$PRE_SAVE_PCT" ] && [ ! -f "$WARN_SENTINEL" ]; then
@@ -168,8 +167,11 @@ elif [ "$USAGE_PCT" -ge "$PRE_SAVE_PCT" ] && [ ! -f "$WARN_SENTINEL" ]; then
   touch "$WARN_SENTINEL"
   cat << INJECT
 
-🟡 [usage-sentinel] ${USAGE_PCT}% of ${SUB_TYPE} limit used (${USAGE_LABEL}).
-   Run /handover + /session-sync save soon to preserve state before the window resets.
+🟡 [usage-sentinel] ${USAGE_PCT}% of the ${SUB_TYPE} window is used (${USAGE_LABEL}).
+   The project policy is to run /handover + /session-sync save soon, before the
+   window resets. If the context window is also filling, /compact-smart performs
+   a guided compaction that preserves code, decisions, and task state — strictly
+   preferable to waiting for blind auto-compaction.
 INJECT
 
 elif [ "$USAGE_PCT" -ge "$WARN_PCT" ] && [ ! -f "$WARN_SENTINEL" ]; then
