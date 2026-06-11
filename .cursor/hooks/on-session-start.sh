@@ -12,5 +12,5 @@ source "$(dirname "${BASH_SOURCE[0]}")/_common.sh"
 
 INPUT=$(cat 2>/dev/null || true)
 printf '%s' "$INPUT" | bash "$CEK_HOOKS_DIR/session-start.sh" 1>&2 || true
-bash "$CEK_HOOKS_DIR/morning-brief-auto.sh" 1>&2 2>&1 || true
+bash "$CEK_HOOKS_DIR/morning-brief-auto.sh" 1>&2 || true
 exit 0

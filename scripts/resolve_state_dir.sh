@@ -160,18 +160,24 @@ _state_release() {
 # sessions are always seconds-to-minutes apart and pass through. Callers do:
 #   hook_once session-start || exit 0
 hook_once() {
-  local tag="$1" window="${2:-5}" f now last
+  local tag="$1" window="${2:-5}" f now last locked=0 rc=0
   f="$STATE_DIR/.hookfire_${tag}"
   now=$(date +%s)
+  # The two duplicate fires land within milliseconds — exactly where a bare
+  # read-check-write races (both read stale, both pass). Serialize the
+  # check-and-claim with the shared state lock; if the lock can't be taken,
+  # fall back to the unguarded check rather than blocking the hook.
+  if _state_acquire 2>/dev/null; then locked=1; fi
   if [ -f "$f" ]; then
     last=$(cat "$f" 2>/dev/null || echo 0)
     case "$last" in ''|*[!0-9]*) last=0 ;; esac
     if [ "$(( now - last ))" -lt "$window" ]; then
-      return 1
+      rc=1
     fi
   fi
-  echo "$now" > "$f" 2>/dev/null || true
-  return 0
+  if [ "$rc" -eq 0 ]; then echo "$now" > "$f" 2>/dev/null || true; fi
+  if [ "$locked" -eq 1 ]; then _state_release; fi
+  return "$rc"
 }
 
 # state_write '<jq filter>' [jq args...]

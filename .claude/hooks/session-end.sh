@@ -80,15 +80,21 @@ cd "$COMMIT_DIR"
 CHANGED=$(git status --porcelain .claude/session/state.json session_handover.md CLAUDE.md 2>/dev/null || echo "")
 
 if [ -n "$CHANGED" ]; then
-  git add .claude/session/state.json \
-         session_handover.md CLAUDE.md 2>/dev/null || true
+  SESSION_PATHS=()
+  for p in .claude/session/state.json session_handover.md CLAUDE.md; do
+    [ -f "$p" ] && SESSION_PATHS+=("$p")
+  done
 
   ACTIVE_TASK="unknown"
   if [ -f "$STATE_FILE" ]; then
     ACTIVE_TASK=$(jq -r '.active_task // "session state"' "$STATE_FILE" 2>/dev/null || echo "session state")
   fi
 
-  git commit -m "chore(context): save session state — $ACTIVE_TASK [$TIMESTAMP]" \
+  # --only: commit JUST these paths. A plain `git add` + `git commit` would
+  # also sweep in whatever the user happened to have staged mid-task when the
+  # session closed.
+  [ "${#SESSION_PATHS[@]}" -gt 0 ] && git commit --only "${SESSION_PATHS[@]}" \
+    -m "chore(context): save session state — $ACTIVE_TASK [$TIMESTAMP]" \
     --no-verify 2>/dev/null || log "git commit skipped (nothing to commit or not a git repo)"
 else
   log "No session file changes — skipping git commit"

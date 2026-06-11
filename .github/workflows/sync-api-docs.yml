@@ -33,18 +33,27 @@ jobs:
         run: |
           git config user.name  "api-doc-bot"
           git config user.email "bot@context-engineering-kit"
-          BRANCH="chore/api-docs-$(date -u +%Y-%m-%d)"
+          # Fixed branch name, force-pushed: each weekly run refreshes the same
+          # branch/PR instead of accumulating dated branches.
+          BRANCH="chore/api-docs-refresh"
           git checkout -b "$BRANCH"
           git add -f api_docs.md
           if git diff --cached --quiet; then
             echo "No doc changes — nothing to commit"
-          else
-            git commit -m "chore(docs): refresh API documentation [skip ci] $(date -u +%Y-%m-%d)"
-            git push origin "$BRANCH"
+            exit 0
+          fi
+          git commit -m "chore(docs): refresh API documentation [skip ci] $(date -u +%Y-%m-%d)"
+          git push --force origin "$BRANCH"
+          if gh pr list --base main --head "$BRANCH" --state open --json number --jq length | grep -qx 0; then
+            # Requires repo setting: Actions → "Allow GitHub Actions to create
+            # and approve pull requests". Fail loudly if PR creation breaks —
+            # a pushed branch with no PR is invisible.
             gh pr create \
               --title "chore(docs): weekly API doc refresh $(date -u +%Y-%m-%d)" \
               --body "Automated weekly refresh of api_docs.md — bot-generated, review before merging." \
-              --base main --head "$BRANCH" || echo "PR already exists or creation skipped"
+              --base main --head "$BRANCH"
+          else
+            echo "Open PR for $BRANCH already exists — branch updated in place"
           fi
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
