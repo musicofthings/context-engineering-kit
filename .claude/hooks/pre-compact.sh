@@ -92,7 +92,10 @@ NEXT_ACTION=$(jq -r '.next_action // "unknown"' "$STATE_FILE" 2>/dev/null || ech
 log "Generating session_handover.md -> $HANDOVER_FILE"
 _HANDOVER_OK=false
 if [ "$PYTHON_OK" = true ]; then
-  if "$PYTHON" "$PROJECT_DIR/scripts/generate_session_handover.py" \
+  # Resolve from the plugin root: in plugin mode $PROJECT_DIR is the user's
+  # project, which has no scripts/ — using it silently degraded every
+  # plugin-mode compaction to the minimal bash-heredoc handover below.
+  if "$PYTHON" "${CLAUDE_PLUGIN_ROOT:-$PROJECT_DIR}/scripts/generate_session_handover.py" \
        --trigger "$TRIGGER" \
        --context-pct "$CONTEXT_PCT" \
        --branch "$GIT_BRANCH" \
@@ -131,7 +134,7 @@ fi
 
 # ── Update CLAUDE.md active work context section ─────────────────────────────
 if [ "$PYTHON_OK" = true ]; then
-  "$PYTHON" "$PROJECT_DIR/scripts/update_context_files.py" \
+  "$PYTHON" "${CLAUDE_PLUGIN_ROOT:-$PROJECT_DIR}/scripts/update_context_files.py" \
     --mode compact \
     --timestamp "$TIMESTAMP" \
     --branch "$GIT_BRANCH" \
