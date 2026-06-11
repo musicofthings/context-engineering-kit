@@ -17,6 +17,7 @@ credentials/
 .claude/session/subagents.jsonl
 .claude/session/daily-usage.json
 .claude/session/usage-forecast.json
+.claude/session/docs-refresh.log
 
 # Audit logs (local only)
 .claude/config-audit.log

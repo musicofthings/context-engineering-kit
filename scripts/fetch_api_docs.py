@@ -14,8 +14,15 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 
-CONFIG_FILE = Path(os.environ.get("CLAUDE_PROJECT_DIR", ".")) / "config" / "api_sources.json"
-OUTPUT_FILE = Path(os.environ.get("CLAUDE_PROJECT_DIR", ".")) / "api_docs.md"
+PROJECT_DIR = Path(os.environ.get("CLAUDE_PROJECT_DIR", "."))
+PLUGIN_ROOT = Path(os.environ.get("CLAUDE_PLUGIN_ROOT", str(PROJECT_DIR)))
+
+# Project-local config wins so each project can pin its own stack's doc
+# sources; the kit's config is the fallback for projects without one.
+_candidates = [PROJECT_DIR / "config" / "api_sources.json",
+               PLUGIN_ROOT / "config" / "api_sources.json"]
+CONFIG_FILE = next((p for p in _candidates if p.exists()), _candidates[0])
+OUTPUT_FILE = PROJECT_DIR / "api_docs.md"
 TIMEOUT = 15
 MAX_FETCH_CHARS = 120_000
 MAX_SECTION_CHARS = 6_000

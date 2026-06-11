@@ -1,6 +1,8 @@
 {
-  "_comment": "API documentation sources — fetched weekly by GitHub Actions",
-  "_usage": "Edit to add/remove APIs. Sections are extracted keywords from the docs.",
+  "_comment": "API documentation sources — refreshed by the session-start hook when api_docs.md is older than refresh_ttl_hours, and weekly by GitHub Actions as a shared fallback",
+  "_usage": "Edit to add/remove APIs. Sections are extracted keywords from the docs. A project-local config/api_sources.json overrides the kit's copy, so each project can pin its own stack's docs.",
+
+  "refresh_ttl_hours": 24,
 
   "apis": [
     {
