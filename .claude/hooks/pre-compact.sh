@@ -148,13 +148,14 @@ fi
 log "Committing session snapshot to git (cwd=$MAIN_ROOT)..."
 (
   cd "$MAIN_ROOT" || exit 0
-  # Stage files relative to MAIN_ROOT — git add ignores missing paths under || true.
-  git add .claude/session/state.json \
-          .claude/session/turn-ledger.jsonl \
-          .claude/session/tool-failures.jsonl \
-          session_handover.md \
-          CLAUDE.md \
-          2>/dev/null || true
+  # Stage files one at a time: a single git add with a missing pathspec is
+  # FATAL and stages nothing at all — which silently disabled this snapshot
+  # commit in every project where any listed file didn't exist yet.
+  # turn-ledger.jsonl / tool-failures.jsonl are deliberately absent: they are
+  # per-session append-only logs, gitignored by design.
+  for _f in .claude/session/state.json session_handover.md CLAUDE.md; do
+    [ -f "$_f" ] && git add "$_f" 2>/dev/null || true
+  done
   # If we're in a worktree under auto scope and the worktree itself has fresher
   # CLAUDE.md / session_handover.md edits, sync them to MAIN_ROOT now so they
   # land in this snapshot rather than waiting for SessionEnd.

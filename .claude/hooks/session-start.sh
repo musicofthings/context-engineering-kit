@@ -116,6 +116,35 @@ state_write \
   --arg scwd "$SESSION_CWD" \
   --arg ssrc "$SESSION_SOURCE" || true
 
+# ── Docs freshness sentinel ───────────────────────────────────────────────────
+# Keep api_docs.md current so the model never codes against outdated API
+# syntax. Missing or older than refresh_ttl_hours → re-fetch in the background.
+# Never blocks session start; a failed fetch leaves the previous file in place
+# (fetch_api_docs.py refuses to write HTML or all-failed output).
+DOCS_STATUS="not configured (no config/api_sources.json)"
+DOCS_CFG="$PROJECT_DIR/config/api_sources.json"
+[ -f "$DOCS_CFG" ] || DOCS_CFG="${CLAUDE_PLUGIN_ROOT:-$PROJECT_DIR}/config/api_sources.json"
+DOCS_FETCHER="${CLAUDE_PLUGIN_ROOT:-$PROJECT_DIR}/scripts/fetch_api_docs.py"
+if [ -f "$DOCS_CFG" ] && [ -f "$DOCS_FETCHER" ]; then
+  DOCS_TTL=$(jq -r '.refresh_ttl_hours // 24' "$DOCS_CFG" 2>/dev/null || echo 24)
+  case "$DOCS_TTL" in ''|*[!0-9]*) DOCS_TTL=24 ;; esac
+  DOCS_FILE="$PROJECT_DIR/api_docs.md"
+  if [ ! -f "$DOCS_FILE" ] || [ -n "$(find "$DOCS_FILE" -mmin +"$(( DOCS_TTL * 60 ))" 2>/dev/null)" ]; then
+    # shellcheck source=../../scripts/find_python.sh
+    source "${CLAUDE_PLUGIN_ROOT:-$PROJECT_DIR}/scripts/find_python.sh" 2>/dev/null || PYTHON=""
+    if [ -n "${PYTHON:-}" ] && command -v "$PYTHON" >/dev/null 2>&1; then
+      ( CLAUDE_PROJECT_DIR="$PROJECT_DIR" \
+        CLAUDE_PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$PROJECT_DIR}" \
+        nohup "$PYTHON" "$DOCS_FETCHER" >> "$STATE_DIR/docs-refresh.log" 2>&1 & ) 2>/dev/null
+      DOCS_STATUS="stale (>${DOCS_TTL}h) — background refresh started"
+    else
+      DOCS_STATUS="stale — no Python 3 on PATH, refresh skipped"
+    fi
+  else
+    DOCS_STATUS="current (refreshed <${DOCS_TTL}h ago)"
+  fi
+fi
+
 # ── Load state for display ────────────────────────────────────────────────────
 ACTIVE_TASK=$(jq -r '.active_task // "none"' "$STATE_FILE" 2>/dev/null || echo "none")
 PHASE=$(jq -r '.phase // "none"' "$STATE_FILE" 2>/dev/null || echo "none")
@@ -137,6 +166,7 @@ cat << INJECT
 📦 Compactions  : $COMPACT_COUNT this project
 ⏱  Session start: $TIMESTAMP
 📊 Plan         : $SUB_TYPE (${WINDOW_MINUTES}min window)
+📚 API docs     : $DOCS_STATUS
 🔑 Session      : ${SESSION_ID:-unknown} (${SESSION_SOURCE})$([ "$IN_WORKTREE" = true ] && echo " ⚠ worktree cwd — resume only from this dir")
 
 ── Last session ─────────────────────────────────────────────
