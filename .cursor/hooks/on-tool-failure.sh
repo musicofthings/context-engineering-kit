@@ -7,5 +7,5 @@ set -uo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/_common.sh"
 
 INPUT=$(cat 2>/dev/null || true)
-printf '%s' "$INPUT" | bash "$CEK_HOOKS_DIR/post-tool-failure.sh" 1>&2 2>&1 || true
+printf '%s' "$INPUT" | bash "$CEK_HOOKS_DIR/post-tool-failure.sh" 1>&2 || true
 exit 0

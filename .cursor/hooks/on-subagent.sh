@@ -8,5 +8,5 @@ source "$(dirname "${BASH_SOURCE[0]}")/_common.sh"
 EVENT="${1:-SubagentStart}"
 INPUT=$(cat 2>/dev/null || true)
 printf '%s' "$INPUT" \
-  | CLAUDE_HOOK_EVENT="$EVENT" bash "$CEK_HOOKS_DIR/subagent-lifecycle.sh" 1>&2 2>&1 || true
+  | CLAUDE_HOOK_EVENT="$EVENT" bash "$CEK_HOOKS_DIR/subagent-lifecycle.sh" 1>&2 || true
 exit 0

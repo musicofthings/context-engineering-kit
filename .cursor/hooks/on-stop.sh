@@ -14,12 +14,12 @@ source "$(dirname "${BASH_SOURCE[0]}")/_common.sh"
 
 INPUT=$(cat 2>/dev/null || true)
 
-printf '%s' "$INPUT" | bash "$CEK_HOOKS_DIR/extract-state-on-stop.sh" 1>&2 2>&1 || true
+printf '%s' "$INPUT" | bash "$CEK_HOOKS_DIR/extract-state-on-stop.sh" 1>&2 || true
 
 if [ -f "$CEK_SCRIPTS_DIR/find_python.sh" ]; then
   # shellcheck source=../../scripts/find_python.sh
   source "$CEK_SCRIPTS_DIR/find_python.sh"
-  "$PYTHON" "$CEK_SCRIPTS_DIR/usage-tracker.py" </dev/null 1>&2 2>&1 || true
+  "$PYTHON" "$CEK_SCRIPTS_DIR/usage-tracker.py" </dev/null 1>&2 || true
 fi
 
 printf '%s' "$INPUT" | bash "$CEK_HOOKS_DIR/stop.sh" 1>&2 || true
