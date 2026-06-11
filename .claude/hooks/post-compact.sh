@@ -1,64 +1,56 @@
 #!/usr/bin/env bash
 # .claude/hooks/post-compact.sh
-# Fires AFTER compaction AND when SessionStart detects a compact resume.
-# Re-injects critical context so Claude doesn't lose project awareness.
+# PostCompact hook — fires after a compact operation completes.
+#
+# PostCompact stdout is NOT injected into the model's context (only
+# UserPromptSubmit, UserPromptExpansion and SessionStart inject stdout) —
+# re-injection is handled by compact-restore.sh on SessionStart[compact].
+# What PostCompact uniquely receives is the `compact_summary` field: the
+# actual summary the compactor generated. This hook archives it so the
+# summary of every compaction survives on disk, and records compaction
+# metadata in state.json.
 
 set -euo pipefail
 
 PROJECT_DIR="${CLAUDE_PROJECT_DIR:-$(pwd)}"
+TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
 # shellcheck source=../../scripts/resolve_state_dir.sh
 source "${CLAUDE_PLUGIN_ROOT:-$PROJECT_DIR}/scripts/resolve_state_dir.sh"
 
-# Collapse a double fire (plugin + opened repo) so context is injected once.
+# Collapse a double fire (plugin + opened repo) so we archive once.
 hook_once post-compact || exit 0
-
-HANDOVER_FILE="$PROJECT_DIR/session_handover.md"
 
 log() { echo "[post-compact] $*" >&2; }
 
-# ── Load state ───────────────────────────────────────────────────────────────
-REPO_NAME=$(basename "$PROJECT_DIR")
-if [ -f "$STATE_FILE" ]; then
-  ACTIVE_TASK=$(jq -r '.active_task // "not set"'   "$STATE_FILE" 2>/dev/null || echo "not set")
-  PHASE=$(jq -r '.phase // "not set"'               "$STATE_FILE" 2>/dev/null || echo "not set")
-  NEXT_ACTION=$(jq -r '.next_action // "not set"'   "$STATE_FILE" 2>/dev/null || echo "not set")
-  GIT_BRANCH=$(jq -r '.git_branch // "unknown"'     "$STATE_FILE" 2>/dev/null || echo "unknown")
-  GIT_COMMIT=$(jq -r '.git_last_commit // "unknown"' "$STATE_FILE" 2>/dev/null || echo "unknown")
-  COMPACT_COUNT=$(jq -r '.compact_count // 1'       "$STATE_FILE" 2>/dev/null || echo "1")
+HOOK_INPUT=""
+if [ ! -t 0 ]; then HOOK_INPUT=$(cat 2>/dev/null || true); fi
+TRIGGER=$(printf '%s' "$HOOK_INPUT" | jq -r '.trigger // "unknown"' 2>/dev/null || echo "unknown")
+SUMMARY=$(printf '%s' "$HOOK_INPUT" | jq -r '.compact_summary // ""' 2>/dev/null || echo "")
+
+COMPACT_COUNT=$(jq -r '.compact_count // 0' "$STATE_FILE" 2>/dev/null || echo 0)
+
+# ── Archive the compactor's summary ──────────────────────────────────────────
+# /compact-smart and post-mortems can compare what the summary kept against
+# what the handover recorded — the delta is what compaction lost.
+HISTORY_DIR="$STATE_DIR/compact-history"
+if [ -n "$SUMMARY" ]; then
+  mkdir -p "$HISTORY_DIR"
+  ARCHIVE="$HISTORY_DIR/compact-${COMPACT_COUNT}-$(date -u +%Y%m%dT%H%M%SZ).md"
+  {
+    echo "# Compaction summary archive"
+    echo "_Compaction #$COMPACT_COUNT • trigger: $TRIGGER • ${TIMESTAMP}_"
+    echo ""
+    printf '%s\n' "$SUMMARY"
+  } > "$ARCHIVE" 2>/dev/null && log "Summary archived to $ARCHIVE" \
+    || log "WARNING: could not archive summary"
 else
-  ACTIVE_TASK="unknown — read session_handover.md"
-  PHASE="unknown"
-  NEXT_ACTION="read session_handover.md"
-  GIT_BRANCH=$(git -C "$PROJECT_DIR" rev-parse --abbrev-ref HEAD 2>/dev/null || echo "unknown")
-  GIT_COMMIT="unknown"
-  COMPACT_COUNT="1"
+  log "No compact_summary in hook input (trigger=$TRIGGER)"
 fi
 
-# ── Emit re-injection content (stdout → Claude's context) ───────────────────
-cat <<INJECT
+state_write \
+  '.last_compact_at = $ts | .last_compact_trigger = $trig' \
+  --arg ts "$TIMESTAMP" --arg trig "$TRIGGER" || true
 
-════════════════════════════════════════════════════════
- CONTEXT RESTORED AFTER COMPACTION #$COMPACT_COUNT
-════════════════════════════════════════════════════════
-
-Project : $REPO_NAME
-Branch  : $GIT_BRANCH
-Commit  : $GIT_COMMIT
-Task    : $ACTIVE_TASK
-Phase   : $PHASE
-Next    : $NEXT_ACTION
-
-📋 Full task state is in session_handover.md
-   Read it before continuing work.
-
-Commands available:
-  /token-status   → context usage
-  /handover       → full task state
-  /compact-smart  → relevance-scored compaction
-  /session-sync   → sync state to git
-
-════════════════════════════════════════════════════════
-INJECT
-
-log "Post-compact context injection complete"
+log "Post-compact archival complete (trigger=$TRIGGER)"
 exit 0

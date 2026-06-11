@@ -58,6 +58,15 @@
             "async": true
           }
         ]
+      },
+      {
+        "matcher": "compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/compact-restore.sh"
+          }
+        ]
       }
     ],
     "PermissionRequest": [
@@ -111,11 +120,13 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/extract-state-on-stop.sh"
+            "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/extract-state-on-stop.sh",
+            "async": true
           },
           {
             "type": "command",
-            "command": "bash -c 'source \"$CLAUDE_PROJECT_DIR/scripts/find_python.sh\" && \"$PYTHON\" \"$CLAUDE_PROJECT_DIR/scripts/usage-tracker.py\"'"
+            "command": "bash -c 'source \"$CLAUDE_PROJECT_DIR/scripts/find_python.sh\" && \"$PYTHON\" \"$CLAUDE_PROJECT_DIR/scripts/usage-tracker.py\"'",
+            "async": true
           },
           {
             "type": "command",
@@ -130,7 +141,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/session-end.sh"
+            "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/session-end.sh",
+            "timeout": 30
           }
         ]
       }
