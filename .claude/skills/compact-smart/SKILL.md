@@ -16,13 +16,29 @@ Standard `/compact` summarises all conversation turns uniformly.
 3. Generates/updates `session_handover.md` first
 4. Then runs compaction with a custom summary prompt
 
+## How this integrates with the kit's compaction pipeline
+
+The hooks do the heavy lifting around `/compact`:
+- **PreCompact** regenerates `session_handover.md` from the transcript and git-commits a snapshot
+- **PostCompact** archives the compactor's own summary to `.claude/session/compact-history/`
+- **SessionStart[compact]** re-injects the task digest + handover into the fresh context
+
+Your custom `/compact` instructions in Step 3 reach the compactor directly (they
+arrive in PreCompact's `custom_instructions` field). The state you write in
+Step 1 is exactly what gets re-injected after compaction — make it count.
+
 ## Step 1 — Pre-compaction snapshot
 
-Before compacting, capture and write to `session_handover.md`:
-- Active task, phase, next action
-- Any code snippets that were just written (file paths + function names)
-- Architecture decisions made this session
-- Any errors encountered and how they were resolved
+Before compacting, update **both** files the restore hook reads:
+
+1. `session_handover.md` — capture:
+   - Active task, phase, next action
+   - Any code snippets that were just written (file paths + function names)
+   - Architecture decisions made this session
+   - Any errors encountered and how they were resolved
+2. `.claude/session/state.json` — ensure `active_task`, `phase`, `next_action`,
+   and `changed_files` are current (these become the first lines of the
+   post-compaction re-injection).
 
 Confirm: "✅ Pre-compaction snapshot written to session_handover.md"
 
@@ -54,8 +70,12 @@ Execute:
 
 ## Step 4 — Verify and report
 
-After compaction, report:
+After compaction, the SessionStart[compact] hook will have re-injected the
+task digest automatically. Verify and report:
 - "✅ Smart compaction complete"
 - "Preserved: [N] code blocks, [N] decisions, active task state"
 - "Estimated context now: [X]%"
 - "session_handover.md is current — read it to verify"
+- The compactor's summary is archived in `.claude/session/compact-history/` —
+  if anything seems missing from context, check the latest archive there
+  against the handover
