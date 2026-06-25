@@ -2,6 +2,7 @@
   "_comment": "Token budgets, rate limits, and subscription tier config",
   "_edit": "Change subscription_tier to match your plan: pro | max | api",
 
+  "_field_note": "This file uses subscription_tier; usage_budget.json uses subscription_type. Both refer to the same value — set CEK_SUBSCRIPTION_TIER env var to override.",
   "subscription_tier": "pro",
 
   "token_budgets": {

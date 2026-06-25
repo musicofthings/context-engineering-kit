@@ -15,7 +15,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/scripts/auto_init_project.sh",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/scripts/auto_init_project.sh\"",
             "async": false
           }
         ]
@@ -25,7 +25,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/.claude/hooks/session-start.sh"
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/.claude/hooks/session-start.sh\""
           }
         ]
       },
@@ -34,7 +34,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/.claude/hooks/morning-brief-auto.sh",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/.claude/hooks/morning-brief-auto.sh\"",
             "async": true
           }
         ]
@@ -44,68 +44,63 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/.claude/hooks/compact-restore.sh"
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/.claude/hooks/compact-restore.sh\""
           }
         ]
       }
     ],
-
     "UserPromptSubmit": [
       {
         "matcher": "",
         "hooks": [
           {
             "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/.claude/hooks/usage-sentinel.sh",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/.claude/hooks/usage-sentinel.sh\"",
             "async": false
           }
         ]
       }
     ],
-
     "PermissionRequest": [
       {
         "matcher": "Write|Edit|MultiEdit|Bash",
         "hooks": [
           {
             "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/.claude/hooks/auto-approve-permissions.sh"
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/.claude/hooks/auto-approve-permissions.sh\""
           }
         ]
       }
     ],
-
     "PreCompact": [
       {
         "matcher": "",
         "hooks": [
           {
             "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/.claude/hooks/pre-compact.sh"
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/.claude/hooks/pre-compact.sh\""
           }
         ]
       }
     ],
-
     "PostCompact": [
       {
         "matcher": "",
         "hooks": [
           {
             "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/.claude/hooks/post-compact.sh"
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/.claude/hooks/post-compact.sh\""
           }
         ]
       }
     ],
-
     "Stop": [
       {
         "matcher": "",
         "hooks": [
           {
             "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/.claude/hooks/extract-state-on-stop.sh",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/.claude/hooks/extract-state-on-stop.sh\"",
             "async": true
           },
           {
@@ -115,95 +110,124 @@
           },
           {
             "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/.claude/hooks/stop.sh"
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/.claude/hooks/stop.sh\""
           }
         ]
       }
     ],
-
     "SessionEnd": [
       {
         "matcher": "",
         "hooks": [
           {
             "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/.claude/hooks/session-end.sh",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/.claude/hooks/session-end.sh\"",
             "timeout": 30
           }
         ]
       }
     ],
-
     "PreToolUse": [
       {
         "matcher": "Bash",
         "hooks": [
           {
             "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/.claude/hooks/guard-dangerous.sh"
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/.claude/hooks/guard-dangerous.sh\""
           }
         ]
       }
     ],
-
     "PostToolUse": [
       {
         "matcher": "Edit|Write",
         "hooks": [
           {
             "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/.claude/hooks/track-changes.sh"
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/.claude/hooks/track-changes.sh\""
           }
         ]
       }
     ],
-
     "PostToolUseFailure": [
       {
         "matcher": "",
         "hooks": [
           {
             "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/.claude/hooks/post-tool-failure.sh",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/.claude/hooks/post-tool-failure.sh\"",
             "async": true
           }
         ]
       }
     ],
-
     "SubagentStart": [
       {
         "matcher": "",
         "hooks": [
           {
             "type": "command",
-            "command": "CLAUDE_HOOK_EVENT=SubagentStart bash ${CLAUDE_PLUGIN_ROOT}/.claude/hooks/subagent-lifecycle.sh",
+            "command": "CLAUDE_HOOK_EVENT=SubagentStart bash \"${CLAUDE_PLUGIN_ROOT}/.claude/hooks/subagent-lifecycle.sh\"",
             "async": true
           }
         ]
       }
     ],
-
     "SubagentStop": [
       {
         "matcher": "",
         "hooks": [
           {
             "type": "command",
-            "command": "CLAUDE_HOOK_EVENT=SubagentStop bash ${CLAUDE_PLUGIN_ROOT}/.claude/hooks/subagent-lifecycle.sh",
+            "command": "CLAUDE_HOOK_EVENT=SubagentStop bash \"${CLAUDE_PLUGIN_ROOT}/.claude/hooks/subagent-lifecycle.sh\"",
             "async": true
           }
         ]
       }
     ],
-
     "Notification": [
       {
         "matcher": "",
         "hooks": [
           {
             "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/.claude/hooks/notify.sh"
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/.claude/hooks/notify.sh\""
+          }
+        ]
+      }
+    ],
+    "StopFailure": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/.claude/hooks/stop-failure.sh\"",
+            "async": false
+          }
+        ]
+      }
+    ],
+    "InstructionsLoaded": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/.claude/hooks/instructions-loaded.sh\"",
+            "async": false
+          }
+        ]
+      }
+    ],
+    "FileChanged": [
+      {
+        "matcher": "CLAUDE.md|session_handover.md",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/scripts/update_context_files.py\"",
+            "async": true
           }
         ]
       }

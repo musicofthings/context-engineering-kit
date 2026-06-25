@@ -36,7 +36,11 @@ def resolve_state_file(project_dir: Path) -> Path:
     state.scope (auto|main|local) and the branch-vs-worktree distinction."""
     pd = str(project_dir)
     scope = "auto"
-    settings = project_dir / "config" / "plugin_settings.json"
+    # Check plugin root first (plugin mode), then project-local (standalone mode)
+    _plugin_root = Path(os.environ.get("CLAUDE_PLUGIN_ROOT", str(project_dir)))
+    settings = _plugin_root / "config" / "plugin_settings.json"
+    if not settings.exists():
+        settings = project_dir / "config" / "plugin_settings.json"
     if settings.exists():
         try:
             scope = (json.loads(settings.read_text(encoding="utf-8", errors="replace"))

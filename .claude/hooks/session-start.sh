@@ -42,6 +42,7 @@ GIT_DIRTY=$(git -C "$PROJECT_DIR" status --short 2>/dev/null | wc -l | tr -d ' '
 # These gate injection of warnings — reset them each session so warnings
 # fire fresh even if you left off at a high-usage state last time.
 rm -f "$SENTINEL_DIR/.sentinel_warn" \
+      "$SENTINEL_DIR/.sentinel_presave" \
       "$SENTINEL_DIR/.sentinel_save" \
       "$SENTINEL_DIR/.sentinel_critical" 2>/dev/null || true
 
@@ -156,8 +157,8 @@ COMPACT_COUNT=$(jq -r '.compact_count // 0' "$STATE_FILE" 2>/dev/null || echo "0
 cat << INJECT
 
 ╔══════════════════════════════════════════════════════════╗
-║  context-engineering-kit v2.5.0 — Session Started         ║
-╚══════════════════════════════════════════════════════════╝
+║  context-engineering-kit v2.6.0 — Session Started         ║
+────────────────────────────────────────────────────────────
 
 📅 Date/Time    : $TODAY
 🌿 Branch       : $GIT_BRANCH$([ "$IN_WORKTREE" = true ] && echo " (worktree — state on main)")
@@ -190,7 +191,7 @@ Saved  : $LAST_UPDATED
 /context-health  Full health check
 
 Read session_handover.md before starting work.
-╚══════════════════════════════════════════════════════════╝
+────────────────────────────────────────────────────────────
 INJECT
 
 exit 0

@@ -4,6 +4,7 @@ fetch_api_docs.py
 Weekly GitHub Actions script: fetches latest API docs from configured sources
 and writes them to api_docs.md for injection into Claude's context.
 """
+from __future__ import annotations
 
 import json
 import os

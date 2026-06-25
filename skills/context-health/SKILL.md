@@ -54,19 +54,34 @@ cat ${CLAUDE_PLUGIN_ROOT}/hooks/hooks.json 2>/dev/null | python3 -c "
 import sys, json
 d = json.load(sys.stdin)
 hooks = d.get('hooks', {})
-events = ['SessionStart','PreCompact','PostCompact','Stop','SessionEnd','PreToolUse','PostToolUse']
+# All events wired as of v2.6.0
+events = [
+  'SessionStart','PreCompact','PostCompact','Stop','SessionEnd',
+  'PreToolUse','PostToolUse','PostToolUseFailure','PermissionRequest',
+  'SubagentStart','SubagentStop','Notification','UserPromptSubmit',
+  'StopFailure','InstructionsLoaded','FileChanged'
+]
+ok = [e for e in events if e in hooks]
+missing = [e for e in events if e not in hooks]
 for e in events:
     status = '✅' if e in hooks else '❌'
     print(f'  {status}  {e}')
+print(f'  {len(ok)}/{len(events)} wired')
 " 2>/dev/null || echo "  ❌  hooks/hooks.json not found"
 ```
-Report as: `hooks wired  ✅ 7/7 (plugin mode — hooks.json)`
+Report as: `hooks wired  ✅ 16/16 (plugin mode — hooks.json)` (or the actual count)
 
 #### Standalone mode
-Check `.claude/settings.json` for a `hooks` block with these events:
-`SessionStart`, `PreCompact`, `PostCompact`, `Stop`, `SessionEnd`, `PreToolUse` (Bash), `PostToolUse` (Edit|Write), `Notification`
+Check `.claude/settings.json` for a `hooks` block with these events (all required as of v2.6.0):
+`SessionStart`, `PreCompact`, `PostCompact`, `Stop`, `SessionEnd`,
+`PreToolUse` (Bash), `PostToolUse` (Edit|Write), `PostToolUseFailure`,
+`PermissionRequest`, `SubagentStart`, `SubagentStop`, `Notification`,
+`UserPromptSubmit`, `StopFailure`, `InstructionsLoaded`, `FileChanged`
 
-Note: prior to v2.5.0 a separate `SessionStart` entry with `matcher: "compact"` also wired `post-compact.sh` on resume. That double-registration was removed in v2.5.0 — `PostCompact` is now the sole trigger for `post-compact.sh`. Do not flag the missing `compact` matcher as a problem on v2.5+.
+Note: `SessionStart` should have three entries — the main banner hook (no matcher),
+`morning-brief-auto.sh` (async, no matcher), `compact-restore.sh` (matcher: compact),
+and `session-title.sh` (matcher: startup|resume). Don't flag having multiple
+`SessionStart` entries as an error.
 
 ### 4. Hook scripts
 
@@ -141,6 +156,9 @@ Check that these skills exist (in plugin mode they are namespaced):
 - `/context-engineering-kit:session-sync` ✅/❌
 - `/context-engineering-kit:usage-forecast` ✅/❌
 - `/context-engineering-kit:morning-brief` ✅/❌
+- `/context-engineering-kit:init-cek` ✅/❌  _(first-run init, optional)_
+
+Total: 7 user-facing skills (8 including init-cek)
 
 Verify by listing: `ls ${CLAUDE_PLUGIN_ROOT}/skills/ 2>/dev/null`
 
@@ -181,16 +199,16 @@ For `CEK_SUBSCRIPTION_TIER`:
 ║  Context Health Report — YYYY-MM-DD    ║
 ╚════════════════════════════════════════╝
 
-Install mode       : plugin (context-engineering-kit v2.5.0)
+Install mode       : plugin (context-engineering-kit v2.6.0)
                      Plugin root: ~/.claude/plugins/cache/...
 
 CLAUDE.md          ✅ fresh (2h ago)
 session_handover   ✅ current task set
-hooks wired        ✅ 7/7 (plugin mode — hooks/hooks.json)
+hooks wired        ✅ 16/16 (plugin mode — hooks/hooks.json)
 hook scripts       ✅ 5/5 executable
 session state      ⚠️  not yet created — will appear after first turn in a project
 git sync           ⚠️  no project open — open a project folder to enable git sync
-skills             ✅ 8/8 present (context-engineering-kit:*)
+skills             ✅ 7/7 present (context-engineering-kit:*)
 config             ✅ all present
 usage tracking     ⚠️  usage files not yet created (normal on first session)
 

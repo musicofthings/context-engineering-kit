@@ -34,7 +34,7 @@ RESPONSE=""
 if [ -n "$TRANSCRIPT_PATH" ] && [ -f "$TRANSCRIPT_PATH" ]; then
   # Grep-prefilter so jq doesn't slurp a multi-MB transcript when only the
   # last assistant turn matters. Each line is one JSON object.
-  RESPONSE=$(grep '"type":"assistant"' "$TRANSCRIPT_PATH" 2>/dev/null \
+  RESPONSE=$(grep -E '"type"\s*:\s*"assistant"' "$TRANSCRIPT_PATH" 2>/dev/null \
     | tail -1 \
     | jq -r '.message.content[]? | select(.type == "text") | .text' 2>/dev/null \
     | tr '\n' ' ' \

@@ -67,6 +67,15 @@
             "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/compact-restore.sh"
           }
         ]
+      },
+      {
+        "matcher": "startup|resume",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/session-title.sh"
+          }
+        ]
       }
     ],
     "PermissionRequest": [
@@ -215,20 +224,56 @@
           }
         ]
       }
+    ],
+    "StopFailure": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/stop-failure.sh",
+            "async": true
+          }
+        ]
+      }
+    ],
+    "InstructionsLoaded": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/instructions-loaded.sh",
+            "async": true
+          }
+        ]
+      }
+    ],
+    "FileChanged": [
+      {
+        "matcher": "config/model_thresholds.json|config/usage_budget.json|config/plugin_settings.json",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c 'echo \"[cek] Config file changed: $CLAUDE_FILE_PATH \u2014 thresholds reloaded\" >&2'",
+            "async": true
+          }
+        ]
+      }
     ]
   },
   "env": {
-    "CEK_VERSION": "2.5.0",
+    "CEK_VERSION": "2.6.0",
     "CEK_TOKEN_WARN_PCT": "70",
     "CEK_TOKEN_COMPACT_PCT": "85",
     "CEK_TOKEN_CRITICAL_PCT": "92",
     "CEK_MODEL_HAIKU": "claude-haiku-4-5-20251001",
     "CEK_MODEL_SONNET": "claude-sonnet-4-6",
-    "CEK_MODEL_OPUS": "claude-opus-4-7",
+    "CEK_MODEL_OPUS": "claude-opus-4-8",
     "CEK_SUBSCRIPTION_TIER": "pro"
   },
   "statusLine": {
     "type": "command",
-    "command": "bash .claude/statusline.sh"
+    "command": "bash \"${CLAUDE_PROJECT_DIR}/.claude/statusline.sh\""
   }
 }

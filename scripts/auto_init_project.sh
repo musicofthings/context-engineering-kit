@@ -77,7 +77,7 @@ jq -n \
   }' > "$STATE_FILE"
 
 # ── Generate initial session_handover.md ─────────────────────────────────────
-if "$PYTHON" "$PLUGIN_ROOT/scripts/generate_session_handover.py" 2>/dev/null; then
+if "$PYTHON" "$PLUGIN_ROOT/scripts/generate_session_handover.py" --trigger init --output "$HANDOVER_FILE" 2>/dev/null; then
   log "session_handover.md created"
 else
   # Minimal fallback if Python unavailable

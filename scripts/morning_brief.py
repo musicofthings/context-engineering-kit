@@ -6,6 +6,7 @@ Usage:
     python scripts/morning_brief.py --save    # also write to briefs/YYYY-MM-DD.md
     python scripts/morning_brief.py --quiet   # write file only, no terminal output
 """
+from __future__ import annotations
 
 import argparse
 import json
@@ -44,7 +45,7 @@ def truncate(text: str, limit: int = 180) -> str:
     return text[:limit].rsplit(" ", 1)[0] + "…"
 
 
-def parse_published(entry) -> datetime | None:
+def parse_published(entry) -> Optional[datetime]:
     """Return a tz-aware datetime from an entry, or None."""
     if hasattr(entry, "published_parsed") and entry.published_parsed:
         try:

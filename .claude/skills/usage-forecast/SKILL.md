@@ -55,4 +55,4 @@ For API billing, cost is direct and predictable.
 Raw data is in `.claude/session/daily-usage.json`
 Forecast is in `.claude/session/usage-forecast.json`
 
-Both are committed to git by `session-end.sh` so you can see usage history.
+Both files live in `.claude/session/` which is gitignored. They persist between sessions on disk but are not committed to git.

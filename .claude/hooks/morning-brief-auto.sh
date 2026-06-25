@@ -55,3 +55,5 @@ mkdir -p "$BRIEFS_DIR"
 echo ""
 echo "📰 Today's morning brief is ready (${TODAY}). Type /morning-brief to read it."
 echo ""
+
+exit 0

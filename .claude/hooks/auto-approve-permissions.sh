@@ -6,7 +6,7 @@
 # asked for permission when /handover, the agent PreCompact hook, or
 # any other skill/hook writes to session state files.
 #
-# Returns JSON with permissionDecision: "allow" for matching paths.
+# Returns JSON with decision.behavior: "allow" for matching paths (PermissionRequest format).
 # Returns nothing (exit 0) for everything else — lets normal permission
 # flow handle it.
 #
@@ -36,12 +36,15 @@ HOOK_EVENT=$(echo "$INPUT" | jq -r '.hook_event_name // "PermissionRequest"' 2>/
 # Anything in this list gets silently approved without prompting the user.
 
 auto_approve() {
-  # Return JSON decision to stdout — Claude Code reads this
+  # Return JSON decision to stdout — Claude Code reads this.
+  # PermissionRequest uses hookSpecificOutput.decision.behavior (allow/deny).
+  # PreToolUse uses hookSpecificOutput.permissionDecision — different schema.
   jq -nc --arg ev "$HOOK_EVENT" '{
     hookSpecificOutput: {
       hookEventName: $ev,
-      permissionDecision: "allow",
-      permissionDecisionReason: "context-kit: auto-approved context file write"
+      decision: {
+        behavior: "allow"
+      }
     }
   }'
   exit 0

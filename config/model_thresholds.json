@@ -11,7 +11,7 @@
   "model_selection": {
     "default": "claude-sonnet-4-6",
     "fast_edits": "claude-haiku-4-5-20251001",
-    "architecture": "claude-opus-4-7",
+    "architecture": "claude-opus-4-8",
 
     "auto_switch_rules": [
       {
@@ -27,7 +27,7 @@
       },
       {
         "condition": "task_type == 'architecture' OR task_type == 'security_review'",
-        "model": "claude-opus-4-7",
+        "model": "claude-opus-4-8",
         "rationale": "Complex reasoning — Opus only when genuinely needed"
       }
     ]
@@ -43,7 +43,7 @@
   },
 
   "fast_mode": {
-    "enabled_for_models": ["claude-opus-4-7"],
+    "enabled_for_models": ["claude-opus-4-8"],
     "speed_multiplier": 2.5,
     "use_when": "Opus is needed but context is > 70% or task requires quick turnaround"
   }

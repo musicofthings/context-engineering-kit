@@ -125,6 +125,7 @@ echo "{\"ts\":\"$TIMESTAMP\",\"pct\":$USAGE_PCT,\"elapsed_min\":$ELAPSED_MIN,\"s
 
 # ── Check sentinel files (prevent repeated injections) ───────────────────────
 WARN_SENTINEL="$SENTINEL_DIR/.sentinel_warn"
+PRESAVE_SENTINEL="$SENTINEL_DIR/.sentinel_presave"
 SAVE_SENTINEL="$SENTINEL_DIR/.sentinel_save"
 CRITICAL_SENTINEL="$SENTINEL_DIR/.sentinel_critical"
 
@@ -162,9 +163,9 @@ this threshold is: run /handover then /session-sync save before answering,
 then continue normally with a one-line "State saved." confirmation.
 INJECT
 
-elif [ "$USAGE_PCT" -ge "$PRE_SAVE_PCT" ] && [ ! -f "$WARN_SENTINEL" ]; then
+elif [ "$USAGE_PCT" -ge "$PRE_SAVE_PCT" ] && [ ! -f "$PRESAVE_SENTINEL" ]; then
   # PRE-SAVE: inject reminder (softer, just a reminder)
-  touch "$WARN_SENTINEL"
+  touch "$PRESAVE_SENTINEL"
   cat << INJECT
 
 🟡 [usage-sentinel] ${USAGE_PCT}% of the ${SUB_TYPE} window is used (${USAGE_LABEL}).

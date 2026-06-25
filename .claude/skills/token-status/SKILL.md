@@ -71,7 +71,7 @@ Read `.claude/session/` for sentinel files:
 |-----------|--------|
 | Simple edits | `/model claude-haiku-4-5-20251001` |
 | Standard dev | Stay on Sonnet (default) |
-| Architecture | `/model claude-opus-4-7` |
+| Architecture | `/model claude-opus-4-8` |
 | Context > 80% | `/fast` mode |
 | Budget > 80% | Switch to Haiku to extend remaining window |
 

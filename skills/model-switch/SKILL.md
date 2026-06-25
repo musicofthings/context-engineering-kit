@@ -29,7 +29,7 @@ Analyse the current task context and recommend a model:
 - Writing documentation
 - Standard analysis tasks
 
-**Switch to Opus** (`/model claude-opus-4-7`) when:
+**Switch to Opus** (`/model claude-opus-4-8`) when:
 - Designing system architecture
 - Complex multi-step reasoning
 - Reviewing security or compliance decisions
@@ -58,8 +58,8 @@ Then confirm:
 |-------|-----------|-------------|---------|
 | Haiku 4.5 | Lowest | Lowest | Simple edits |
 | Sonnet 4.6 | Medium | Medium | Most work |
-| Opus 4.6 | Highest | Highest | Complex decisions |
-| Opus 4.6 + /fast | Highest | Highest | Speed-critical Opus work |
+| Opus 4.8 | Highest | Highest | Complex decisions |
+| Opus 4.8 + /fast | Highest | Highest | Speed-critical Opus work |
 
 ## Auto-switch thresholds (configured in config/model_thresholds.json)
 

@@ -30,3 +30,16 @@ _Loaded automatically by Claude Code from .claude/rules/_
 - VCF analysis: reference file, describe variant by HGVS notation in chat
 - gnomAD/ClinVar queries: ask for specific fields, not full JSON responses
 - For large cohorts: process in batches, save intermediate results to files
+
+## Prompt caching (Anthropic API automatic prefix caching)
+
+Claude Code automatically uses Anthropic's prompt caching on the system prompt.
+CLAUDE.md is injected as the system prompt, so the layout determines cache hit rate.
+
+- **Stable prefix** = first ~60% of CLAUDE.md. Never prepend dynamic content here.
+- **Dynamic suffix** = "Active work context" section at the bottom. Only this changes.
+- A cache hit saves ~85% of input token cost and significantly reduces latency.
+- A cache miss occurs when the stable prefix changes — avoid editing the top half mid-session.
+- After `/compact-smart`, CLAUDE.md is re-loaded. If the prefix changed, the cache breaks.
+- Check `.claude/session/instructions-loaded.jsonl` and `state.json:instructions_compact_reloads`
+  to diagnose repeated cache misses.

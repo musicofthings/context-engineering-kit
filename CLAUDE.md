@@ -31,7 +31,10 @@ context-engineering-kit/
 │   │   ├── post-compact.sh          ← re-injects context after compaction
 │   │   ├── session-start.sh         ← injects state on fresh/resumed session
 │   │   ├── stop.sh                  ← captures state when Claude finishes turn
-│   │   └── session-end.sh           ← final git commit of session state
+│   │   ├── session-end.sh           ← final git commit of session state
+│   │   ├── stop-failure.sh          ← logs API errors (rate_limit, overloaded, etc.)
+│   │   ├── instructions-loaded.sh   ← tracks CLAUDE.md loads for cache analysis
+│   │   └── session-title.sh         ← auto-names sessions from branch/task
 │   ├── skills/                      ← slash commands (type /skill-name)
 │   │   ├── token-status/            ← /token-status
 │   │   ├── handover/                ← /handover
@@ -64,6 +67,21 @@ context-engineering-kit/
     ├── sync-api-docs.yml
     └── session-state.yml
 ```
+
+
+## Prompt caching strategy
+Anthropic's API caches the system prompt prefix automatically. CLAUDE.md is injected
+as the system prompt, so cache efficiency depends on how stable the file's top is.
+
+Rules for this file:
+- **Lines 1–66 (project structure)** — never prepend dynamic content here; this is the cached prefix
+- **"Active work context" section** — always at the bottom; this is the only part that changes
+- Do not add timestamps, commit SHAs, or task state above the "Active work context" marker
+- Keep total CLAUDE.md under 500 lines; beyond that the system prompt grows past the cache window
+
+The `InstructionsLoaded` hook logs every load event to `.claude/session/instructions-loaded.jsonl`.
+A high `instructions_compact_reloads` count in state.json means the prefix is changing too often
+(breaking cache hits on every compaction). Run `/context-health` to see the count.
 
 ## Active work context
 <!-- AUTO-UPDATED by hooks — do not edit this section manually -->

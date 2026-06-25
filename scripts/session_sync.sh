@@ -60,7 +60,6 @@ do_save() {
 
   # Stage session files
   git add .claude/session/state.json 2>/dev/null || true
-  git add .claude/session/history.jsonl 2>/dev/null || true
   git add session_handover.md 2>/dev/null || true
   git add CLAUDE.md 2>/dev/null || true
 
