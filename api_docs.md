@@ -1,6 +1,6 @@
 # API Documentation
-_Auto-fetched: 2026-06-11T21:25:14Z_
-_Source: /home/runner/work/context-engineering-kit/context-engineering-kit/config/api_sources.json_
+_Auto-fetched: 2026-07-03T15:55:18Z_
+_Source: /Users/theranosis_dx/projects/context-engineering-kit/config/api_sources.json_
 
 ---
 
@@ -67,12 +67,12 @@ Source: https://docs.anthropic.com/en/api/getting-started
 
 ### Rate limits
 
-The API enforces rate limits and spend limits to prevent misuse and manage capacity. Limits are organized into usage tiers that increase automatically as you use the API. Each tier has:
+The API enforces rate limits and spend limits to prevent misuse and manage capacity. Limits are organized into usage tiers; your organization is placed on a tier automatically and can move to a higher tier over time. Each tier has:
 
-- **Spend limits**: Maximum monthly cost for API usage
-- **Rate limits**: Maximum number of requests per minute (RPM) and tokens per minute (TPM)
+* **Spend limits**: Maximum monthly cost for API usage
+* **Rate limits**: Maximum number of requests per minute (RPM) and tokens per minute (TPM)
 
-You can view your organization's current limits in the [Console](/settings/limits). For higher limits or Priority Tier (enhanced service levels with committed spend), contact sales through the Console.
+You can view your organization's current limits in the [Console](/settings/limits). For higher limits, use **Request rate limit increase** on the [Limits](/settings/limits) page.
 
 For detailed information about limits, tiers, and the token bucket algorithm used for rate limiting, see [Rate limits](/docs/en/api/rate-limits).
 
@@ -86,16 +86,20 @@ The Claude API is available in [many countries and regions](/docs/en/api/support
   <Card title="Messages API reference" icon="book" href="/docs/en/api/messages/create">
     Complete API specification for direct model interactions
   </Card>
+
   <Card title="Claude Managed Agents reference" icon="brain" href="/docs/en/managed-agents/sessions">
     Agents, Sessions, and Environments endpoints
   </Card>
+
   <Card title="Client SDKs" icon="code" href="/docs/en/cli-sdks-libraries/overview">
     Python, TypeScript, C#, Go, Java, PHP, and Ruby
   </Card>
+
   <Card title="Rate limits" icon="gauge" href="/docs/en/api/rate-limits">
-    Usage tiers, spend limits, and token bucket algorithm
+    Usage tiers, requesting higher limits, and the token bucket algorithm
   </Card>
 </CardGroup>
+
 ```
 
 
@@ -111,7 +115,7 @@ Source: https://developers.cloudflare.com/workers/
 ```
 # Cloudflare Workers
 
-A serverless platform for building, deploying, and scaling apps across[Cloudflare's global network ↗](https://www.cloudflare.com/network/) with a single command — no infrastructure to manage, no complex configuration
+A serverless platform for building, deploying, and scaling apps across [Cloudflare's global network ↗](https://www.cloudflare.com/network/) with a single command — no infrastructure to manage, no complex configuration
 
 With Cloudflare Workers, you can expect to:
 
@@ -214,6 +218,7 @@ Streamlined image infrastructure from a single API.
 Want to connect with the Workers community? [Join our Discord ↗](https://discord.cloudflare.com)
 
 ```json
+{"@context":"https://schema.org","@type":"WebPage","@id":"https://developers.cloudflare.com/workers/#page","headline":"Overview · Cloudflare Workers docs","description":"Build and deploy serverless applications across Cloudflare's global network with Workers.","url":"https://developers.cloudflare.com/workers/","inLanguage":"en","image":"https://developers.cloudflare.com/dev-products-preview.png","dateModified":"2026-04-23","publisher":{"@type":"Organization","name":"Cloudflare","url":"https://www.cloudflare.com/"},"isPartOf":{"@type":"WebSite","@id":"https://developers.cloudflare.com/#website","name":"Cloudflare Docs","url":"https://developers.cloudflare.com/"}}
 {"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"item":{"@id":"/directory/","name":"Directory"}},{"@type":"ListItem","position":2,"item":{"@id":"/workers/","name":"Workers"}}]}
 ```
 
