@@ -14,6 +14,25 @@ set -euo pipefail
 PROJECT_DIR="${CLAUDE_PROJECT_DIR:-$(pwd)}"
 TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
+# ── Redaction pass ───────────────────────────────────────────────────────────
+# The strings extracted below come straight from model output and get persisted
+# into state.json (and, via generate_session_handover.py, into the git-committed
+# session_handover.md). Strip credential- and PHI-shaped substrings first, per
+# .claude/rules/security.md. This is defense-in-depth, NOT a guarantee: it can
+# only catch shaped patterns, not free-text names or MRNs written in prose.
+# Word-boundary escapes (\b) are avoided — they differ between BSD and GNU sed.
+redact() {
+  printf '%s' "$1" | sed -E \
+    -e 's/sk-ant-[A-Za-z0-9_-]+/[REDACTED-KEY]/g' \
+    -e 's/ghp_[A-Za-z0-9]+/[REDACTED-KEY]/g' \
+    -e 's/gh[opsu]_[A-Za-z0-9]+/[REDACTED-KEY]/g' \
+    -e 's/AKIA[A-Z0-9]{12,}/[REDACTED-KEY]/g' \
+    -e 's/[Bb]earer[[:space:]]+[A-Za-z0-9._-]+/[REDACTED-TOKEN]/g' \
+    -e 's/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/[REDACTED-EMAIL]/g' \
+    -e 's/[Mm][Rr][Nn][:#[:space:]]*[0-9]{4,}/[REDACTED-MRN]/g' \
+    -e 's/[0-9]{3}-[0-9]{2}-[0-9]{4}/[REDACTED-SSN]/g'
+}
+
 # ── Resolve state location (shared worktree-aware helper) ─────────────────────
 # shellcheck source=../../scripts/resolve_state_dir.sh
 source "${CLAUDE_PLUGIN_ROOT:-$PROJECT_DIR}/scripts/resolve_state_dir.sh"
@@ -122,6 +141,12 @@ if echo "$RESPONSE" | grep -qE "(✅|done|complete|finished|created|written|upda
     | sed 's/|$//' \
     || echo "")
 fi
+
+# ── Redact extracted strings before they persist ─────────────────────────────
+NEXT_ACTION=$(redact "$NEXT_ACTION")
+ACTIVE_TASK_HINT=$(redact "$ACTIVE_TASK_HINT")
+PHASE_HINT=$(redact "$PHASE_HINT")
+COMPLETED=$(redact "$COMPLETED")
 
 # ── Update state.json (lock-guarded, concurrency-safe) ───────────────────────
 # Only write fields we actually extracted — don't clobber existing good data.

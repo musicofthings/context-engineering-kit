@@ -2,6 +2,12 @@
 # .claude/hooks/guard-dangerous.sh
 # PreToolUse hook on Bash — blocks known-dangerous patterns.
 # Exit 2 = block the tool call and tell Claude why.
+#
+# LIMITATION — defense-in-depth, NOT a security boundary. This matches the
+# literal command text against a fixed regex list. It cannot see through
+# indirection: `X=/; rm -rf "$X"`, variables, subshells, eval, or a target
+# hidden inside an invoked script all slip past. It reduces accidental
+# footguns; it does not sandbox. Real isolation is an OS/container concern.
 
 set -euo pipefail
 

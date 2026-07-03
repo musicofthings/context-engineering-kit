@@ -222,11 +222,11 @@
     ],
     "FileChanged": [
       {
-        "matcher": "CLAUDE.md|session_handover.md",
+        "matcher": "config/model_thresholds.json|config/usage_budget.json|config/plugin_settings.json",
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/scripts/update_context_files.py\"",
+            "command": "bash -c 'echo \"[cek] Config file changed: $CLAUDE_FILE_PATH — thresholds reloaded\" >&2'",
             "async": true
           }
         ]

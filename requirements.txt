@@ -1,0 +1,10 @@
+# context-engineering-kit — Python dependencies
+#
+# The core hooks and scripts are stdlib-only and require no installation.
+# The single third-party dependency below is needed ONLY for the optional
+# morning-brief feature (scripts/morning_brief.py, /morning-brief skill),
+# which is disabled by default. Install it if you enable that feature:
+#
+#     pip install -r requirements.txt
+
+feedparser>=6.0.0

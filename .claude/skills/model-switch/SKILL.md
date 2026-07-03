@@ -21,7 +21,7 @@ Analyse the current task context and recommend a model:
 - Translating between languages
 - Simple regex or data transforms
 
-**Stay on Sonnet** (default, `claude-sonnet-4-6`) when:
+**Stay on Sonnet** (default, `claude-sonnet-5`) when:
 - Writing new functions or modules
 - Debugging logic errors
 - Reading and understanding existing code

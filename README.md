@@ -439,6 +439,14 @@ All hooks fire automatically — you never call them manually.
 
 > The three `Stop` hooks run **sequentially in a single hook entry** (not async) so they can't race on `state.json`. Every hook that mutates `state.json` does so through `state_write()` in `scripts/resolve_state_dir.sh`, which takes a portable lock (`flock`, or a `mkdir` spinlock on macOS) and writes atomically — concurrent writers field-merge instead of clobbering. `hook_once()` de-dupes session-start / session-end / pre-compact / post-compact when the kit is active as both plugin and opened repo. Permission/deny rules in `.claude/settings.json` use the canonical `Read(./.env)` / `Write(./session_handover.md)` path-anchored form.
 
+> **`guard-dangerous.sh` is defense-in-depth, not a hard guarantee.** It matches
+> the *literal text* of a command against a fixed regex list, so it catches the
+> common destructive spellings (`rm -rf /`, `rm -rf .`, quoted `$HOME`, reordered
+> flags) but **cannot** stop a command that hides its target behind indirection —
+> e.g. `X=/; rm -rf "$X"`, a variable, a subshell, or a script it invokes. Treat
+> it as a safety net that reduces accidents, not a sandbox. Real isolation must
+> come from OS-level permissions and running in a disposable environment.
+
 ### PreCompact — what gets saved
 
 Every compaction triggers a full save sequence:
@@ -478,6 +486,16 @@ claude
 ```
 
 Works across: Office Windows ↔ Home Mac ↔ Linux · Claude Pro ↔ Max ↔ API billing
+
+> **Sync through git, not through a shared filesystem.** The workflow above is
+> safe because each device writes `state.json` locally and hands off via
+> `git commit` / `git pull` — the writes never overlap in time. Do **not** point
+> two machines at one `state.json` living on a shared cloud drive (iCloud,
+> Dropbox, OneDrive, NFS) at the same time. The concurrency lock uses `flock` on
+> Linux/Git-Bash and a `mkdir` spinlock on macOS (which has no `flock`), and
+> those two mechanisms lock different paths — a Linux writer and a macOS writer
+> would not see each other's lock and could corrupt the file. This is documented
+> at the lock in `scripts/resolve_state_dir.sh`.
 
 ---
 
@@ -595,7 +613,7 @@ Set in Claude Code settings under `"env"`, or export in your shell:
 | `CEK_TOKEN_WARN_PCT` | `70` | Context % at which to warn |
 | `CEK_TOKEN_CRITICAL_PCT` | `85` | Context % at which to auto-save |
 | `CEK_MODEL_HAIKU` | `claude-haiku-4-5-20251001` | Haiku model ID |
-| `CEK_MODEL_SONNET` | `claude-sonnet-4-6` | Sonnet model ID |
+| `CEK_MODEL_SONNET` | `claude-sonnet-5` | Sonnet model ID |
 | `CEK_MODEL_OPUS` | `claude-opus-4-8` | Opus model ID |
 
 ---
@@ -613,9 +631,16 @@ Set in Claude Code settings under `"env"`, or export in your shell:
 | `.claude/session/state.json.lock` / `.lockd` | Concurrency locks for `state_write()` | No (gitignored) |
 | `session_handover.md` | Structured task handover (human-readable) | Yes |
 | `CLAUDE.md` | Living project context document | Yes |
+| `api_docs.md` | Weekly API-doc snapshot from `fetch_api_docs.py` | No (gitignored) |
 
 > In a git **worktree**, these files resolve to the **main checkout** by
 > default (`state.scope: auto`) so they survive the worktree being removed.
+
+> **`api_docs.md` is gitignored on purpose.** Running `scripts/fetch_api_docs.py`
+> locally produces a file that `git status` will not show — this is expected, not
+> a bug. The file is committed **only** by the `sync-api-docs` CI workflow, which
+> force-adds it (`git add -f`) onto a bot-authored PR branch for review. Don't try
+> to commit a locally generated copy.
 
 ---
 

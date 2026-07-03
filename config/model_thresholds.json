@@ -9,7 +9,7 @@
   },
 
   "model_selection": {
-    "default": "claude-sonnet-4-6",
+    "default": "claude-sonnet-5",
     "fast_edits": "claude-haiku-4-5-20251001",
     "architecture": "claude-opus-4-8",
 
