@@ -5,9 +5,17 @@
 Hooks, skills, and scripts that keep your context alive through compaction, device switches, and subscription changes. Works in **Claude Cowork**, the **Claude Code Desktop** plugin slot, the **Claude Code CLI** standalone install, or **Cursor IDE** via project hooks.
 
 🌐 **[Landing page & full docs →](https://musicofthings.github.io/context-engineering-kit/)**
-📦 **[Download plugin zip (v2.5.0) →](https://github.com/musicofthings/context-engineering-kit/releases/latest)** — for Cowork or Desktop Plugin upload
+📦 **[Download plugin zip (v2.6.0) →](https://github.com/musicofthings/context-engineering-kit/releases/latest)** — for Cowork or Desktop Plugin upload
 
 ---
+
+## What's new in v2.6.0
+
+- **Five new hook events wired.** `StopFailure` logs API error types (rate limit, overloaded, etc.) to `state.json`; `InstructionsLoaded` tracks CLAUDE.md cache-miss reloads; `FileChanged` triggers `update_context_files.py` when CLAUDE.md or `session_handover.md` change on disk; a second `SessionStart[startup|resume]` entry auto-names each session as `branch/task-slug` in the Claude Code session list.
+- **Prompt caching strategy documented.** CLAUDE.md and `token-hygiene.md` now document exactly which lines are the stable cache prefix (never mutate above the "Active work context" marker) and how to diagnose cache misses via `instructions-loaded.jsonl` and `state.json:instructions_compact_reloads`.
+- **Bug fixes.** Fixed a sentinel-file collision that made the 70% WARN threshold unreachable; corrected the `PermissionRequest` hook output schema (was emitting `permissionDecision` instead of `decision.behavior`); fixed the `statusLine` command to use an absolute path; corrected Python 3.8 compat (`from __future__ import annotations`) across two scripts.
+- **GitHub Actions pinned correctly.** `sync-api-docs.yml` now uses `actions/checkout@v4` and `actions/setup-python@v4` (was referencing non-existent `@v6`).
+- **Default model updated.** `CEK_MODEL_SONNET` set to `claude-sonnet-5`; `CEK_MODEL_OPUS` set to `claude-opus-4-8` throughout config, skills, and README.
 
 ## What's new in v2.5.0
 
@@ -89,7 +97,7 @@ The easiest path. One zip works in both **Claude Cowork** and **Claude Code Desk
 **Either** download the prebuilt zip from the [latest GitHub release](https://github.com/musicofthings/context-engineering-kit/releases/latest):
 
 ```
-context-engineering-kit-2.5.0.zip
+context-engineering-kit-2.6.0.zip
 ```
 
 **Or** build it from source (requires Python 3):
@@ -98,7 +106,7 @@ context-engineering-kit-2.5.0.zip
 git clone https://github.com/musicofthings/context-engineering-kit.git
 cd context-engineering-kit
 python scripts/package_plugin.py
-# → writes context-engineering-kit-2.5.0.zip in the project root
+# → writes context-engineering-kit-2.6.0.zip in the project root
 ```
 
 The packaging script reads the version from `.claude-plugin/plugin.json` and excludes git history, runtime session state, audit logs, and caches automatically.
@@ -106,7 +114,7 @@ The packaging script reads the version from `.claude-plugin/plugin.json` and exc
 ### Step 2a — Upload to Claude Cowork
 
 1. Open Cowork → **Settings** → **Plugins** (or **Skills** → **Add plugin**)
-2. Click **Upload plugin** → select `context-engineering-kit-2.5.0.zip`
+2. Click **Upload plugin** → select `context-engineering-kit-2.6.0.zip`
 3. Confirm install — the eight skills appear as `/context-engineering-kit:*` commands
 4. Type `/context-engineering-kit:handover` in any conversation to use it
 
@@ -115,7 +123,7 @@ The packaging script reads the version from `.claude-plugin/plugin.json` and exc
 ### Step 2b — Upload to Claude Code Desktop
 
 1. Open **Claude Code Desktop** → click **Customize** (bottom-left gear) → **Upload Plugin**
-2. Select `context-engineering-kit-2.5.0.zip` and restart Claude Code
+2. Select `context-engineering-kit-2.6.0.zip` and restart Claude Code
 3. Verify in any project:
    ```
    /context-engineering-kit:context-health
@@ -809,4 +817,4 @@ Then in Claude Code: `/my-skill`
 
 ---
 
-*context-engineering-kit v2.5.0 — Built for multi-device, multi-subscription Claude Code and Cursor workflows.*
+*context-engineering-kit v2.6.0 — Built for multi-device, multi-subscription Claude Code and Cursor workflows.*

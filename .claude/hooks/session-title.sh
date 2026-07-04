@@ -15,6 +15,8 @@
 set -euo pipefail
 
 PROJECT_DIR="${CLAUDE_PROJECT_DIR:-$(pwd)}"
+# shellcheck source=../../scripts/resolve_state_dir.sh
+source "${CLAUDE_PLUGIN_ROOT:-$PROJECT_DIR}/scripts/resolve_state_dir.sh"
 
 INPUT=$(cat 2>/dev/null || true)
 SOURCE=$(printf '%s' "$INPUT" | jq -r '.source // "startup"' 2>/dev/null || echo "startup")
@@ -25,9 +27,7 @@ case "$SOURCE" in
   *) exit 0 ;;
 esac
 
-# Resolve active task from state if available
-STATE_FILE="${CLAUDE_PLUGIN_ROOT:-$PROJECT_DIR}/.claude/session/state.json"
-# Prefer the kit root's state (worktree-aware: plugin root is always the main checkout)
+# Resolve active task via worktree-aware STATE_FILE (set by resolve_state_dir.sh)
 ACTIVE_TASK=""
 if [ -f "$STATE_FILE" ]; then
   ACTIVE_TASK=$(jq -r '.active_task // ""' "$STATE_FILE" 2>/dev/null || echo "")

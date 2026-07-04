@@ -57,7 +57,7 @@ Then confirm:
 | Model | Input cost | Output cost | Best for |
 |-------|-----------|-------------|---------|
 | Haiku 4.5 | Lowest | Lowest | Simple edits |
-| Sonnet 4.6 | Medium | Medium | Most work |
+| Sonnet 5 | Medium | Medium | Most work |
 | Opus 4.8 | Highest | Highest | Complex decisions |
 | Opus 4.8 + /fast | Highest | Highest | Speed-critical Opus work |
 

@@ -28,7 +28,7 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
 elif command -v notify-send &>/dev/null; then
   notify-send "$TITLE" "$MSG" 2>/dev/null || true
 elif command -v powershell.exe &>/dev/null; then
-  powershell.exe -Command "[System.Reflection.Assembly]::LoadWithPartialName('System.Windows.Forms'); [System.Windows.Forms.MessageBox]::Show([string]::Copy('${MSG//\'/\'\'}'),'${TITLE//\'/\'\'}')" 2>/dev/null || true
+  powershell.exe -Command "[System.Reflection.Assembly]::LoadWithPartialName('System.Windows.Forms'); [System.Windows.Forms.MessageBox]::Show([string]::Copy('${MSG//\'/\'\'}'),'${TITLE//\'/\'\'}')" >/dev/null 2>/dev/null || true
 fi
 
 exit 0
