@@ -154,12 +154,24 @@ LAST_UPDATED=$(jq -r '.last_updated // "unknown"' "$STATE_FILE" 2>/dev/null || e
 COMPACT_COUNT=$(jq -r '.compact_count // 0' "$STATE_FILE" 2>/dev/null || echo "0")
 # SUB_TYPE / WINDOW_MINUTES were already loaded above for the window calc.
 
+# Nearly every hook in this kit parses JSON with jq — without it the kit
+# silently no-ops (state never updates, usage warnings never fire) and the
+# dangerous-command guard runs blind. Say so loudly instead of degrading
+# in silence.
+JQ_WARNING=""
+if ! command -v jq >/dev/null 2>&1; then
+  JQ_WARNING="
+⚠️  jq NOT FOUND — most context-kit hooks are inactive.
+   Install it:  winget install jqlang.jq   (or choco/scoop/apt/brew)
+"
+fi
+
 cat << INJECT
 
 ╔══════════════════════════════════════════════════════════╗
 ║  context-engineering-kit v2.6.0 — Session Started         ║
 ────────────────────────────────────────────────────────────
-
+$JQ_WARNING
 📅 Date/Time    : $TODAY
 🌿 Branch       : $GIT_BRANCH$([ "$IN_WORKTREE" = true ] && echo " (worktree — state on main)")
 📝 Commit       : $GIT_COMMIT

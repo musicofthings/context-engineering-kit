@@ -1,6 +1,5 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
-  "model": "claude-sonnet-5",
   "bash_path": "bash",
   "permissions": {
     "allow": [
@@ -267,7 +266,7 @@
     "CEK_TOKEN_WARN_PCT": "70",
     "CEK_TOKEN_COMPACT_PCT": "85",
     "CEK_TOKEN_CRITICAL_PCT": "92",
-    "CEK_MODEL_HAIKU": "claude-haiku-4-5-20251001",
+    "CEK_MODEL_HAIKU": "claude-haiku-4-5",
     "CEK_MODEL_SONNET": "claude-sonnet-5",
     "CEK_MODEL_OPUS": "claude-opus-4-8",
     "CEK_SUBSCRIPTION_TIER": "pro"

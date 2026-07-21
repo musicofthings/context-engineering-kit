@@ -88,15 +88,45 @@ def save_json(p: Path, d: dict):
     os.replace(tmp, p)
 
 
+def ingest_transcript(path: str) -> dict:
+    """Fallback metrics from the session transcript JSONL.
+
+    The Stop hook payload carries no cost/rate_limits/context_window fields
+    (those are statusline inputs) — but it does carry transcript_path, and
+    each assistant entry there records real per-message token usage.
+    """
+    input_tok = output_tok = turns = 0
+    model = "unknown"
+    try:
+        with open(path, encoding="utf-8", errors="replace") as f:
+            for line in f:
+                try:
+                    entry = json.loads(line)
+                except Exception:
+                    continue
+                if entry.get("type") != "assistant":
+                    continue
+                msg = entry.get("message", {}) or {}
+                usage = msg.get("usage", {}) or {}
+                input_tok  += usage.get("input_tokens", 0) or 0
+                output_tok += usage.get("output_tokens", 0) or 0
+                turns += 1
+                model = msg.get("model", model)
+    except OSError:
+        pass
+    return {"input_tok": input_tok, "output_tok": output_tok,
+            "turns": turns, "model": model}
+
+
 def ingest(ev: dict) -> dict:
-    """Extract metrics from Stop event. v2.3 reads real rate_limits fields."""
+    """Extract metrics from Stop event, falling back to the transcript."""
     cost   = ev.get("cost", {})
     usage  = ev.get("usage", {})
     rl     = ev.get("rate_limits", {})
     cw     = ev.get("context_window", {})
     five_h = rl.get("five_hour", {})
     seven_d = rl.get("seven_day", {})
-    return {
+    m = {
         "rl_5h_pct":      five_h.get("used_percentage"),    # None if absent
         "rl_7d_pct":      seven_d.get("used_percentage"),
         "rl_5h_resets_at": five_h.get("resets_at"),
@@ -108,6 +138,19 @@ def ingest(ev: dict) -> dict:
         "turns":          ev.get("turn_count", 0),
         "model":          ev.get("model", {}).get("display_name", "unknown"),
     }
+
+    # No cost/usage in the event (the normal case for a Stop hook):
+    # recover token counts and model from the transcript instead.
+    if not m["input_tok"] and not m["output_tok"] and not m["session_cost"]:
+        transcript = ev.get("transcript_path", "")
+        if transcript:
+            t = ingest_transcript(transcript)
+            m["input_tok"]  = t["input_tok"]
+            m["output_tok"] = t["output_tok"]
+            m["turns"]      = m["turns"] or t["turns"]
+            if m["model"] == "unknown":
+                m["model"] = t["model"]
+    return m
 
 
 def accumulate(m: dict) -> dict:
