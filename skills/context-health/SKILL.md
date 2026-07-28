@@ -54,7 +54,7 @@ cat ${CLAUDE_PLUGIN_ROOT}/hooks/hooks.json 2>/dev/null | python3 -c "
 import sys, json
 d = json.load(sys.stdin)
 hooks = d.get('hooks', {})
-# All events wired as of v2.6.0
+# All events wired as of v2.7.0
 events = [
   'SessionStart','PreCompact','PostCompact','Stop','SessionEnd',
   'PreToolUse','PostToolUse','PostToolUseFailure','PermissionRequest',
@@ -72,7 +72,7 @@ print(f'  {len(ok)}/{len(events)} wired')
 Report as: `hooks wired  ✅ 16/16 (plugin mode — hooks.json)` (or the actual count)
 
 #### Standalone mode
-Check `.claude/settings.json` for a `hooks` block with these events (all required as of v2.6.0):
+Check `.claude/settings.json` for a `hooks` block with these events (all required as of v2.7.0):
 `SessionStart`, `PreCompact`, `PostCompact`, `Stop`, `SessionEnd`,
 `PreToolUse` (Bash), `PostToolUse` (Edit|Write), `PostToolUseFailure`,
 `PermissionRequest`, `SubagentStart`, `SubagentStop`, `Notification`,
@@ -199,7 +199,7 @@ For `CEK_SUBSCRIPTION_TIER`:
 ║  Context Health Report — YYYY-MM-DD    ║
 ╚════════════════════════════════════════╝
 
-Install mode       : plugin (context-engineering-kit v2.6.0)
+Install mode       : plugin (context-engineering-kit v2.7.0)
                      Plugin root: ~/.claude/plugins/cache/...
 
 CLAUDE.md          ✅ fresh (2h ago)

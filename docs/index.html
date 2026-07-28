@@ -3,10 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>context-engineering-kit — Never lose context in Claude Code or Cursor again</title>
-  <meta name="description" content="Automated context preservation for Claude Code and Cursor. Hooks, skills, and scripts that keep your work alive through compaction, device switches, and subscription changes." />
+  <title>context-engineering-kit — Never lose context in Claude Code, Cursor, Grok, or Codex again</title>
+  <meta name="description" content="Automated context preservation for Claude Code, Cursor, Grok, and Codex. Real handover at usage thresholds; multi-runtime adapters share one logic core." />
   <meta property="og:title" content="context-engineering-kit" />
-  <meta property="og:description" content="Never lose context in Claude Code or Cursor again. Auto-saves session state, syncs across devices, and survives compaction." />
+  <meta property="og:description" content="Never lose context across Claude Code, Cursor, Grok, and Codex. Real auto-save at 85%/92% usage; multi-runtime hooks share one core." />
   <meta property="og:url" content="https://musicofthings.github.io/context-engineering-kit/" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
@@ -682,22 +682,21 @@
   <div class="container">
     <div class="hero-badge">
       <span class="dot"></span>
-      v2.5.0 — Claude Code + Cursor
+      v2.7.0 — Claude · Cursor · Grok · Codex
     </div>
 
-    <h1>Never lose context<br>in <em>Claude Code</em> or <em>Cursor</em> again.</h1>
+    <h1>Never lose context<br>across <em>Claude</em>, <em>Cursor</em>, <em>Grok</em> &amp; <em>Codex</em>.</h1>
 
     <p class="hero-sub">
-      Automated hooks and skills that save your session state before compaction,
-      sync it across devices and git worktrees, and restore it on every session
-      start — so your agent always knows exactly where you left off. One logic
-      core, two runtimes.
+      Automated hooks that <strong>write</strong> session_handover before usage limits,
+      survive subagents mid-flight, and restore state on every session start.
+      One logic core — adapters for Claude Code, Cursor, Grok Build, and Codex.
     </p>
 
     <div class="hero-actions">
       <a href="https://github.com/musicofthings/context-engineering-kit/releases/latest" class="btn btn-primary">
         <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M7.47 10.78a.75.75 0 0 0 1.06 0l3.75-3.75a.75.75 0 0 0-1.06-1.06L8.75 8.44V1.75a.75.75 0 0 0-1.5 0v6.69L4.78 5.97a.75.75 0 0 0-1.06 1.06l3.75 3.75ZM3.75 13a.75.75 0 0 0 0 1.5h8.5a.75.75 0 0 0 0-1.5h-8.5Z"/></svg>
-        Download Plugin Zip (v2.5.0)
+        Download Plugin Zip (v2.7.0)
       </a>
       <a href="#install" class="btn btn-secondary">Install instructions</a>
       <a href="https://github.com/musicofthings/context-engineering-kit" class="btn btn-secondary">
@@ -706,8 +705,8 @@
       </a>
     </div>
     <p style="font-size:0.82rem; color:var(--muted); margin-bottom:60px; max-width:620px;">
-      Works in <strong>Claude Cowork</strong>, <strong>Claude Code Desktop</strong>, <strong>Claude Code CLI</strong>, or <strong>Cursor IDE</strong>.
-      Cowork &amp; Desktop use the zip above; CLI and Cursor use <code>git clone</code> — Cursor hooks ship in <code>.cursor/</code>.
+      Works in <strong>Claude Cowork</strong>, <strong>Code Desktop/CLI</strong>, <strong>Cursor</strong>, <strong>Grok</strong>, and <strong>Codex</strong>.
+      Zip for Cowork/Desktop; clone for CLI/Cursor/Grok/Codex — see <code>.cursor/</code>, <code>.grok/hooks/</code>, <code>.codex/</code>.
     </p>
 
     <div class="hero-terminal">
@@ -718,7 +717,7 @@
       <div class="terminal-body">
         <code>
 <span class="t-info">╔══════════════════════════════════════════════════════════╗</span><br>
-<span class="t-info">║  context-engineering-kit v2.5.0 — Session Started        ║</span><br>
+<span class="t-info">║  context-engineering-kit v2.7.0 — Session Started        ║</span><br>
 <span class="t-info">╚══════════════════════════════════════════════════════════╝</span><br>
 <br>
 <span class="t-out">📅 Date/Time    : Saturday May 17 2026, 06:05 UTC</span><br>
@@ -743,8 +742,8 @@
 <section id="problem">
   <div class="container">
     <p class="section-label">The Problem</p>
-    <h2>Claude Code has a memory problem.</h2>
-    <p class="section-sub">Every compaction, device switch, or subscription change risks losing your task state, decisions, and progress.</p>
+    <h2>Agent sessions have a memory problem.</h2>
+    <p class="section-sub">Compaction, device switches, usage resets mid-subagent, or runtime hop (Claude → Grok → Codex) can drop task state — unless you externalise it.</p>
 
     <div class="problem-grid">
       <div class="problem-card">
@@ -763,7 +762,7 @@
         <div class="icon">📊</div>
         <h3>No usage visibility</h3>
         <p>You hit the Pro limit with no warning and lose a long session. Or you switch to Opus for a trivial rename.</p>
-        <p class="solution">→ usage-sentinel tracks burn rate and auto-saves before you hit the wall</p>
+        <p class="solution">→ usage-sentinel prefers real rate-limit % and WRITES handover at 85%/92%</p>
       </div>
       <div class="problem-card">
         <div class="icon">🆕</div>
@@ -851,17 +850,17 @@
 
     <div class="features-grid">
       <div class="feature-card">
-        <span class="tag tag-platform">Platform · v2.5 · Cursor</span>
+        <span class="tag tag-platform">Platform · v2.7 · Multi-runtime</span>
         <h3>.cursor/hooks.json</h3>
         <p>Cursor IDE project hooks: 10 events (<code>sessionStart</code>, <code>beforeSubmitPrompt</code>, <code>beforeShellExecution</code>, <code>afterFileEdit</code>, <code>stop</code>, …) routed through thin adapters in <code>.cursor/hooks/</code> that exec the same <code>.claude/hooks/*.sh</code> logic. No plugin upload — open the repo in Cursor.</p>
       </div>
       <div class="feature-card">
-        <span class="tag tag-config">Core · v2.5</span>
+        <span class="tag tag-config">Core · v2.7</span>
         <h3>resolve_state_dir.sh</h3>
         <p>Single source of truth for where session state lives. Config-driven <code>state.scope</code> (auto / main / local) handles branch vs. git-worktree flows, with a portable lock-guarded <code>state_write()</code> so parallel sessions field-merge instead of clobbering.</p>
       </div>
       <div class="feature-card">
-        <span class="tag tag-skill">Skill · v2.5 · Agent SDK</span>
+        <span class="tag tag-skill">Skill · v2.7 · Agent SDK</span>
         <h3>Session resume</h3>
         <p>SessionStart and Stop capture the SDK <code>session_id</code> and transcript path. <code>/handover</code> prints the exact <code>claude --resume &lt;id&gt;</code> command and warns when transcript resume is cwd-bound (e.g. started in a worktree).</p>
       </div>
@@ -943,14 +942,14 @@
 <section id="install">
   <div class="container">
     <p class="section-label">Installation</p>
-    <h2>Four ways to install.</h2>
-    <p class="section-sub">Cowork &amp; Desktop both take the same zip — easiest path. CLI gives you the full hook layer in a single project. Cursor ships project hooks in <code>.cursor/</code>.</p>
+    <h2>Six ways to install.</h2>
+    <p class="section-sub">Cowork &amp; Desktop take the same zip. CLI, Cursor, Grok, and Codex use <code>git clone</code> with portable project hooks.</p>
 
     <!-- Direct zip download callout -->
     <div style="background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 22px; margin-bottom: 28px; display: flex; gap: 14px; align-items: center; flex-wrap: wrap; justify-content: space-between;">
       <div>
-        <div style="font-size: 0.95rem; font-weight: 600; margin-bottom: 4px;">📦 Plugin zip — v2.5.0</div>
-        <div style="font-size: 0.85rem; color: var(--muted);">One zip, works in Claude Cowork and Claude Code Desktop. ~143 KB.</div>
+        <div style="font-size: 0.95rem; font-weight: 600; margin-bottom: 4px;">📦 Plugin zip — v2.7.0</div>
+        <div style="font-size: 0.85rem; color: var(--muted);">One zip, works in Claude Cowork and Claude Code Desktop. ~251 KB.</div>
       </div>
       <a href="https://github.com/musicofthings/context-engineering-kit/releases/latest" class="btn btn-primary" style="padding: 10px 18px; font-size: 0.88rem;">
         <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M7.47 10.78a.75.75 0 0 0 1.06 0l3.75-3.75a.75.75 0 0 0-1.06-1.06L8.75 8.44V1.75a.75.75 0 0 0-1.5 0v6.69L4.78 5.97a.75.75 0 0 0-1.06 1.06l3.75 3.75ZM3.75 13a.75.75 0 0 0 0 1.5h8.5a.75.75 0 0 0 0-1.5h-8.5Z"/></svg>
@@ -979,6 +978,8 @@
       <button class="tab-btn" onclick="showTab('plugin')">🔌 Code Desktop</button>
       <button class="tab-btn" onclick="showTab('cli')">⌨️ Code CLI</button>
       <button class="tab-btn" onclick="showTab('cursor')">🖱️ Cursor IDE</button>
+      <button class="tab-btn" onclick="showTab('grok')">⚡ Grok Build</button>
+      <button class="tab-btn" onclick="showTab('codex')">📦 Codex</button>
     </div>
 
     <!-- ── Cowork tab ───────────────────────────────── -->
@@ -990,7 +991,7 @@
           <div>
             <h4>Download the plugin zip</h4>
             <p>Grab the prebuilt zip from <a href="https://github.com/musicofthings/context-engineering-kit/releases/latest">GitHub Releases</a> — no clone, no build needed.</p>
-            <div class="code-block"><pre>context-engineering-kit-2.5.0.zip   <span class="comment"># ~143 KB</span></pre></div>
+            <div class="code-block"><pre>context-engineering-kit-2.7.0.zip   <span class="comment"># ~251 KB</span></pre></div>
           </div>
         </div>
         <div class="step">
@@ -1025,7 +1026,7 @@
             <p><strong>Either</strong> download the prebuilt zip from the <a href="https://github.com/musicofthings/context-engineering-kit/releases/latest">latest release</a>, <strong>or</strong> build it from source (works the same on Windows, macOS, Linux):</p>
             <div class="code-block"><pre><span class="cmd">git clone</span> https://github.com/musicofthings/context-engineering-kit.git
 <span class="cmd">cd</span> context-engineering-kit
-<span class="cmd">python</span> scripts/package_plugin.py   <span class="comment"># → context-engineering-kit-2.5.0.zip</span></pre></div>
+<span class="cmd">python</span> scripts/package_plugin.py   <span class="comment"># → context-engineering-kit-2.7.0.zip</span></pre></div>
             <p style="margin-top:8px; font-size:0.82rem; color:var(--muted);">The script reads the version from <code>plugin.json</code> and excludes git history, runtime state, audit logs, and caches.</p>
           </div>
         </div>
@@ -1168,6 +1169,69 @@
           <div>
             <h4>Verify</h4>
             <p>Start an Agent session and check the <strong>Hooks</strong> output channel. Edit a file — <code>state.json</code>'s <code>changed_files</code> should update. See the <a href="#cursor">Cursor integration</a> section for the full event map.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Grok tab ───────────────────────────────── -->
+    <div id="tab-grok" class="tab-content">
+      <p style="color:var(--muted); font-size:0.9rem; margin-bottom:24px;">For <strong>Grok Build</strong>. Project hooks under <code>.grok/hooks/</code> dispatch into the same <code>.claude/hooks</code> core. Trust the folder once so hooks run.</p>
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div>
+            <h4>Clone / open the project</h4>
+            <div class="code-block"><pre><span class="cmd">git clone</span> https://github.com/musicofthings/context-engineering-kit.git my-project
+<span class="cmd">cd</span> my-project</pre></div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div>
+            <h4>Trust hooks</h4>
+            <p>In Grok: open the project, then run <code>/hooks-trust</code>. Confirm the Hooks tab lists <code>cek-hooks.json</code>.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div>
+            <h4>Optional: single hook source</h4>
+            <p>Grok may also load <code>.claude/settings.json</code>. Doubles are safe. To use only Grok hooks, set in <code>~/.grok/config.toml</code>:</p>
+            <div class="code-block"><pre>[compat.claude]
+hooks = false</pre></div>
+            <p style="margin-top:8px; font-size:0.82rem; color:var(--muted);">See <a href="https://github.com/musicofthings/context-engineering-kit/blob/main/docs/runtime-capability-matrix.md">runtime-capability-matrix.md</a> for event support (e.g. <code>PermissionDenied</code> vs Claude's <code>PermissionRequest</code>).</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Codex tab ───────────────────────────────── -->
+    <div id="tab-codex" class="tab-content">
+      <p style="color:var(--muted); font-size:0.9rem; margin-bottom:24px;">For <strong>Codex CLI</strong>. Portable <code>.codex/hooks.json</code> (no absolute machine paths) → <code>run.sh</code> → kit core.</p>
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div>
+            <h4>Clone with project as cwd</h4>
+            <div class="code-block"><pre><span class="cmd">git clone</span> https://github.com/musicofthings/context-engineering-kit.git my-project
+<span class="cmd">cd</span> my-project</pre></div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div>
+            <h4>Run Codex from the project root</h4>
+            <p>Relative commands like <code>bash .codex/hooks/run.sh session-start</code> require the project as cwd.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div>
+            <h4>Regenerate if you change events</h4>
+            <div class="code-block"><pre><span class="cmd">python</span> scripts/generate_runtime_hooks.py
+<span class="cmd">python</span> scripts/generate_runtime_hooks.py --check
+<span class="cmd">bash</span> scripts/check_sync.sh</pre></div>
           </div>
         </div>
       </div>
@@ -1425,7 +1489,7 @@
 <section id="cta">
   <div class="container">
     <h2>Start where you left off.<br>Every time.</h2>
-    <p>One zip for Cowork &amp; Desktop. <code>git clone</code> for CLI and Cursor. Works with Pro, Max, and API billing.</p>
+    <p>One zip for Cowork &amp; Desktop. <code>git clone</code> for CLI, Cursor, Grok, and Codex. Works with Pro, Max, and API billing.</p>
     <div class="cta-actions">
       <a href="https://github.com/musicofthings/context-engineering-kit/releases/latest" class="btn btn-primary">
         <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" style="margin-right:6px;"><path d="M7.47 10.78a.75.75 0 0 0 1.06 0l3.75-3.75a.75.75 0 0 0-1.06-1.06L8.75 8.44V1.75a.75.75 0 0 0-1.5 0v6.69L4.78 5.97a.75.75 0 0 0-1.06 1.06l3.75 3.75ZM3.75 13a.75.75 0 0 0 0 1.5h8.5a.75.75 0 0 0 0-1.5h-8.5Z"/></svg>
@@ -1444,8 +1508,8 @@
 <footer>
   <div class="container">
     <div class="inner">
-      <span>context-engineering-kit v2.5.0 · MIT License · <a href="https://github.com/musicofthings/context-engineering-kit">github.com/musicofthings/context-engineering-kit</a></span>
-      <span>Built for <a href="https://claude.ai/code">Claude Code</a> &amp; <a href="https://cursor.com">Cursor</a></span>
+      <span>context-engineering-kit v2.7.0 · MIT License · <a href="https://github.com/musicofthings/context-engineering-kit">github.com/musicofthings/context-engineering-kit</a></span>
+      <span>Built for Claude Code, Cursor, Grok &amp; Codex</span>
     </div>
   </div>
 </footer>
