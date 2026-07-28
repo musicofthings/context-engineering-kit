@@ -1,0 +1,159 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .grok/hooks/run.sh session-start"
+          }
+        ],
+        "matcher": ""
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .grok/hooks/run.sh hook compact-restore.sh"
+          }
+        ],
+        "matcher": "compact"
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .grok/hooks/run.sh hook session-title.sh"
+          }
+        ],
+        "matcher": "startup|resume"
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .grok/hooks/run.sh hook session-end.sh",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .grok/hooks/run.sh hook usage-sentinel.sh"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .grok/hooks/run.sh hook guard-dangerous.sh"
+          }
+        ],
+        "matcher": "Bash"
+      }
+    ],
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .grok/hooks/run.sh hook track-changes.sh"
+          }
+        ],
+        "matcher": "Edit|Write"
+      }
+    ],
+    "PostToolUseFailure": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .grok/hooks/run.sh hook post-tool-failure.sh",
+            "async": true
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .grok/hooks/run.sh hook pre-compact.sh"
+          }
+        ]
+      }
+    ],
+    "PostCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .grok/hooks/run.sh hook post-compact.sh"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .grok/hooks/run.sh stop"
+          }
+        ]
+      }
+    ],
+    "StopFailure": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .grok/hooks/run.sh hook stop-failure.sh"
+          }
+        ]
+      }
+    ],
+    "SubagentStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .grok/hooks/run.sh subagent-start",
+            "async": true
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .grok/hooks/run.sh subagent-stop",
+            "async": true
+          }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .grok/hooks/run.sh hook notify.sh"
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -79,8 +79,15 @@ briefs/
 *.zip
 .claude/session/state.json
 
-# Local multi-agent adapters (Grok/Codex mirrors of skills + hooks).
-# Not part of the published Claude plugin layout — machine/tooling-local only.
+# Local multi-agent adapters (Grok skills mirror, Codex local state).
+# Portable hook wiring IS tracked (Phase C): .codex/hooks.json + run.sh,
+# .grok/hooks/cek-hooks.json + run.sh.
 .agents/
-.codex/
-.Codex/
+
+# Ignore local Codex cache/state, but keep portable wiring tracked.
+# (Windows is case-insensitive — do not also ignore `.Codex/` wholesale.)
+.codex/**
+!.codex/hooks.json
+!.codex/hooks/
+!.codex/hooks/run.sh
+!.codex/hooks/README.md
