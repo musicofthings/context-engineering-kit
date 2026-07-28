@@ -61,6 +61,7 @@
     "For API billing, set daily_budget_usd to your comfort limit",
     "Set warn_pct / auto_save_pct to tune when saves are triggered",
     "Phase A: 85%/92% WRITE handover; inject is confirmation only",
-    "Phase B: subagents_running > 0 still gets a real save + drain warning"
+    "Phase B: subagents_running > 0 still gets a real save + drain warning",
+    "usage-sentinel prefers usage-forecast.json rl_5h_pct/pct_used when fresh (<2h), else wall-clock"
   ]
 }

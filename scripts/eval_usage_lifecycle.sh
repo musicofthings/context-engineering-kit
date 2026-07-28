@@ -281,6 +281,39 @@ PY
 echo ""
 
 # ════════════════════════════════════════════════════════════════════════════
+SCENARIO="S10: prefer fresh forecast rl_5h_pct over wall-clock"
+echo "▶ $SCENARIO"
+rm -f .claude/session/.sentinel_* session_handover.md
+# Wall clock only ~10% (1 of 10 min) but forecast says 90% real window
+write_state "{\"session_start_time\":\"$(minutes_ago 1)\",\"active_task\":\"real-signal\",\"subagents_running\":0}"
+NOW_TS=$("$PYTHON" -c "from datetime import datetime,timezone; print(datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'))")
+"$PYTHON" -c "
+import json
+from pathlib import Path
+Path('.claude/session/usage-forecast.json').write_text(json.dumps({
+  'updated': '$NOW_TS',
+  'data_source': 'rate_limit_window',
+  'rl_5h_pct': 90,
+  'pct_used': 90,
+  'status': 'COMPACT',
+}, indent=2), encoding='utf-8')
+"
+run_sentinel
+assert_file "save sentinel from real 90%" ".claude/session/.sentinel_save"
+assert_file "handover from real signal" "session_handover.md"
+if grep -q 'rate_limit_window\|source.:.rate_limit' "$SANDBOX/sentinel.combined" "$SANDBOX/sentinel.err" .claude/session/usage.jsonl 2>/dev/null; then
+  pass "logged real usage source"
+else
+  # usage.jsonl should carry source field
+  if grep -q 'rate_limit_window' .claude/session/usage.jsonl 2>/dev/null; then
+    pass "usage.jsonl source=rate_limit_window"
+  else
+    fail "expected rate_limit_window in usage log"
+  fi
+fi
+echo ""
+
+# ════════════════════════════════════════════════════════════════════════════
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "Results: $PASS passed, $FAIL failed"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"

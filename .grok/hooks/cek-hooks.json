@@ -83,6 +83,17 @@
         ]
       }
     ],
+    "PermissionDenied": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .grok/hooks/run.sh hook permission-denied.sh",
+            "async": true
+          }
+        ]
+      }
+    ],
     "PreCompact": [
       {
         "hooks": [

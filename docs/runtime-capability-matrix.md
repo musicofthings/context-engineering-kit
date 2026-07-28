@@ -32,7 +32,7 @@ python scripts/generate_runtime_hooks.py --check   # CI / pre-commit
 | PostToolUse (Edit/Write) | ✅ | ✅ | ✅ | ✅ | `track-changes.sh` |
 | PostToolUseFailure | ✅ | ✅ | ✅ | ✅ | `post-tool-failure.sh` |
 | PermissionRequest | ✅ | ❌ | ✅ | ❌ | `auto-approve-permissions.sh` |
-| PermissionDenied | ❌ | ❌ | ❌ | ✅ | *(no CEK script yet — Grok-only)* |
+| PermissionDenied | ❌ | ❌ | ❌ | ✅ | `permission-denied.sh` (log-only; deny already applied) |
 | PreCompact | ✅ | ✅ | ✅ | ✅ | `pre-compact.sh` |
 | PostCompact | ✅ | ❌* | ✅ | ✅ | `post-compact.sh` (*Cursor re-injects via SessionStart compact) |
 | Stop | ✅ | ✅ | ✅ | ✅ | `stop` chain: extract-state → usage-tracker → stop |

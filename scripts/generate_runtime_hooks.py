@@ -84,6 +84,12 @@ EVENTS: list[dict] = [
         "runtimes": ["codex"],  # Grok: PermissionDenied only — skip
     },
     {
+        "event": "PermissionDenied",
+        "hook": "permission-denied.sh",
+        "runtimes": ["grok"],  # Grok-only event name
+        "async": True,
+    },
+    {
         "event": "PreCompact",
         "hook": "pre-compact.sh",
         "runtimes": ["codex", "grok"],

@@ -40,11 +40,21 @@ for evt in SessionStart SessionEnd UserPromptSubmit PreToolUse Stop SubagentStar
   fi
 done
 
-# 4) Grok must NOT wire PermissionRequest (unsupported)
+# 4) Grok must NOT wire PermissionRequest; MUST wire PermissionDenied
 if grep -q "PermissionRequest" .grok/hooks/cek-hooks.json; then
   fail "grok must not wire PermissionRequest"
 else
   pass "grok omits PermissionRequest"
+fi
+if grep -q "PermissionDenied" .grok/hooks/cek-hooks.json && grep -q "permission-denied.sh" .grok/hooks/cek-hooks.json; then
+  pass "grok wires PermissionDenied"
+else
+  fail "grok missing PermissionDenied → permission-denied.sh"
+fi
+if [ -f .claude/hooks/permission-denied.sh ]; then
+  pass "permission-denied.sh present"
+else
+  fail "missing .claude/hooks/permission-denied.sh"
 fi
 
 # 5) Grok has PermissionDenied gap documented — still has Stop/Subagent

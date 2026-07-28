@@ -107,25 +107,74 @@ if [ "$ELAPSED_SEC" -lt 0 ]; then ELAPSED_SEC=0; fi
 ELAPSED_MIN=$(( ELAPSED_SEC / 60 ))
 
 # ── Compute usage percentage ──────────────────────────────────────────────────
+# Prefer real rate-limit / forecast metrics (written by usage-tracker on Stop)
+# when fresh; fall back to wall-clock session age (historical CEK behaviour).
+USAGE_SOURCE="wall_clock"
+FORECAST_FILE="$STATE_DIR/usage-forecast.json"
+REAL_PCT=""
+REAL_SRC=""
+
+_forecast_age_ok() {
+  # Accept forecast if updated within last 2 hours (7200s)
+  local updated epoch_u age
+  updated=$(_str "$(jq -r '.updated // empty' "$FORECAST_FILE" 2>/dev/null || true)")
+  [ -z "$updated" ] && return 1
+  epoch_u=$(_num "$(parse_epoch "$updated")" 0)
+  [ "$epoch_u" = "0" ] && return 1
+  age=$(( NOW - epoch_u ))
+  [ "$age" -lt 0 ] && age=0
+  [ "$age" -le 7200 ]
+}
+
+if [ -f "$FORECAST_FILE" ] && _forecast_age_ok; then
+  # Prefer explicit 5h window %; else tracker composite pct_used
+  REAL_PCT=$(_str "$(jq -r 'if .rl_5h_pct != null then .rl_5h_pct else .pct_used end' "$FORECAST_FILE" 2>/dev/null || true)")
+  REAL_SRC=$(_str "$(jq -r '.data_source // "forecast"' "$FORECAST_FILE" 2>/dev/null || echo forecast)")
+fi
+# Also accept state.json mirror from usage-tracker
+if [ -z "$REAL_PCT" ] || [ "$REAL_PCT" = "null" ]; then
+  if [ -f "$STATE_FILE" ]; then
+    REAL_PCT=$(_str "$(jq -r '.rl_5h_pct // .usage_pct // empty' "$STATE_FILE" 2>/dev/null || true)")
+    REAL_SRC=$(_str "$(jq -r '.usage_source // "state"' "$STATE_FILE" 2>/dev/null || echo state)")
+  fi
+fi
+
+# Coerce real pct (may be float like 34.2)
+if [ -n "$REAL_PCT" ] && [ "$REAL_PCT" != "null" ]; then
+  REAL_PCT=$("$PYTHON" -c "print(int(float('${REAL_PCT}')))" 2>/dev/null || echo "")
+fi
+
 if [ "$SUB_TYPE" = "api" ]; then
-  USAGE_PCT=$(_num "$("$PYTHON" -c "print(int(float('${SESSION_COST_USD}') / float('${DAILY_BUDGET_USD}') * 100))" 2>/dev/null || echo 0)" 0)
-  USAGE_LABEL="USD $(printf '%.2f' "$SESSION_COST_USD") / \$${DAILY_BUDGET_USD}"
-  LIMIT_LABEL="daily budget"
+  WALL_PCT=$(_num "$("$PYTHON" -c "print(int(float('${SESSION_COST_USD}') / float('${DAILY_BUDGET_USD}') * 100))" 2>/dev/null || echo 0)" 0)
+  WALL_LABEL="USD $(printf '%.2f' "$SESSION_COST_USD") / \$${DAILY_BUDGET_USD}"
+  WALL_LIMIT="daily budget"
 else
   WINDOW_MINUTES=$(_num "$WINDOW_MINUTES" 300)
   WINDOW_SEC=$(( WINDOW_MINUTES * 60 ))
   if [ "$WINDOW_SEC" -le 0 ]; then WINDOW_SEC=1; fi
-  USAGE_PCT=$(( ELAPSED_SEC * 100 / WINDOW_SEC ))
+  WALL_PCT=$(( ELAPSED_SEC * 100 / WINDOW_SEC ))
   REMAINING_MIN=$(( WINDOW_MINUTES - ELAPSED_MIN ))
-  USAGE_LABEL="${ELAPSED_MIN}/${WINDOW_MINUTES} min"
-  LIMIT_LABEL="${REMAINING_MIN} min remaining"
+  WALL_LABEL="${ELAPSED_MIN}/${WINDOW_MINUTES} min"
+  WALL_LIMIT="${REMAINING_MIN} min remaining"
+fi
+
+if [ -n "$REAL_PCT" ] && [ "$REAL_PCT" != "null" ]; then
+  USAGE_PCT=$(_num "$REAL_PCT" 0)
+  USAGE_SOURCE="${REAL_SRC:-rate_limit_window}"
+  USAGE_LABEL="${USAGE_PCT}% (${USAGE_SOURCE})"
+  LIMIT_LABEL="subscription window"
+else
+  USAGE_PCT=$(_num "$WALL_PCT" 0)
+  USAGE_SOURCE="wall_clock"
+  USAGE_LABEL="${WALL_LABEL}"
+  LIMIT_LABEL="${WALL_LIMIT}"
 fi
 
 USAGE_PCT=$(_num "$USAGE_PCT" 0)
 if [ "$USAGE_PCT" -gt 100 ]; then USAGE_PCT=100; fi
 
 # ── Log usage snapshot ────────────────────────────────────────────────────────
-echo "{\"ts\":\"$TIMESTAMP\",\"pct\":$USAGE_PCT,\"elapsed_min\":$ELAPSED_MIN,\"sub\":\"$SUB_TYPE\",\"cost_usd\":\"$SESSION_COST_USD\"}" \
+echo "{\"ts\":\"$TIMESTAMP\",\"pct\":$USAGE_PCT,\"source\":\"$USAGE_SOURCE\",\"elapsed_min\":$ELAPSED_MIN,\"sub\":\"$SUB_TYPE\",\"cost_usd\":\"$SESSION_COST_USD\"}" \
   >> "$USAGE_LOG" 2>/dev/null || true
 
 SUBS_RUNNING=$(_num "$(cek_subagents_running)" 0)

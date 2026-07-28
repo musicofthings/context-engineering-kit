@@ -308,6 +308,23 @@ def run_hook():
     fc   = forecast(m, day, tier)
     save_json(FORECAST_FILE, fc)
 
+    # Mirror key metrics into state.json so usage-sentinel can prefer real
+    # rate-limit % over wall-clock session age (Phase D / pending tasks).
+    try:
+        state_path = SESSION_DIR / "state.json"
+        st = load_json(state_path)
+        st["usage_pct"] = fc.get("pct_used")
+        st["usage_source"] = fc.get("data_source")
+        st["rl_5h_pct"] = fc.get("rl_5h_pct")
+        st["rl_7d_pct"] = fc.get("rl_7d_pct")
+        st["ctx_pct"] = fc.get("ctx_pct")
+        st["usage_updated"] = fc.get("updated")
+        if m.get("session_cost") is not None:
+            st["session_cost_usd"] = str(m.get("session_cost") or st.get("session_cost_usd") or "0")
+        save_json(state_path, st)
+    except Exception:
+        pass
+
     if fc["status"] in ("WARNING", "CRITICAL"):
         src  = "5h" if fc["data_source"] == "rate_limit_window" else "est"
         left = fc["turns_to_critical"]

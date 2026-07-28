@@ -1,0 +1,68 @@
+name: CEK quality
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - '.claude/**'
+      - '.codex/**'
+      - '.grok/**'
+      - '.cursor/**'
+      - 'hooks/**'
+      - 'scripts/**'
+      - 'config/**'
+      - 'docs/runtime-capability-matrix.md'
+      - '.github/workflows/cek-quality.yml'
+  pull_request:
+    paths:
+      - '.claude/**'
+      - '.codex/**'
+      - '.grok/**'
+      - '.cursor/**'
+      - 'hooks/**'
+      - 'scripts/**'
+      - 'config/**'
+      - 'docs/runtime-capability-matrix.md'
+      - '.github/workflows/cek-quality.yml'
+  workflow_dispatch:
+
+jobs:
+  runtime-and-lifecycle:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install jq
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq jq
+
+      - name: Syntax-check shell scripts
+        run: |
+          set -e
+          find scripts .claude/hooks .codex/hooks .grok/hooks .cursor/hooks \
+            -name '*.sh' -type f 2>/dev/null | while read -r f; do
+            bash -n "$f" || { echo "syntax fail: $f"; exit 1; }
+          done
+          echo "bash -n OK"
+
+      - name: generate_runtime_hooks --check
+        run: python scripts/generate_runtime_hooks.py --check
+
+      - name: check_sync
+        run: bash scripts/check_sync.sh
+
+      - name: Phase C evals
+        run: bash scripts/eval_phase_c.sh
+
+      - name: Phase A/B usage lifecycle evals
+        run: bash scripts/eval_usage_lifecycle.sh
+
+      - name: Summary
+        run: |
+          echo "CEK quality checks passed"
+          echo "Commit: ${{ github.sha }}"
