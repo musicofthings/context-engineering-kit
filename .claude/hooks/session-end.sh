@@ -22,6 +22,37 @@ source "${CLAUDE_PLUGIN_ROOT:-$PROJECT_DIR}/scripts/resolve_state_dir.sh"
 # Collapse a double fire (plugin + opened repo) so we don't commit twice.
 hook_once session-end || exit 0
 
+# ── Phase A+B: force handover before exit if children active or never saved ─
+# shellcheck source=../../scripts/find_python.sh
+source "${CLAUDE_PLUGIN_ROOT:-$PROJECT_DIR}/scripts/find_python.sh" 2>/dev/null || PYTHON=""
+# shellcheck source=../../scripts/cek_auto_save.sh
+source "${CLAUDE_PLUGIN_ROOT:-$PROJECT_DIR}/scripts/cek_auto_save.sh" 2>/dev/null || true
+if declare -f cek_auto_save_init >/dev/null 2>&1; then
+  cek_auto_save_init "$MAIN_ROOT/config/usage_budget.json" \
+    "${CLAUDE_PLUGIN_ROOT:-$PROJECT_DIR}/config/plugin_settings.json"
+  RUNNING=0
+  if declare -f cek_subagents_running >/dev/null 2>&1; then
+    RUNNING=$(cek_subagents_running)
+  fi
+  NEED_SAVE=false
+  if [ "$RUNNING" -gt 0 ]; then
+    NEED_SAVE=true
+    log "subagents_running=$RUNNING at SessionEnd — forcing handover"
+  elif [ -f "$STATE_FILE" ]; then
+    LAST_SAVE=$(jq -r '.last_auto_save // ""' "$STATE_FILE" 2>/dev/null || echo "")
+    # Always refresh handover on session end when execute_handover is on
+    if [ "${CEK_EXECUTE_HANDOVER:-true}" = "true" ]; then
+      NEED_SAVE=true
+    fi
+    [ -z "$LAST_SAVE" ] && NEED_SAVE=true
+  else
+    NEED_SAVE=true
+  fi
+  if [ "$NEED_SAVE" = true ] && declare -f cek_execute_save_pipeline >/dev/null 2>&1; then
+    cek_execute_save_pipeline "session-end" "unknown" || log "auto-save at session-end failed (non-fatal)"
+  fi
+fi
+
 if [ "$IN_WORKTREE" = true ]; then
   log "In linked worktree — sync mode depends on STATE_SCOPE=$STATE_SCOPE"
   mkdir -p "$MAIN_ROOT/.claude/session"

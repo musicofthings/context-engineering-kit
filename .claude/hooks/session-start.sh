@@ -31,6 +31,12 @@ source "${CLAUDE_PLUGIN_ROOT:-$PROJECT_DIR}/scripts/resolve_state_dir.sh"
 # share the same interpreter.
 # shellcheck source=../../scripts/find_python.sh
 source "${CLAUDE_PLUGIN_ROOT:-$PROJECT_DIR}/scripts/find_python.sh" 2>/dev/null || PYTHON=""
+# shellcheck source=../../scripts/cek_auto_save.sh
+source "${CLAUDE_PLUGIN_ROOT:-$PROJECT_DIR}/scripts/cek_auto_save.sh" 2>/dev/null || true
+if declare -f cek_auto_save_init >/dev/null 2>&1; then
+  cek_auto_save_init "$MAIN_ROOT/config/usage_budget.json" \
+    "${CLAUDE_PLUGIN_ROOT:-$PROJECT_DIR}/config/plugin_settings.json"
+fi
 
 # Collapse a double fire when the kit is active as both plugin and opened repo.
 hook_once session-start || exit 0
@@ -44,14 +50,6 @@ TODAY=$(date -u +"%A %B %d %Y, %H:%M UTC")
 GIT_BRANCH=$(git -C "$PROJECT_DIR" rev-parse --abbrev-ref HEAD 2>/dev/null || echo "unknown")
 GIT_COMMIT=$(git -C "$PROJECT_DIR" log --oneline -1 2>/dev/null || echo "none")
 GIT_DIRTY=$(git -C "$PROJECT_DIR" status --short 2>/dev/null | wc -l | tr -d ' ')
-
-# ── Clear usage sentinel files on new session ─────────────────────────────────
-# These gate injection of warnings — reset them each session so warnings
-# fire fresh even if you left off at a high-usage state last time.
-rm -f "$SENTINEL_DIR/.sentinel_warn" \
-      "$SENTINEL_DIR/.sentinel_presave" \
-      "$SENTINEL_DIR/.sentinel_save" \
-      "$SENTINEL_DIR/.sentinel_critical" 2>/dev/null || true
 
 # ── Load budget/window config (also reused by the display block below) ────────
 SUB_TYPE="pro"
@@ -84,6 +82,7 @@ _parse_epoch() {
 
 PREV_START=$(jq -r '.session_start_time // ""' "$STATE_FILE" 2>/dev/null || echo "")
 NEW_START="$TIMESTAMP"
+WINDOW_RESETTING=false
 if [ -n "$PREV_START" ]; then
   case "$SESSION_SOURCE" in
     resume|compact)
@@ -95,34 +94,94 @@ if [ -n "$PREV_START" ]; then
       case "$PREV_EPOCH" in ''|*[!0-9]*) PREV_EPOCH=0 ;; esac
       if [ "$PREV_EPOCH" -gt 0 ] && [ "$(( NOW_EPOCH - PREV_EPOCH ))" -lt "$WINDOW_SEC" ]; then
         NEW_START="$PREV_START"   # window still active — keep its start
+      else
+        # Clock will reset — Phase B: snapshot before wiping usage window context
+        WINDOW_RESETTING=true
       fi ;;
   esac
+else
+  # Brand-new project — treat as a fresh window for sentinel arming
+  WINDOW_RESETTING=true
 fi
 
-# ── Reset subagent counter and record session start (lock-guarded) ───────────
-# subagents_running drifts upward across crashes — reset to 0 on session start.
+# ── Clear usage sentinels only when the usage window actually resets ──────────
+# Clearing on every SessionStart re-armed 85%/92% and re-ran auto-save on every
+# resume/compact. Keep sentinels for the active window; re-arm only on reset.
+if [ "$WINDOW_RESETTING" = true ]; then
+  rm -f "$SENTINEL_DIR/.sentinel_warn" \
+        "$SENTINEL_DIR/.sentinel_presave" \
+        "$SENTINEL_DIR/.sentinel_save" \
+        "$SENTINEL_DIR/.sentinel_critical" \
+        "$SENTINEL_DIR/.sentinel_warn.claim" \
+        "$SENTINEL_DIR/.sentinel_presave.claim" \
+        "$SENTINEL_DIR/.sentinel_save.claim" \
+        "$SENTINEL_DIR/.sentinel_critical.claim" 2>/dev/null || true
+fi
+
+# ── Phase B: never zero mid-flight subagents without a snapshot ──────────────
+# subagents_running can lag if SubagentStop was lost; grace period preserves
+# the count when last_subagent_activity is recent. On window reset always try
+# an auto-save first so handover exists before the new clock starts.
+PRESERVE_SUBS=false
+if declare -f cek_subagents_still_active >/dev/null 2>&1; then
+  if cek_subagents_still_active; then
+    PRESERVE_SUBS=true
+  fi
+fi
+if declare -f cek_pre_reset_snapshot_if_needed >/dev/null 2>&1; then
+  if [ "$WINDOW_RESETTING" = true ] || [ "$PRESERVE_SUBS" = true ]; then
+    cek_pre_reset_snapshot_if_needed "session-start-${SESSION_SOURCE}" || true
+  fi
+fi
+
 # state_write treats a missing file as {}, so the // defaults below double as
 # the bootstrap path for a brand-new project.
-state_write \
-  '.subagents_running = 0
-   | .session_start_time = $start
-   | .last_updated = $ts
-   | (if $sid  != "" then .session_id = $sid else . end)
-   | (if $tx   != "" then .transcript_path = $tx else . end)
-   | (if $scwd != "" then .session_cwd = $scwd else . end)
-   | .session_source = $ssrc
-   | .active_task = (.active_task // "unknown")
-   | .phase = (.phase // "unknown")
-   | .next_action = (.next_action // "read session_handover.md")
-   | .compact_count = (.compact_count // 0)
-   | .session_cost_usd = (.session_cost_usd // "0")
-   | .changed_files = (.changed_files // [])' \
-  --arg ts "$TIMESTAMP" \
-  --arg start "$NEW_START" \
-  --arg sid "$SESSION_ID" \
-  --arg tx "$TRANSCRIPT_PATH" \
-  --arg scwd "$SESSION_CWD" \
-  --arg ssrc "$SESSION_SOURCE" || true
+# Only force subagents_running=0 when not preserving mid-flight children.
+if [ "$PRESERVE_SUBS" = true ]; then
+  state_write \
+    '.session_start_time = $start
+     | .last_updated = $ts
+     | (if $sid  != "" then .session_id = $sid else . end)
+     | (if $tx   != "" then .transcript_path = $tx else . end)
+     | (if $scwd != "" then .session_cwd = $scwd else . end)
+     | .session_source = $ssrc
+     | .active_task = (.active_task // "unknown")
+     | .phase = (.phase // "unknown")
+     | .next_action = (.next_action // "read session_handover.md")
+     | .compact_count = (.compact_count // 0)
+     | .session_cost_usd = (.session_cost_usd // "0")
+     | .changed_files = (.changed_files // [])
+     | .subagents_preserved_on_start = true' \
+    --arg ts "$TIMESTAMP" \
+    --arg start "$NEW_START" \
+    --arg sid "$SESSION_ID" \
+    --arg tx "$TRANSCRIPT_PATH" \
+    --arg scwd "$SESSION_CWD" \
+    --arg ssrc "$SESSION_SOURCE" || true
+else
+  state_write \
+    '.subagents_running = 0
+     | .active_subagent_ids = []
+     | .subagents_preserved_on_start = false
+     | .session_start_time = $start
+     | .last_updated = $ts
+     | (if $sid  != "" then .session_id = $sid else . end)
+     | (if $tx   != "" then .transcript_path = $tx else . end)
+     | (if $scwd != "" then .session_cwd = $scwd else . end)
+     | .session_source = $ssrc
+     | .active_task = (.active_task // "unknown")
+     | .phase = (.phase // "unknown")
+     | .next_action = (.next_action // "read session_handover.md")
+     | .compact_count = (.compact_count // 0)
+     | .session_cost_usd = (.session_cost_usd // "0")
+     | .changed_files = (.changed_files // [])' \
+    --arg ts "$TIMESTAMP" \
+    --arg start "$NEW_START" \
+    --arg sid "$SESSION_ID" \
+    --arg tx "$TRANSCRIPT_PATH" \
+    --arg scwd "$SESSION_CWD" \
+    --arg ssrc "$SESSION_SOURCE" || true
+fi
 
 # ── Docs freshness sentinel ───────────────────────────────────────────────────
 # Keep api_docs.md current so the model never codes against outdated API
@@ -194,11 +253,12 @@ Phase  : $PHASE
 Next   : $NEXT_ACTION
 Saved  : $LAST_UPDATED
 
-── Usage thresholds (auto-save fires automatically) ─────────
-70% → warning injected into context
+── Usage thresholds (auto-save executes, not model-only) ────
+70% → warning injected
 80% → save reminder injected
-85% → auto-save directive (Claude saves before responding)
-92% → critical directive (Claude saves immediately)
+85% → WRITE session_handover.md (+ optional session-sync)
+92% → critical WRITE + urgent notice
+Subagents mid-flight → count preserved (grace); snapshot before window reset
 
 ── Quick commands ────────────────────────────────────────────
 /handover        Full task state + manual state.json update

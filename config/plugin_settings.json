@@ -6,6 +6,7 @@
   "features": {
     "session_tracking":  true,
     "usage_sentinel":    true,
+    "auto_execute_handover": true,
     "morning_brief":     false,
     "tool_failure_log":  true,
     "subagent_tracking": true
