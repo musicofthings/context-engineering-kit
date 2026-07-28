@@ -14,23 +14,71 @@ set -euo pipefail
 PROJECT_DIR="${CLAUDE_PROJECT_DIR:-$(pwd)}"
 TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
-# ── Redaction pass ───────────────────────────────────────────────────────────
-# The strings extracted below come straight from model output and get persisted
-# into state.json (and, via generate_session_handover.py, into the git-committed
+# ── Redaction + normalisation helpers ────────────────────────────────────────
+# Extracted strings come straight from model output and get persisted into
+# state.json (and, via generate_session_handover.py, into git-committed
 # session_handover.md). Strip credential- and PHI-shaped substrings first, per
-# .claude/rules/security.md. This is defense-in-depth, NOT a guarantee: it can
-# only catch shaped patterns, not free-text names or MRNs written in prose.
-# Word-boundary escapes (\b) are avoided — they differ between BSD and GNU sed.
+# .claude/rules/security.md. Defense-in-depth only — not a guarantee.
+#
+# Portability notes (the source of a past "sed: unknown command: ','" failure
+# that left next_action truncated to garbage like "should be gitig"):
+#   - Never use GNU-only sed flags (e.g. s///i) — BSD sed mis-parses them.
+#   - Avoid nested POSIX classes like [:#[:space:]] which some seds choke on.
+#   - Empty input short-circuits so sed never runs on a zero-length stream
+#     under set -euo pipefail in a way that can abort the hook mid-write.
+#   - stderr from sed is discarded; on any failure we return the original text.
 redact() {
-  printf '%s' "$1" | sed -E \
+  local input="${1-}"
+  if [ -z "$input" ]; then
+    printf '%s' ""
+    return 0
+  fi
+  # shellcheck disable=SC2001
+  printf '%s' "$input" | sed -E \
     -e 's/sk-ant-[A-Za-z0-9_-]+/[REDACTED-KEY]/g' \
     -e 's/ghp_[A-Za-z0-9]+/[REDACTED-KEY]/g' \
     -e 's/gh[opsu]_[A-Za-z0-9]+/[REDACTED-KEY]/g' \
     -e 's/AKIA[A-Z0-9]{12,}/[REDACTED-KEY]/g' \
     -e 's/[Bb]earer[[:space:]]+[A-Za-z0-9._-]+/[REDACTED-TOKEN]/g' \
-    -e 's/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/[REDACTED-EMAIL]/g' \
-    -e 's/[Mm][Rr][Nn][:#[:space:]]*[0-9]{4,}/[REDACTED-MRN]/g' \
-    -e 's/[0-9]{3}-[0-9]{2}-[0-9]{4}/[REDACTED-SSN]/g'
+    -e 's/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+[.][A-Za-z]{2,}/[REDACTED-EMAIL]/g' \
+    -e 's/[Mm][Rr][Nn][:# \t]*[0-9]{4,}/[REDACTED-MRN]/g' \
+    -e 's/[0-9]{3}-[0-9]{2}-[0-9]{4}/[REDACTED-SSN]/g' \
+    2>/dev/null || printf '%s' "$input"
+}
+
+# Collapse to a single line, trim, and bound length. If we hit the max length,
+# drop a trailing partial word so state.json never stores fragments like
+# "should be gitig".
+normalize_hint() {
+  local s max="${2:-120}"
+  s=$(printf '%s' "${1-}" | tr '\n\r\t' '   ' | tr -s ' ')
+  s=$(printf '%s' "$s" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' 2>/dev/null || printf '%s' "$s")
+  [ -z "$s" ] && { printf '%s' ""; return 0; }
+  s=$(printf '%s' "$s" | cut -c1-"$max" 2>/dev/null || printf '%s' "$s")
+  # If truncation landed mid-token, trim back to the last space.
+  if [ "${#s}" -ge "$max" ]; then
+    case "$s" in
+      *' '*) s="${s% *}" ;;
+    esac
+  fi
+  printf '%s' "$s"
+}
+
+# Reject weak/passive/too-short hints so we don't clobber a good next_action
+# with prose fragments ("should be gitignored…") from the response body.
+is_usable_next_action() {
+  local s="${1-}"
+  local len=${#s}
+  [ "$len" -lt 12 ] && return 1
+  case "$s" in
+    *' '*) ;;
+    *) return 1 ;;
+  esac
+  # Passive description, not an actionable next step
+  echo "$s" | grep -qiE '^should[[:space:]]+be[[:space:]]' && return 1
+  # Obvious mid-word cutoffs from older cut -c bugs / partial greps
+  echo "$s" | grep -qiE '(gitig|ignor[^e]|committ|withou|befor[^e]|aft)$' && return 1
+  return 0
 }
 
 # ── Resolve state location (shared worktree-aware helper) ─────────────────────
@@ -71,66 +119,67 @@ if [ -z "$RESPONSE" ]; then
 fi
 
 # ── Pattern: extract next_action ─────────────────────────────────────────────
-# Look for phrases that signal the next intended action
+# Look for phrases that signal the next intended action. Prefer explicit
+# "next/I'll/let me" phrasing; only fall back to TODO/need-to/should+verb.
 NEXT_ACTION=""
+RESPONSE_ONE_LINE=$(printf '%s' "$RESPONSE" | tr '\n\r' '  ' | tr -s ' ')
 
-# Priority 1: explicit "next" statements at end of response
-# Collapse newlines first so [^.!?] doesn't behave differently across grep implementations
-if echo "$RESPONSE" | grep -qiE "(next[: ](i'll|i will|step|we'll|we will|is|are|up)|now (i'll|i will|let's|i'm going to)|after this|going to |i'm going to |will now |let me )"; then
-  NEXT_ACTION=$(echo "$RESPONSE" \
-    | tr '\n' ' ' \
-    | grep -iEo "(next[: ](i'll|i will|step|we'll|we will|is|are|up)[^.!?]{5,80}|now (i'll|i will|let's|i'm going to)[^.!?]{5,80}|after this[^.!?]{5,60}|going to [^.!?]{5,60}|i'm going to [^.!?]{5,60}|will now [^.!?]{5,60}|let me [^.!?]{5,60})" \
+# Priority 1: explicit "next" statements
+# Use [^!?] (not [^.!?]) so filenames like find_python.sh are not cut at the dot.
+if echo "$RESPONSE_ONE_LINE" | grep -qiE "(next[: ](i'll|i will|step|we'll|we will|is|are|up)|now (i'll|i will|let's|i'm going to)|after this|going to |i'm going to |will now |let me )"; then
+  NEXT_ACTION=$(echo "$RESPONSE_ONE_LINE" \
+    | grep -iEo "(next[: ](i'll|i will|step|we'll|we will|is|are|up)[^!?]{5,80}|now (i'll|i will|let's|i'm going to)[^!?]{5,80}|after this[^!?]{5,60}|going to [^!?]{5,60}|i'm going to [^!?]{5,60}|will now [^!?]{5,60}|let me [^!?]{5,60})" \
     | head -1 \
-    | sed 's/^[[:space:]]*//' \
-    | cut -c1-120 \
-    || echo "")
+    | sed 's/[.[:space:]]*$//' \
+    || true)
 fi
 
-# Priority 2: TODO or action items at end
+# Priority 2: TODO / need to / should+action-verb (not bare "should be …")
+# Portable TODO strip: never use sed s///i (GNU-only; BSD sed errors or mangles).
 if [ -z "$NEXT_ACTION" ]; then
-  NEXT_ACTION=$(echo "$RESPONSE" \
-    | tr '\n' ' ' \
-    | grep -iEo "(TODO:[^.!?]{5,80}|need to [^.!?]{5,60}|should [^.!?]{5,60})" \
+  NEXT_ACTION=$(echo "$RESPONSE_ONE_LINE" \
+    | grep -iEo "(TODO:[^!?]{5,80}|need to [^!?]{5,60}|should (run|fix|add|update|check|create|write|implement|test|merge|commit|review|investigate|route|replace|remove|migrate|verify|pull|push|sync)[^!?]{0,60})" \
     | head -1 \
-    | sed 's/TODO://i' \
-    | sed 's/^[[:space:]]*//' \
-    | cut -c1-120 \
-    || echo "")
+    | sed -E 's/[Tt][Oo][Dd][Oo]://; s/[.[:space:]]*$//' \
+    || true)
 fi
 
-# Priority 3: last sentence if it ends with action words
+# Priority 3: last sentence if it contains action words
 if [ -z "$NEXT_ACTION" ]; then
-  LAST_SENTENCE=$(echo "$RESPONSE" | tr '\n' ' ' | grep -oE '[^.!?]+[.!?]$' | tail -1 | sed 's/^[[:space:]]*//' || echo "")
+  LAST_SENTENCE=$(echo "$RESPONSE_ONE_LINE" | grep -oE '[^.!?]+[.!?]$' | tail -1 || true)
   if echo "$LAST_SENTENCE" | grep -qiE "(let me|i'll|i will|run|write|create|update|fix|check|add)"; then
-    NEXT_ACTION=$(echo "$LAST_SENTENCE" | cut -c1-120)
+    NEXT_ACTION="$LAST_SENTENCE"
   fi
+fi
+
+NEXT_ACTION=$(normalize_hint "$NEXT_ACTION" 120)
+if ! is_usable_next_action "$NEXT_ACTION"; then
+  NEXT_ACTION=""
 fi
 
 # ── Pattern: detect active task from content ─────────────────────────────────
 ACTIVE_TASK_HINT=""
-
-# Look for "working on", "building", "implementing", "fixing"
-if echo "$RESPONSE" | grep -qiE "(working on|building|implementing|fixing|creating|writing)[^.!?]{5,60}"; then
-  ACTIVE_TASK_HINT=$(echo "$RESPONSE" \
-    | grep -iEo "(working on|building|implementing|fixing|creating|writing)[^.!?]{5,60}" \
+if echo "$RESPONSE_ONE_LINE" | grep -qiE "(working on|building|implementing|fixing|creating|writing)[^!?]{5,60}"; then
+  ACTIVE_TASK_HINT=$(echo "$RESPONSE_ONE_LINE" \
+    | grep -iEo "(working on|building|implementing|fixing|creating|writing)[^!?]{5,60}" \
     | head -1 \
-    | sed 's/^[[:space:]]*//' \
-    | cut -c1-80 \
-    || echo "")
+    | sed 's/[.[:space:]]*$//' \
+    || true)
 fi
+ACTIVE_TASK_HINT=$(normalize_hint "$ACTIVE_TASK_HINT" 80)
 
 # ── Pattern: detect phase ────────────────────────────────────────────────────
 PHASE_HINT=""
-if echo "$RESPONSE" | grep -qiE "phase [0-9]|phase [a-z]+|step [0-9]"; then
-  PHASE_HINT=$(echo "$RESPONSE" \
-    | grep -iEo "phase [0-9a-z][^.!?]{0,40}" \
+if echo "$RESPONSE_ONE_LINE" | grep -qiE "phase [0-9]|phase [a-z]+|step [0-9]"; then
+  PHASE_HINT=$(echo "$RESPONSE_ONE_LINE" \
+    | grep -iEo "phase [0-9a-z][^!?]{0,40}" \
     | head -1 \
-    | sed 's/^[[:space:]]*//' \
-    || echo "")
+    | sed 's/[.[:space:]]*$//' \
+    || true)
 fi
+PHASE_HINT=$(normalize_hint "$PHASE_HINT" 60)
 
 # ── Pattern: detect completions ──────────────────────────────────────────────
-# Lines ending with ✅ or "done" or "complete"
 COMPLETED=""
 if echo "$RESPONSE" | grep -qE "(✅|done|complete|finished|created|written|updated)"; then
   COMPLETED=$(echo "$RESPONSE" \
@@ -139,7 +188,8 @@ if echo "$RESPONSE" | grep -qE "(✅|done|complete|finished|created|written|upda
     | head -5 \
     | tr '\n' '|' \
     | sed 's/|$//' \
-    || echo "")
+    2>/dev/null \
+    || true)
 fi
 
 # ── Redact extracted strings before they persist ─────────────────────────────
@@ -147,6 +197,10 @@ NEXT_ACTION=$(redact "$NEXT_ACTION")
 ACTIVE_TASK_HINT=$(redact "$ACTIVE_TASK_HINT")
 PHASE_HINT=$(redact "$PHASE_HINT")
 COMPLETED=$(redact "$COMPLETED")
+# Re-validate after redact (redaction can shorten/empty a string)
+if ! is_usable_next_action "$NEXT_ACTION"; then
+  NEXT_ACTION=""
+fi
 
 # ── Update state.json (lock-guarded, concurrency-safe) ───────────────────────
 # Only write fields we actually extracted — don't clobber existing good data.

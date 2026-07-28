@@ -13,7 +13,7 @@ subagent to dispatch. Writes task completion state back to session_handover.md.
 **Responsibilities:**
 - Read session state before every work session
 - Dispatch specialised agents for defined tasks
-- Enforce commit protocol (never commit directly to main)
+- Enforce commit protocol (solo default: commit on main; branches only when requested)
 - Call `/handover` before any compaction
 - Update `session_handover.md` with every completed phase gate
 

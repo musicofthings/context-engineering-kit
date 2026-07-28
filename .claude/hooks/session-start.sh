@@ -25,6 +25,13 @@ SESSION_SOURCE=$(printf '%s' "$HOOK_INPUT" | jq -r '.source // "startup"' 2>/dev
 # shellcheck source=../../scripts/resolve_state_dir.sh
 source "${CLAUDE_PLUGIN_ROOT:-$PROJECT_DIR}/scripts/resolve_state_dir.sh"
 
+# ── Python 3 resolver (python3 → python → py) ────────────────────────────────
+# Used by _parse_epoch (Windows often has only `python`/`py`, not `python3`)
+# and by the docs-refresh background job below. Source once here so both paths
+# share the same interpreter.
+# shellcheck source=../../scripts/find_python.sh
+source "${CLAUDE_PLUGIN_ROOT:-$PROJECT_DIR}/scripts/find_python.sh" 2>/dev/null || PYTHON=""
+
 # Collapse a double fire when the kit is active as both plugin and opened repo.
 hook_once session-start || exit 0
 
@@ -68,8 +75,8 @@ _parse_epoch() {
     date -d "$ts" +%s
   elif TZ=UTC date -j -f "%Y-%m-%dT%H:%M:%SZ" "$ts" +%s >/dev/null 2>&1; then
     TZ=UTC date -j -f "%Y-%m-%dT%H:%M:%SZ" "$ts" +%s
-  elif command -v python3 >/dev/null 2>&1; then
-    python3 -c "from datetime import datetime; print(int(datetime.fromisoformat('${ts}'.replace('Z','+00:00')).timestamp()))" 2>/dev/null || echo "0"
+  elif [ -n "${PYTHON:-}" ] && command -v "$PYTHON" >/dev/null 2>&1; then
+    "$PYTHON" -c "from datetime import datetime; print(int(datetime.fromisoformat('${ts}'.replace('Z','+00:00')).timestamp()))" 2>/dev/null || echo "0"
   else
     echo "0"
   fi
@@ -131,8 +138,7 @@ if [ -f "$DOCS_CFG" ] && [ -f "$DOCS_FETCHER" ]; then
   case "$DOCS_TTL" in ''|*[!0-9]*) DOCS_TTL=24 ;; esac
   DOCS_FILE="$PROJECT_DIR/api_docs.md"
   if [ ! -f "$DOCS_FILE" ] || [ -n "$(find "$DOCS_FILE" -mmin +"$(( DOCS_TTL * 60 ))" 2>/dev/null)" ]; then
-    # shellcheck source=../../scripts/find_python.sh
-    source "${CLAUDE_PLUGIN_ROOT:-$PROJECT_DIR}/scripts/find_python.sh" 2>/dev/null || PYTHON=""
+    # $PYTHON resolved once at top of this script via find_python.sh
     if [ -n "${PYTHON:-}" ] && command -v "$PYTHON" >/dev/null 2>&1; then
       ( CLAUDE_PROJECT_DIR="$PROJECT_DIR" \
         CLAUDE_PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$PROJECT_DIR}" \
