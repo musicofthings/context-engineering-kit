@@ -1,4 +1,34 @@
 # Session Handover
+
+## Current Priority — Codex CLI Compatibility
+
+_Updated: 2026-07-31_
+_Source revision reviewed: `f8e0259cd994b7b6969af247db526fc926bb8e2c`_
+_Codex CLI reviewed: 0.146.0_
+
+The next agent should implement the prioritized review in
+[`docs/codex-cli-compatibility-review.md`](docs/codex-cli-compatibility-review.md).
+That document contains 13 stable issue IDs (`CEK-CODEX-001` through
+`CEK-CODEX-013`), required changes, acceptance criteria, likely files, and the
+final verification checklist.
+
+Start with the four release blockers:
+
+1. Add and package `.codex-plugin/plugin.json`.
+2. Preserve blocking exit code `2` through `.codex/hooks/run.sh`.
+3. Generate only hook events supported by Codex.
+4. Make hook commands cwd-independent and native-Windows compatible.
+
+Preserve Claude, Cursor, and Grok behavior. Work in the source checkout at
+`C:\Users\shibi\Projects\context-engineering-kit`, not the installed plugin
+cache. Do not automatically initialize, stage, or commit user repositories
+while implementing the Codex adapter.
+
+The older handover below is retained as historical context; this section
+supersedes its active task and next action.
+
+---
+
 _Generated: 2026-07-21T14:04:00Z_
 _Branch: main_
 _Trigger: 85% usage threshold auto-save | Context at compact: n/a_

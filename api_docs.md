@@ -1,6 +1,6 @@
 # API Documentation
-_Auto-fetched: 2026-07-03T15:55:18Z_
-_Source: /Users/theranosis_dx/projects/context-engineering-kit/config/api_sources.json_
+_Auto-fetched: 2026-07-31T15:32:47Z_
+_Source: C:\Users\shibi\Projects\context-engineering-kit\config\api_sources.json_
 
 ---
 
@@ -21,7 +21,7 @@ The table below summarizes when each event fires. The [Hook events](#hook-events
 | `UserPromptSubmit`    | When you submit a prompt, before Claude processes it                                                                                                   |
 | `UserPromptExpansion` | When a user-typed command expands into a prompt, before it reaches Claude. Can block the expansion                                                     |
 | `PreToolUse`          | Before a tool call executes. Can block it                                                                                                              |
-| `PermissionRequest`   | When a permission dialog appears                                                                                                                       |
+| `PermissionRequest`   | When a tool call needs a permission decision                                                                                                           |
 | `PermissionDenied`    | When a tool call is denied by the auto mode classifier. Return `{retry: true}` to tell the model it may retry the denied tool call                     |
 | `PostToolUse`         | After a tool call succeeds                                                                                                                             |
 | `PostToolUseFailure`  | After a tool call fails                                                                                                                                |
@@ -34,13 +34,13 @@ The table below summarizes when each event fires. The [Hook events](#hook-events
 | `TaskCompleted`       | When a task is being marked as completed                                                                                                               |
 | `Stop`                | When Claude finishes responding                                                                                                                        |
 | `StopFailure`         | When the turn ends due to an API error. Output and exit code are ignored                                                                               |
-| `TeammateIdle`        | When an [agent team](/en/agent-teams) teammate is about to go idle                                                                                     |
+| `TeammateIdle`        | When an [agent team](/docs/en/agent-teams) teammate is about to go idle                                                                                     |
 | `InstructionsLoaded`  | When a CLAUDE.md or `.claude/rules/*.md` file is loaded into context. Fires at session start and when files are lazily loaded during a session         |
 | `ConfigChange`        | When a configuration file changes during a session                                                                                                     |
 | `CwdChanged`          | When the working directory changes, for example when Claude executes a `cd` command. Useful for reactive environment management with tools like direnv |
 | `FileChanged`         | When a watched file changes on disk. The `matcher` field specifies which filenames to watch                                                            |
-| `WorktreeCreate`      | When a worktree is being created via `--worktree` or `isolation: "worktree"`. Replaces default git behavior                                            |
-| `WorktreeRemove`      | When a worktree is being removed, either at session exit or when a subagent finishes                                                                   |
+| `WorktreeCreate`      | When a worktree is being created via `--worktree`, `isolation: "worktree"`, or for a background session. Replaces default git behavior                 |
+| `WorktreeRemove`      | When a worktree is being removed at session exit, when a subagent finishes, or when you delete a background session                                    |
 | `PreCompact`          | Before context compaction                                                                                                                              |
 | `PostCompact`         | After context compaction completes                                                                                                                     |
 | `Elicitation`         | When an MCP server requests user input during a tool call                                                                                              |
@@ -49,7 +49,7 @@ The table below summarizes when each event fires. The [Hook events](#hook-events
 
 ### How a hook resolves
 
-To see how these pieces fit together, consider this `PreToolUse` hook that block
+To see how these pieces fit together, consider this `PreToolUse` hook that 
 ```
 
 
@@ -115,6 +115,8 @@ Source: https://developers.cloudflare.com/workers/
 ```
 # Cloudflare Workers
 
+Last updated Apr 23, 2026|Copy as Markdown|[View as Markdown](https://developers.cloudflare.com/workers/index.md)|[Agent setup](https://developers.cloudflare.com/agent-setup/)
+
 A serverless platform for building, deploying, and scaling apps across [Cloudflare's global network ↗](https://www.cloudflare.com/network/) with a single command — no infrastructure to manage, no complex configuration
 
 With Cloudflare Workers, you can expect to:
@@ -127,7 +129,7 @@ With Cloudflare Workers, you can expect to:
 
 Get started with your first project:
 
-[ Deploy a template ](https://dash.cloudflare.com/?to=/:account/workers-and-pages/templates) [ Deploy with Wrangler CLI ](https://developers.cloudflare.com/workers/get-started/guide/) 
+[Deploy a template](https://dash.cloudflare.com/?to=/:account/workers-and-pages/templates)[Deploy with Wrangler CLI](https://developers.cloudflare.com/workers/get-started/guide/) 
 
 ---
 
@@ -161,55 +163,55 @@ Connect to external services like databases, APIs, and storage via [Bindings](ht
 
 **Storage**
 
-**[Durable Objects](https://developers.cloudflare.com/durable-objects/)** 
+[Durable Objects](https://developers.cloudflare.com/durable-objects/)
 
 Scalable stateful storage for real-time coordination.
 
-**[D1](https://developers.cloudflare.com/d1/)** 
+[D1](https://developers.cloudflare.com/d1/)
 
 Serverless SQL database built for fast, global queries.
 
-**[KV](https://developers.cloudflare.com/kv/)** 
+[KV](https://developers.cloudflare.com/kv/)
 
 Low-latency key-value storage for fast, edge-cached reads.
 
-**[Queues](https://developers.cloudflare.com/queues/)** 
+[Queues](https://developers.cloudflare.com/queues/)
 
 Guaranteed delivery with no charges for egress bandwidth.
 
-**[Hyperdrive](https://developers.cloudflare.com/hyperdrive/)** 
+[Hyperdrive](https://developers.cloudflare.com/hyperdrive/)
 
 Connect to your external database with accelerated queries, cached at the edge.
 
 **Compute**
 
-**[Workers AI](https://developers.cloudflare.com/workers-ai/)** 
+[Workers AI](https://developers.cloudflare.com/workers-ai/)
 
 Machine learning models powered by serverless GPUs.
 
-**[Workflows](https://developers.cloudflare.com/workflows/)** 
+[Workflows](https://developers.cloudflare.com/workflows/)
 
 Durable, long-running operations with automatic retries.
 
-**[Vectorize](https://developers.cloudflare.com/vectorize/)** 
+[Vectorize](https://developers.cloudflare.com/vectorize/)
 
 Vector database for AI-powered semantic search.
 
-**[R2](https://developers.cloudflare.com/r2/)** 
+[R2](https://developers.cloudflare.com/r2/)
 
 Zero-egress object storage for cost-efficient data access.
 
-**[Browser Run](https://developers.cloudflare.com/browser-run/)** 
+[Browser Run](https://developers.cloudflare.com/browser-run/)
 
 Programmatic serverless browser instances.
 
 **Media**
 
-**[Cache / CDN](https://developers.cloudflare.com/cache/)** 
+[Cache / CDN](https://developers.cloudflare.com/cache/)
 
 Global caching for high-performance, low-latency delivery.
 
-**[Images](https://developers.cloudflare.com/images/)** 
+[Images](https://developers.cloudflare.com/images/)
 
 Streamlined image infrastructure from a single API.
 
@@ -217,9 +219,16 @@ Streamlined image infrastructure from a single API.
 
 Want to connect with the Workers community? [Join our Discord ↗](https://discord.cloudflare.com)
 
+Was this helpful?
+
+YesNo
+
+## On this page
+
+[![](https://developers.cloudflare.com/_astro/logo.DMYpXs3t.svg)Docs](https://developers.cloudflare.com/)
+
 ```json
-{"@context":"https://schema.org","@type":"WebPage","@id":"https://developers.cloudflare.com/workers/#page","headline":"Overview · Cloudflare Workers docs","description":"Build and deploy serverless applications across Cloudflare's global network with Workers.","url":"https://developers.cloudflare.com/workers/","inLanguage":"en","image":"https://developers.cloudflare.com/dev-products-preview.png","dateModified":"2026-04-23","publisher":{"@type":"Organization","name":"Cloudflare","url":"https://www.cloudflare.com/"},"isPartOf":{"@type":"WebSite","@id":"https://developers.cloudflare.com/#website","name":"Cloudflare Docs","url":"https://developers.cloudflare.com/"}}
-{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"item":{"@id":"/directory/","name":"Directory"}},{"@type":"ListItem","position":2,"item":{"@id":"/workers/","name":"Workers"}}]}
+{"@context":"https://schema.org","@type":"WebPage","@id":"https://developers.cloudflare.com/workers/#page","headline":"Overview · Cloudflare Workers docs","description":"Build and deploy serverless applications across Cloudflare's global network with Workers.","url":"https://developers.cloudflare.com/workers/","inLanguage":"en","image":"https://developers.cloudflare.com/og-docs.png","dateModified":"2026-04-23","publisher":{"@type":"Organization","name":"Cloudflare","url":"https://www.cloudflare.com/"},"isPartOf":{"@type":"WebSite","@id":"https://developers.cloudflare.com/#website","name":"Cloudflare Docs","url":"https://developers.cloudflare.com/"}}
 ```
 
 ```
