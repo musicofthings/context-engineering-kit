@@ -126,6 +126,26 @@ if [ -n "$_rsd_reject" ]; then
 elif ! mkdir -p "$STATE_DIR" 2>/dev/null; then
   CEK_STATE_OK=false
   echo "[resolve_state_dir] WARNING: could not create $STATE_DIR — state writes will fail" >&2
+else
+  # Self-contained ignore for the directory we just created in SOMEONE ELSE'S
+  # repo. Without it the kit's per-turn churn gets swept into the host
+  # project's own `git add -A` commits — kit state is currently tracked in 8
+  # unrelated repos this way. Scoped to this directory only: it never touches
+  # the host project's root .gitignore, and it cannot untrack anything that is
+  # already committed.
+  if [ ! -e "$STATE_DIR/.gitignore" ]; then
+    cat > "$STATE_DIR/.gitignore" 2>/dev/null <<'CEKIGNORE' || true
+# Written by context-engineering-kit.
+# Session state is machine-local: it rotates every turn and means nothing on
+# another machine. The portable cross-device artifact is session_handover.md
+# at the repo root, which IS meant to be committed.
+#
+# `*` with no negation deliberately ignores this file too: git still honours an
+# ignored .gitignore, and excepting it would leave the host repo showing an
+# untracked .claude/ forever. The kit recreates this file when it needs to.
+*
+CEKIGNORE
+  fi
 fi
 unset _rsd_base _rsd_reject
 
