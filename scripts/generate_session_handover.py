@@ -102,6 +102,12 @@ def load_existing_handover(project_dir: Path) -> dict:
     content = handover_file.read_text(encoding="utf-8", errors="replace")
     sections = {}
 
+    # Generation timestamp ("_Generated: 2026-07-21T06:48:00Z_") — used to
+    # decide whether carried-over sections belong to the current session
+    m = re.search(r"_Generated:\s*(\S+?)_", content)
+    if m:
+        sections["generated_at"] = m.group(1)
+
     active = _extract_section(content, "## 🎯 Active Task")
     if active:
         sections["active_task_section"] = active
@@ -205,8 +211,15 @@ claude --resume {session_id}
     else:
         modified_table = "| (none tracked yet) | — |"
 
-    # Preserve existing sections or use defaults
+    # Preserve existing sections or use defaults.
+    # "Completed This Session" resets when the handover on disk predates the
+    # current session — otherwise accomplishments accumulate across sessions
+    # and read as if they all happened in this one.
     completed_section = existing.get("completed", "- [ ] (track completed items here)")
+    session_start = state.get("session_start_time", "")
+    generated_at = existing.get("generated_at", "")
+    if session_start and generated_at and generated_at < session_start:
+        completed_section = "- [ ] (track completed items here)"
     remaining_section = existing.get("remaining", "1. (add remaining work items here)")
     decisions_section = existing.get("decisions", "| (none yet) | — | — |")
     rules_section = existing.get("rules", "- Never commit secrets or API keys\n- Run /handover before switching devices")

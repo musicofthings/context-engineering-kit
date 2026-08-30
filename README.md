@@ -1,53 +1,36 @@
 # context-engineering-kit
 
-> **Automated context preservation for Claude Code and Cursor — across sessions, devices, and subscriptions.**
+> **Automated context preservation for Claude Code, Cursor, Grok, and Codex — across sessions, devices, and subscriptions.**
 
-Hooks, skills, and scripts that keep your context alive through compaction, device switches, and subscription changes. Works in **Claude Cowork**, the **Claude Code Desktop** plugin slot, the **Claude Code CLI** standalone install, or **Cursor IDE** via project hooks.
+Hooks, skills, and scripts that keep your context alive through compaction, device switches, and subscription changes. **One logic core** under `.claude/hooks/`; thin adapters for each runtime.
 
-🌐 **[Landing page & full docs →](https://musicofthings.github.io/context-engineering-kit/)**
-📦 **[Download plugin zip (v2.6.0) →](https://github.com/musicofthings/context-engineering-kit/releases/latest)** — for Cowork or Desktop Plugin upload
+Works in **Claude Cowork**, **Claude Code Desktop**, **Claude Code CLI**, **Cursor IDE**, **Grok Build**, and **Codex**.
+
+🌐 **[Landing page & full docs →](https://musicofthings.github.io/context-engineering-kit/)**  
+📦 **[Download plugin zip (v2.7.0) →](https://github.com/musicofthings/context-engineering-kit/releases/latest)** — for Cowork or Desktop Plugin upload  
+📐 **[Runtime capability matrix →](docs/runtime-capability-matrix.md)**
 
 ---
 
+## What's new in v2.7.0
+
+- **Real auto-save at usage thresholds (Phase A).** At 85% / 92%, the kit **writes** `session_handover.md` (and optionally `session_sync --save`) — it no longer only injects “please run /handover” for the model to obey.
+- **Subagent-safe lifecycle (Phase B).** Mid-flight subagents are tracked with ids + grace window; SessionStart preserves active counts and snapshots state before a usage-window reset instead of zeroing children mid-flight.
+- **Multi-runtime adapters (Phase C).** Shared `scripts/cek_runtime.sh`; portable `.codex/hooks.json` + `.grok/hooks/cek-hooks.json` (no machine-absolute paths); Cursor `_common.sh` uses the same bootstrap. Grok wires `PermissionDenied`; Claude settings use `${CLAUDE_PROJECT_DIR:-.}`.
+- **Real usage signal preference.** `usage-tracker` mirrors rate-limit / forecast metrics into `state.json`; `usage-sentinel` prefers fresh `usage-forecast.json` (`rl_5h_pct`) over wall-clock session age.
+- **CI quality gate.** `.github/workflows/cek-quality.yml` runs syntax checks, `generate_runtime_hooks.py --check`, `check_sync`, and Phase A/B/C evals on push/PR.
+- **Evals.** `scripts/eval_usage_lifecycle.sh` (29 scenarios) and `scripts/eval_phase_c.sh` (28 checks).
+
 ## What's new in v2.6.0
 
-- **Five new hook events wired.** `StopFailure` logs API error types (rate limit, overloaded, etc.) to `state.json`; `InstructionsLoaded` tracks CLAUDE.md cache-miss reloads; `FileChanged` triggers `update_context_files.py` when CLAUDE.md or `session_handover.md` change on disk; a second `SessionStart[startup|resume]` entry auto-names each session as `branch/task-slug` in the Claude Code session list.
-- **Prompt caching strategy documented.** CLAUDE.md and `token-hygiene.md` now document exactly which lines are the stable cache prefix (never mutate above the "Active work context" marker) and how to diagnose cache misses via `instructions-loaded.jsonl` and `state.json:instructions_compact_reloads`.
-- **Bug fixes.** Fixed a sentinel-file collision that made the 70% WARN threshold unreachable; corrected the `PermissionRequest` hook output schema (was emitting `permissionDecision` instead of `decision.behavior`); fixed the `statusLine` command to use an absolute path; corrected Python 3.8 compat (`from __future__ import annotations`) across two scripts.
-- **GitHub Actions pinned correctly.** `sync-api-docs.yml` now uses `actions/checkout@v4` and `actions/setup-python@v4` (was referencing non-existent `@v6`).
-- **Default model updated.** `CEK_MODEL_SONNET` set to `claude-sonnet-5`; `CEK_MODEL_OPUS` set to `claude-opus-4-8` throughout config, skills, and README.
+- Five new hook events (`StopFailure`, `InstructionsLoaded`, `FileChanged`, session-title on `SessionStart`).
+- Prompt caching strategy documented for CLAUDE.md stable prefix.
+- PermissionRequest schema, sentinel WARN path, statusLine path, and Actions pin fixes.
+- Default models: Sonnet 5 / Opus 4.8.
 
 ## What's new in v2.5.0
 
-- **Cursor IDE support.** New `.cursor/hooks.json` + adapter scripts map the
-  kit's logic onto Cursor's hook events (`sessionStart`, `beforeSubmitPrompt`,
-  `beforeShellExecution`, `afterFileEdit`, `stop`, etc.). One logic core in
-  `.claude/hooks/*.sh`, two runtimes — Claude Code and Cursor share the same
-  `state.json`, handover, and git snapshot pipeline.
-- **Unified state resolution.** Every hook *and* script now resolves session
-  state through one helper (`scripts/resolve_state_dir.sh`) — no more path
-  divergence between components.
-- **Git worktree support.** `state.scope` (`auto` / `main` / `local`) controls
-  whether worktrees share the main checkout's state or stay isolated.
-  Branch users are unaffected — it's transparent.
-- **Concurrency-safe writes.** `state_write()` takes a portable lock (`flock`,
-  or a `mkdir` spinlock on macOS) so parallel sessions/worktrees field-merge
-  instead of clobbering `state.json`.
-- **Agent SDK session resume.** Captures the SDK `session_id` / transcript path;
-  `/handover` prints the exact `claude --resume <id>` plus the cwd-bound caveat.
-- **Hardened reliability & security.** Serialized the `Stop` hooks (was a
-  race), removed a double `post-compact` registration, tougher
-  `guard-dangerous` patterns, and canonicalized `settings.json` permission
-  rules so the `.env` deny and context-file allow rules actually match.
-- **Hook de-dupe guard.** `hook_once()` in `resolve_state_dir.sh` collapses
-  double-fires when the kit is active as both an installed plugin and the
-  opened repo (prevents duplicate git commits and context injections).
-- **Usage-sentinel clock fix.** `session_start_time` is no longer reset on
-  every SessionStart — resume and within-window restarts preserve the rolling
-  Pro/Max window clock, eliminating false "100% / CRITICAL" banners.
-- **New visual docs.** `docs/hooks-flowchart.md` — Mermaid maps of hooks,
-  the state-scope decision tree, permission evaluation, resume flow, and
-  the Cursor event mapping.
+- Cursor IDE adapters, unified `resolve_state_dir.sh`, worktree `state.scope`, lock-guarded writes, Agent SDK resume capture, `hook_once` de-dupe, usage clock fix, hooks flowchart docs.
 
 ---
 
@@ -68,21 +51,24 @@ Hooks, skills, and scripts that keep your context alive through compaction, devi
 | Worktrees fragment/clobber session state | All hooks resolve state through one helper; `state.scope` controls branch vs. worktree behaviour, writes are lock-guarded |
 | Can't find the exact session to `--resume` | SessionStart records the SDK `session_id` + transcript path; handover prints the exact resume command and the cwd caveat |
 | Using Cursor instead of Claude Code | `.cursor/hooks.json` adapters exec the same kit scripts — state tracking, dangerous-command guard, compaction snapshots all work |
+| Usage window resets mid-subagent | Phase B preserves running counts (grace); auto-saves handover before reset |
+| Model ignores “run /handover” injects | Phase A **executes** handover at 85%/92% — not model-dependent |
+| Using Grok or Codex | Portable `.grok/` / `.codex/` adapters dispatch into the same `.claude/hooks` core |
 
 ---
 
 ## Installation
 
-Choose the install path that matches how you use Claude or Cursor:
+Choose the path that matches your agent runtime:
 
-| | Claude Cowork | Claude Code Desktop | Claude Code CLI | Cursor IDE |
-|--|--------------|---------------------|-----------------|------------|
-| **How** | Upload zip via Plugins UI | Upload zip via Customize UI | Clone repo + `bash setup.sh` | Clone repo (hooks ship in `.cursor/`) |
-| **Audience** | Cowork users (any role) | Developers (desktop app) | Developers (terminal) | Cursor users |
-| **Skill names** | `/context-engineering-kit:handover` | `/context-engineering-kit:handover` | `/handover` | n/a (use Agent rules / manual `/handover` via chat) |
-| **Hooks active?** | Skills only (Cowork has no shell) | ✅ All hooks fire | ✅ All hooks fire | ✅ 10 Cursor events via adapters |
-| **Auto-activates on new repos** | n/a | ✅ Yes (plugin toggle) | Manual per-project | On first open (sessionStart adapter) |
-| **Best for** | Conversation context management | Always-on across all projects | One specific project | Cursor-native agent workflows |
+| | Claude Cowork | Claude Code Desktop | Claude Code CLI | Cursor | Grok Build | Codex |
+|--|--------------|---------------------|-----------------|--------|------------|-------|
+| **How** | Upload zip | Upload zip | Clone + `setup.sh` | Clone (`.cursor/`) | Clone; `/hooks-trust` | Clone (`.codex/`) |
+| **Skills** | `/context-engineering-kit:*` | `/context-engineering-kit:*` | `/handover` etc. | Chat / scripts | Skills if mirrored | Scripts |
+| **Hooks** | Skills only | ✅ Full | ✅ Full | ✅ Adapters | ✅ `.grok/hooks` (+ optional Claude settings) | ✅ `.codex/hooks` |
+| **Best for** | Chat context | Always-on desktop | Terminal project | Cursor agents | Grok TUI | Codex CLI |
+
+Full event support table: [`docs/runtime-capability-matrix.md`](docs/runtime-capability-matrix.md).
 
 > **Cowork vs. Claude Code:** the same zip works for both Cowork and Claude Code Desktop because the plugin format is identical. The difference is what runs — Cowork executes the **skills** (`/handover`, `/token-status`, etc.) but doesn't run the **hooks** (which need a shell environment). Claude Code runs both.
 
@@ -97,7 +83,7 @@ The easiest path. One zip works in both **Claude Cowork** and **Claude Code Desk
 **Either** download the prebuilt zip from the [latest GitHub release](https://github.com/musicofthings/context-engineering-kit/releases/latest):
 
 ```
-context-engineering-kit-2.6.0.zip
+context-engineering-kit-2.7.0.zip
 ```
 
 **Or** build it from source (requires Python 3):
@@ -106,7 +92,7 @@ context-engineering-kit-2.6.0.zip
 git clone https://github.com/musicofthings/context-engineering-kit.git
 cd context-engineering-kit
 python scripts/package_plugin.py
-# → writes context-engineering-kit-2.6.0.zip in the project root
+# → writes context-engineering-kit-2.7.0.zip in the project root
 ```
 
 The packaging script reads the version from `.claude-plugin/plugin.json` and excludes git history, runtime session state, audit logs, and caches automatically.
@@ -114,7 +100,7 @@ The packaging script reads the version from `.claude-plugin/plugin.json` and exc
 ### Step 2a — Upload to Claude Cowork
 
 1. Open Cowork → **Settings** → **Plugins** (or **Skills** → **Add plugin**)
-2. Click **Upload plugin** → select `context-engineering-kit-2.6.0.zip`
+2. Click **Upload plugin** → select `context-engineering-kit-2.7.0.zip`
 3. Confirm install — the eight skills appear as `/context-engineering-kit:*` commands
 4. Type `/context-engineering-kit:handover` in any conversation to use it
 
@@ -123,7 +109,7 @@ The packaging script reads the version from `.claude-plugin/plugin.json` and exc
 ### Step 2b — Upload to Claude Code Desktop
 
 1. Open **Claude Code Desktop** → click **Customize** (bottom-left gear) → **Upload Plugin**
-2. Select `context-engineering-kit-2.6.0.zip` and restart Claude Code
+2. Select `context-engineering-kit-2.7.0.zip` and restart Claude Code
 3. Verify in any project:
    ```
    /context-engineering-kit:context-health
@@ -162,6 +148,7 @@ By default the plugin bootstraps `session_handover.md` and `state.json` in any n
   "features": {
     "session_tracking":  true,
     "usage_sentinel":    true,
+    "auto_execute_handover": true,
     "morning_brief":     false,
     "tool_failure_log":  true,
     "subagent_tracking": true
@@ -171,7 +158,7 @@ By default the plugin bootstraps `session_handover.md` and `state.json` in any n
 }
 ```
 
-Set `auto_activate_new_repos: false` to disable entirely, or add individual project paths to `skip_repos`. See [Branch & worktree state scope](#branch--worktree-state-scope) for `state.scope`.
+Set `auto_activate_new_repos: false` to disable entirely, or add individual project paths to `skip_repos`. See [Branch & worktree state scope](#branch--worktree-state-scope) for `state.scope`. At 85%/92% usage, `auto_execute_handover` writes `session_handover.md` automatically (see `config/usage_budget.json` → `auto_save`).
 
 ### Configure subscription type
 
@@ -315,7 +302,42 @@ from `session_handover.md` and git-committed state. Skill slash commands
 (`/handover`, `/token-status`, etc.) are Claude Code features — in Cursor, ask
 the Agent to read `session_handover.md` or run the underlying scripts manually.
 
-Full event-mapping diagram: [`docs/hooks-flowchart.md` §7](docs/hooks-flowchart.md).
+Full event-mapping diagram: [`docs/hooks-flowchart.md` §7](docs/hooks-flowchart.md).  
+Capability matrix (Claude / Cursor / Codex / Grok): [`docs/runtime-capability-matrix.md`](docs/runtime-capability-matrix.md).
+
+---
+
+## Option E — Grok Build
+
+Grok discovers project hooks under `.grok/hooks/` when the folder is trusted.
+
+```bash
+git clone https://github.com/musicofthings/context-engineering-kit.git my-project
+cd my-project
+# In Grok: open the project, then:
+#   /hooks-trust
+# Confirm Hooks tab shows cek-hooks.json entries
+```
+
+- Entry: `.grok/hooks/cek-hooks.json` → `.grok/hooks/run.sh` → `.claude/hooks/*`
+- Grok may also load `.claude/settings.json` (doubles are safe via `hook_once` / usage sentinels)
+- Uses `PermissionDenied` (not `PermissionRequest`); see capability matrix
+- Optional: disable Claude hook scan in `~/.grok/config.toml` with `[compat.claude] hooks = false` if you want a single source
+
+---
+
+## Option F — Codex
+
+```bash
+git clone https://github.com/musicofthings/context-engineering-kit.git my-project
+cd my-project
+# Run Codex with this project as cwd so relative hook commands resolve
+```
+
+- Entry: `.codex/hooks.json` → `.codex/hooks/run.sh` → `.claude/hooks/*`
+- **Portable only** — regenerate with `python scripts/generate_runtime_hooks.py` (never commit absolute machine paths)
+- Verify: `python scripts/generate_runtime_hooks.py --check` and `bash scripts/check_sync.sh`
+
 
 ---
 
@@ -656,60 +678,45 @@ Set in Claude Code settings under `"env"`, or export in your shell:
 
 ```
 context-engineering-kit/
-├── .cursor/                         ← Cursor IDE project hooks
-│   ├── hooks.json                   ← Cursor event wiring (10 events)
-│   └── hooks/                       ← adapters → .claude/hooks/*.sh
-│       ├── _common.sh               ← exports CLAUDE_PROJECT_DIR from repo root
-│       ├── on-session-start.sh
-│       ├── on-session-end.sh
-│       ├── on-prompt.sh
-│       ├── guard-shell.sh
-│       ├── track-edit.sh
-│       ├── on-stop.sh
-│       ├── on-tool-failure.sh
-│       ├── on-subagent.sh
-│       └── on-precompact.sh
+├── .cursor/                         ← Cursor project hooks
+│   ├── hooks.json
+│   └── hooks/                       ← adapters → .claude/hooks (via cek_runtime.sh)
+├── .codex/                          ← Codex portable hooks (generated)
+│   ├── hooks.json
+│   └── hooks/run.sh
+├── .grok/hooks/                     ← Grok Build hooks (generated)
+│   ├── cek-hooks.json
+│   └── run.sh
 ├── .claude-plugin/
-│   ├── plugin.json                  ← plugin manifest (name, version, metadata)
-│   └── marketplace.json             ← marketplace listing metadata
-├── hooks/
-│   └── hooks.json                   ← Desktop/plugin hook wiring (${CLAUDE_PLUGIN_ROOT})
-├── skills/                          ← plugin-format skills (context-engineering-kit:*)
-│   └── */SKILL.md
-├── agents/
-│   ├── context-updater.md
-│   └── session-scribe.md
+│   ├── plugin.json                  ← version + marketplace metadata
+│   └── marketplace.json
+├── hooks/hooks.json                 ← Claude plugin hook wiring
+├── skills/  agents/                 ← plugin skills + agents
 ├── docs/
 │   ├── index.html                   ← GitHub Pages landing page
-│   └── hooks-flowchart.md           ← Mermaid maps: hooks, state scope, permissions, resume
-│
-├── .claude/                         ← CLI standalone config
-│   ├── settings.json                ← CLI hook wiring + env config
-│   ├── statusline.sh                ← status bar
-│   ├── hooks/                       ← all hook scripts (shared by both modes)
-│   ├── skills/                      ← CLI standalone skills (short names)
-│   └── rules/                       ← auto-loaded rules
-│
+│   ├── hooks-flowchart.md
+│   └── runtime-capability-matrix.md ← Claude / Cursor / Codex / Grok events
+├── .claude/                         ← shared logic + CLI settings
+│   ├── settings.json
+│   ├── hooks/                       ← **single logic core** for all runtimes
+│   ├── skills/  rules/
+│   └── statusline.sh
 ├── scripts/
-│   ├── find_python.sh               ← Python 3 resolver (python3 → python → py)
-│   ├── resolve_state_dir.sh         ← single source of truth for state path + lock-guarded state_write()
-│   ├── auto_init_project.sh         ← bootstraps new repos on SessionStart
+│   ├── cek_runtime.sh               ← multi-runtime bootstrap
+│   ├── cek_auto_save.sh             ← Phase A handover execute helpers
+│   ├── find_python.sh / find_jq.sh
+│   ├── resolve_state_dir.sh         ← state path + lock-guarded state_write()
+│   ├── generate_runtime_hooks.py    ← regenerate .codex/.grok JSON
 │   ├── generate_session_handover.py
-│   ├── update_context_files.py
-│   ├── session_sync.sh
 │   ├── usage-tracker.py
-│   └── morning_brief.py
-│
-├── config/
-│   ├── plugin_settings.json         ← auto-activation toggle + feature flags
-│   ├── usage_budget.json
-│   ├── model_thresholds.json
-│   ├── rate_limits.json
-│   └── morning_brief.json
-│
-├── setup.sh                         ← one-command CLI standalone setup
-├── CLAUDE.md                        ← living context doc (auto-maintained)
-└── session_handover.md              ← live task state (auto-generated)
+│   ├── eval_usage_lifecycle.sh      ← Phase A/B scenarios
+│   ├── eval_phase_c.sh              ← multi-runtime wiring checks
+│   └── check_sync.sh
+├── config/                          ← plugin_settings, usage_budget, …
+├── .github/workflows/cek-quality.yml
+├── setup.sh
+├── CLAUDE.md
+└── session_handover.md
 ```
 
 ---
@@ -730,7 +737,9 @@ During work
   → /model-switch haiku  — drop to Haiku for routine tasks
 
 Approaching limit (auto-triggered at 80%+)
-  → sentinel injects save reminder / directive automatically
+  → 80%: soft reminder inject
+  → 85%/92%: kit WRITES session_handover.md (Phase A), not model-only
+  → prefers real rate-limit % from usage-forecast when fresh
   → /compact-smart       — smarter compaction to extend session
   → pre-compact.sh fires automatically, saves + commits everything
 
@@ -755,7 +764,18 @@ Resuming on another device
 | Windows (Git Bash) | `bash.exe setup.sh`; use `claude.cmd` not `claude` |
 | Windows (no `python3`) | `scripts/find_python.sh` auto-detects `python` and `py.exe` |
 | Cursor IDE | Project hooks in `.cursor/` — no plugin upload; open repo in Cursor |
-| CI/CD | Hooks run headlessly; GitHub Actions handle state validation |
+| Grok Build | `.grok/hooks/cek-hooks.json`; trust project with `/hooks-trust` |
+| Codex | `.codex/hooks.json` relative paths; cwd = project root |
+| CI/CD | `cek-quality.yml` runs evals + `generate_runtime_hooks --check` |
+
+### Verify / release checks
+
+```bash
+bash scripts/check_sync.sh
+bash scripts/eval_phase_c.sh
+bash scripts/eval_usage_lifecycle.sh
+python scripts/package_plugin.py    # → context-engineering-kit-2.7.0.zip
+```
 
 ---
 
@@ -817,4 +837,4 @@ Then in Claude Code: `/my-skill`
 
 ---
 
-*context-engineering-kit v2.6.0 — Built for multi-device, multi-subscription Claude Code and Cursor workflows.*
+*context-engineering-kit v2.7.0 — Multi-runtime context preservation for Claude Code, Cursor, Grok, and Codex.*

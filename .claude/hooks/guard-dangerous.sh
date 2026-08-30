@@ -12,7 +12,19 @@
 set -euo pipefail
 
 INPUT=$(cat)
-CMD=$(echo "$INPUT" | jq -r '.tool_input.command // ""' 2>/dev/null || echo "")
+
+# Parse the command with jq when available, else fall back to Python.
+# Without a fallback, a missing jq makes CMD empty and the guard FAILS OPEN —
+# every dangerous command sails through because there is nothing to match.
+if command -v jq >/dev/null 2>&1; then
+  CMD=$(echo "$INPUT" | jq -r '.tool_input.command // ""' 2>/dev/null || echo "")
+else
+  # shellcheck source=../../scripts/find_python.sh
+  source "${CLAUDE_PLUGIN_ROOT:-${CLAUDE_PROJECT_DIR:-.}}/scripts/find_python.sh"
+  CMD=$(echo "$INPUT" | "$PYTHON" -c \
+    "import sys,json;print(json.load(sys.stdin).get('tool_input',{}).get('command',''))" \
+    2>/dev/null || echo "")
+fi
 
 # Regex patterns — match whitespace variants, quoting, and long-form flags.
 # Targets are intentionally narrow: only the truly destructive patterns,
@@ -41,7 +53,9 @@ DANGEROUS_REGEXES=(
   # disk wipers
   'dd[[:space:]]+if=/dev/zero'
   'dd[[:space:]]+if=[^[:space:]]*[[:space:]]+of=/dev/'
-  'mkfs(\.[a-z]+)?[[:space:]]'
+  'mkfs(\.[a-z0-9]+)?[[:space:]]'
+  # shell history clearing (forbidden by .claude/rules/security.md)
+  'history[[:space:]]+-c'
   # fork bomb
   ':\(\)\{:\|:&\};:'
   # broad permission drops

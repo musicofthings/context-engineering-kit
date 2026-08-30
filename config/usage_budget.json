@@ -36,8 +36,19 @@
   "actions": {
     "at_warn": "inject_warning",
     "at_pre_save": "inject_save_reminder",
-    "at_auto_save": "inject_save_directive",
-    "at_critical": "inject_save_directive_urgent"
+    "at_auto_save": "execute_handover",
+    "at_critical": "execute_handover_urgent"
+  },
+
+  "auto_save": {
+    "execute_handover": true,
+    "execute_session_sync": false,
+    "subagent_grace_sec": 120,
+    "_notes": [
+      "execute_handover: at 85%/92% (and session-end) actually run generate_session_handover.py",
+      "execute_session_sync: also run session_sync.sh --save (git commit) — off by default to avoid surprise commits",
+      "subagent_grace_sec: session-start preserves subagents_running if last activity is within this window"
+    ]
   },
 
   "ccusage_path": "~/.claude/projects",
@@ -48,6 +59,9 @@
     "usage-sentinel.sh reads this file on every UserPromptSubmit",
     "Change subscription_type to match your account",
     "For API billing, set daily_budget_usd to your comfort limit",
-    "Set warn_pct / auto_save_pct to tune when saves are triggered"
+    "Set warn_pct / auto_save_pct to tune when saves are triggered",
+    "Phase A: 85%/92% WRITE handover; inject is confirmation only",
+    "Phase B: subagents_running > 0 still gets a real save + drain warning",
+    "usage-sentinel prefers usage-forecast.json rl_5h_pct/pct_used when fresh (<2h), else wall-clock"
   ]
 }

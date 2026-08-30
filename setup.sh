@@ -75,10 +75,12 @@ else
   log "Install: brew install jq (Mac) | apt install jq (Linux) | scoop install jq (Windows)"
 fi
 
-if command -v python3 &>/dev/null; then
-  ok "Python3 found: $(python3 --version)"
+# shellcheck source=scripts/find_python.sh
+source "$PROJECT_DIR/scripts/find_python.sh"
+if command -v "$PYTHON" &>/dev/null; then
+  ok "Python 3 found ($PYTHON): $("$PYTHON" --version)"
 else
-  warn "Python3 not found — session handover scripts require Python 3.8+"
+  warn "Python 3 not found on PATH (tried: python3, python, py) — session handover scripts require Python 3.8+"
 fi
 
 if command -v git &>/dev/null; then

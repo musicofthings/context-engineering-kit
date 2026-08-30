@@ -47,6 +47,16 @@
 : "${PROJECT_DIR:=${CLAUDE_PROJECT_DIR:-$(pwd)}}"
 _RSD_PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$PROJECT_DIR}"
 
+# Ensure jq is available (including jq.exe under WSL via WinGet).
+# shellcheck source=find_jq.sh
+if [ -f "$_RSD_PLUGIN_ROOT/scripts/find_jq.sh" ]; then
+  # shellcheck disable=SC1091
+  source "$_RSD_PLUGIN_ROOT/scripts/find_jq.sh" 2>/dev/null || true
+elif [ -f "${PROJECT_DIR}/scripts/find_jq.sh" ]; then
+  # shellcheck disable=SC1091
+  source "${PROJECT_DIR}/scripts/find_jq.sh" 2>/dev/null || true
+fi
+
 # ── Resolve scope from plugin settings (default: auto) ───────────────────────
 STATE_SCOPE="auto"
 _rsd_settings="$_RSD_PLUGIN_ROOT/config/plugin_settings.json"

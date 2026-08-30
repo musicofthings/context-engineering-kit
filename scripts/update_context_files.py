@@ -6,8 +6,10 @@ Updates the AUTO-UPDATED section in CLAUDE.md with current session state.
 """
 
 import argparse
+import json
 import os
 import re
+import subprocess
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -80,6 +82,28 @@ def main():
     args = parser.parse_args()
 
     project_dir = Path(os.environ.get("CLAUDE_PROJECT_DIR", os.getcwd()))
+
+    # CLI args win (the pre-compact hook passes them); otherwise fall back to
+    # state.json and git so manual runs don't stamp "unknown" everywhere.
+    state_file = project_dir / ".claude" / "session" / "state.json"
+    state = {}
+    if state_file.exists():
+        try:
+            state = json.loads(state_file.read_text(encoding="utf-8", errors="replace"))
+        except Exception:
+            state = {}
+    args.task = args.task or state.get("active_task", "")
+    args.phase = args.phase or state.get("phase", "")
+    args.next_action = args.next_action or state.get("next_action", "")
+    if not args.branch:
+        try:
+            args.branch = subprocess.run(
+                ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+                capture_output=True, text=True, cwd=str(project_dir), timeout=10,
+            ).stdout.strip()
+        except Exception:
+            args.branch = ""
+
     update_claude_md(project_dir, args)
 
 

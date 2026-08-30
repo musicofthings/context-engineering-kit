@@ -5,21 +5,36 @@
     "url": "https://github.com/musicofthings/context-engineering-kit"
   },
   "metadata": {
-    "description": "Context engineering tools for Claude Code — session handover, token tracking, cross-device sync, and smart compaction."
+    "description": "Context engineering for Claude Code, Cursor, Grok, and Codex \u2014 session handover, token tracking, cross-device sync, multi-runtime hooks."
   },
   "plugins": [
     {
       "name": "context-engineering-kit",
       "source": "./",
-      "description": "Automated context preservation for Claude Code across sessions, devices, and subscriptions.",
-      "version": "2.6.0",
+      "description": "Automated context preservation for Claude Code, Cursor, Grok, and Codex across sessions, devices, worktrees, and subscriptions. Hooks execute real handovers at usage thresholds; multi-runtime adapters share one logic core.",
+      "version": "2.7.0",
       "author": {
         "name": "musicofthings"
       },
       "homepage": "https://github.com/musicofthings/context-engineering-kit",
       "repository": "https://github.com/musicofthings/context-engineering-kit",
       "license": "MIT",
-      "keywords": ["context", "session", "handover", "token-tracking", "compaction", "multi-device", "worktree", "session-resume", "usage", "morning-brief"]
+      "keywords": [
+        "context",
+        "session",
+        "handover",
+        "token-tracking",
+        "compaction",
+        "multi-device",
+        "worktree",
+        "session-resume",
+        "usage",
+        "morning-brief",
+        "cursor",
+        "grok",
+        "codex",
+        "multi-runtime"
+      ]
     }
   ]
 }

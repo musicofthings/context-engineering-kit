@@ -1,6 +1,5 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
-  "model": "claude-sonnet-5",
   "bash_path": "bash",
   "permissions": {
     "allow": [
@@ -45,7 +44,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/session-start.sh"
+            "command": "bash \"${CLAUDE_PROJECT_DIR:-.}\"/.claude/hooks/session-start.sh"
           }
         ]
       },
@@ -54,7 +53,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/morning-brief-auto.sh",
+            "command": "bash \"${CLAUDE_PROJECT_DIR:-.}\"/.claude/hooks/morning-brief-auto.sh",
             "async": true
           }
         ]
@@ -64,7 +63,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/compact-restore.sh"
+            "command": "bash \"${CLAUDE_PROJECT_DIR:-.}\"/.claude/hooks/compact-restore.sh"
           }
         ]
       },
@@ -73,7 +72,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/session-title.sh"
+            "command": "bash \"${CLAUDE_PROJECT_DIR:-.}\"/.claude/hooks/session-title.sh"
           }
         ]
       }
@@ -84,7 +83,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/auto-approve-permissions.sh"
+            "command": "bash \"${CLAUDE_PROJECT_DIR:-.}\"/.claude/hooks/auto-approve-permissions.sh"
           }
         ]
       }
@@ -95,7 +94,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/usage-sentinel.sh",
+            "command": "bash \"${CLAUDE_PROJECT_DIR:-.}\"/.claude/hooks/usage-sentinel.sh",
             "async": false
           }
         ]
@@ -107,7 +106,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/pre-compact.sh"
+            "command": "bash \"${CLAUDE_PROJECT_DIR:-.}\"/.claude/hooks/pre-compact.sh"
           }
         ]
       }
@@ -118,7 +117,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/post-compact.sh"
+            "command": "bash \"${CLAUDE_PROJECT_DIR:-.}\"/.claude/hooks/post-compact.sh"
           }
         ]
       }
@@ -129,17 +128,17 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/extract-state-on-stop.sh",
+            "command": "bash \"${CLAUDE_PROJECT_DIR:-.}\"/.claude/hooks/extract-state-on-stop.sh",
             "async": true
           },
           {
             "type": "command",
-            "command": "bash -c 'source \"$CLAUDE_PROJECT_DIR/scripts/find_python.sh\" && \"$PYTHON\" \"$CLAUDE_PROJECT_DIR/scripts/usage-tracker.py\"'",
+            "command": "bash -c 'source \"${CLAUDE_PROJECT_DIR:-.}/scripts/find_python.sh\" && \"$PYTHON\" \"${CLAUDE_PROJECT_DIR:-.}/scripts/usage-tracker.py\"'",
             "async": true
           },
           {
             "type": "command",
-            "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/stop.sh"
+            "command": "bash \"${CLAUDE_PROJECT_DIR:-.}\"/.claude/hooks/stop.sh"
           }
         ]
       }
@@ -150,7 +149,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/session-end.sh",
+            "command": "bash \"${CLAUDE_PROJECT_DIR:-.}\"/.claude/hooks/session-end.sh",
             "timeout": 30
           }
         ]
@@ -162,7 +161,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/guard-dangerous.sh"
+            "command": "bash \"${CLAUDE_PROJECT_DIR:-.}\"/.claude/hooks/guard-dangerous.sh"
           }
         ]
       }
@@ -173,7 +172,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/track-changes.sh"
+            "command": "bash \"${CLAUDE_PROJECT_DIR:-.}\"/.claude/hooks/track-changes.sh"
           }
         ]
       }
@@ -184,7 +183,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/post-tool-failure.sh",
+            "command": "bash \"${CLAUDE_PROJECT_DIR:-.}\"/.claude/hooks/post-tool-failure.sh",
             "async": true
           }
         ]
@@ -196,7 +195,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "CLAUDE_HOOK_EVENT=SubagentStart bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/subagent-lifecycle.sh",
+            "command": "CLAUDE_HOOK_EVENT=SubagentStart bash \"${CLAUDE_PROJECT_DIR:-.}\"/.claude/hooks/subagent-lifecycle.sh",
             "async": true
           }
         ]
@@ -208,7 +207,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "CLAUDE_HOOK_EVENT=SubagentStop bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/subagent-lifecycle.sh",
+            "command": "CLAUDE_HOOK_EVENT=SubagentStop bash \"${CLAUDE_PROJECT_DIR:-.}\"/.claude/hooks/subagent-lifecycle.sh",
             "async": true
           }
         ]
@@ -220,7 +219,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/notify.sh"
+            "command": "bash \"${CLAUDE_PROJECT_DIR:-.}\"/.claude/hooks/notify.sh"
           }
         ]
       }
@@ -231,7 +230,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/stop-failure.sh",
+            "command": "bash \"${CLAUDE_PROJECT_DIR:-.}\"/.claude/hooks/stop-failure.sh",
             "async": true
           }
         ]
@@ -243,7 +242,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/instructions-loaded.sh",
+            "command": "bash \"${CLAUDE_PROJECT_DIR:-.}\"/.claude/hooks/instructions-loaded.sh",
             "async": true
           }
         ]
@@ -263,17 +262,17 @@
     ]
   },
   "env": {
-    "CEK_VERSION": "2.6.0",
+    "CEK_VERSION": "2.7.0",
     "CEK_TOKEN_WARN_PCT": "70",
     "CEK_TOKEN_COMPACT_PCT": "85",
     "CEK_TOKEN_CRITICAL_PCT": "92",
-    "CEK_MODEL_HAIKU": "claude-haiku-4-5-20251001",
+    "CEK_MODEL_HAIKU": "claude-haiku-4-5",
     "CEK_MODEL_SONNET": "claude-sonnet-5",
     "CEK_MODEL_OPUS": "claude-opus-4-8",
     "CEK_SUBSCRIPTION_TIER": "pro"
   },
   "statusLine": {
     "type": "command",
-    "command": "bash \"${CLAUDE_PROJECT_DIR}/.claude/statusline.sh\""
+    "command": "bash \"${CLAUDE_PROJECT_DIR:-.}/.claude/statusline.sh\""
   }
 }
