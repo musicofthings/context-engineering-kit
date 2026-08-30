@@ -1,0 +1,27 @@
+# Ruff configuration for context-engineering-kit.
+#
+# The rule set is pinned EXPLICITLY rather than left to ruff's defaults. CI
+# installs ruff fresh, so an unpinned selection means a new ruff release can
+# turn the lint gate red on untouched code — which is exactly what happened
+# when this gate was first added (48 findings from rules that had never run).
+#
+# Deliberately NOT enabled:
+#   BLE001 (blind `except Exception`) and S110 (`try`/`except`/`pass`)
+#     Hook scripts are fail-open by design: a hook that raises would surface an
+#     error inside the user's session, so every optional side effect is wrapped
+#     in a broad catch on purpose. See the `|| true` convention on the shell
+#     side for the same rule.
+
+target-version = "py39"
+line-length = 120
+
+#   I (isort)
+#     usage-tracker.py must import cek_paths AFTER its sys.path.insert, which
+#     isort would reorder. Not worth churning three otherwise-untouched files
+#     to enforce an ordering that has never been enforced here.
+[lint]
+select = ["E", "F", "W"]
+ignore = [
+    "E501",  # line length is handled by line-length above; long f-strings in
+             # the report/banner blocks are intentionally aligned
+]

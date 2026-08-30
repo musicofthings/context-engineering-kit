@@ -52,7 +52,9 @@ jobs:
 
       - name: Lint Python (ruff)
         run: |
-          pip install --quiet ruff
+          # Pinned: an unpinned `pip install ruff` lets a new ruff release
+          # turn this gate red on untouched code. Rule set lives in ruff.toml.
+          pip install --quiet 'ruff==0.15.12'
           ruff check .
 
       - name: Compile-check Python
