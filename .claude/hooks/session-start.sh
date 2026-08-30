@@ -38,9 +38,6 @@ if declare -f cek_auto_save_init >/dev/null 2>&1; then
     "${CLAUDE_PLUGIN_ROOT:-$PROJECT_DIR}/config/plugin_settings.json"
 fi
 
-# Collapse a double fire when the kit is active as both plugin and opened repo.
-hook_once session-start || exit 0
-
 SENTINEL_DIR="$STATE_DIR"
 BUDGET_FILE="$MAIN_ROOT/config/usage_budget.json"
 

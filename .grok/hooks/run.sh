@@ -2,10 +2,8 @@
 # .grok/hooks/run.sh — Grok Build adapter (Phase C)
 # Portable entrypoint. Sets CEK_RUNTIME=grok and dispatches to .claude/hooks/.
 #
-# Grok also auto-loads .claude/settings.json when present — that can double-fire
-# with this file. Kit hooks use hook_once / sentinel claims so doubles are safe.
-# Prefer trusting this project and keeping both; or set [compat.claude] hooks=false
-# in ~/.grok/config.toml if you want only .grok/hooks.
+# Grok also auto-loads .claude/settings.json when present — since v3.0.0 that
+# file declares no hooks, so this adapter is the only Grok hook source.
 set -uo pipefail
 
 export CEK_ADAPTER_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

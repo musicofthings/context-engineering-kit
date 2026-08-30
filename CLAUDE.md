@@ -35,22 +35,22 @@ context-engineering-kit/
 │   │   ├── stop-failure.sh          ← logs API errors (rate_limit, overloaded, etc.)
 │   │   ├── instructions-loaded.sh   ← tracks CLAUDE.md loads for cache analysis
 │   │   └── session-title.sh         ← auto-names sessions from branch/task
-│   ├── skills/                      ← slash commands (type /skill-name)
-│   │   ├── token-status/            ← /token-status
-│   │   ├── handover/                ← /handover
-│   │   ├── model-switch/            ← /model-switch
-│   │   ├── compact-smart/           ← /compact-smart
-│   │   ├── session-sync/            ← /session-sync
-│   │   ├── context-health/          ← /context-health
-│   │   ├── usage-forecast/          ← /usage-forecast
-│   │   └── morning-brief/           ← /morning-brief
-│   ├── rules/
-│   │   ├── commit-protocol.md
-│   │   ├── security.md
-│   │   └── token-hygiene.md
-│   └── agents/
-│       ├── context-updater.md
-│       └── session-scribe.md
+│   └── rules/
+│       ├── commit-protocol.md
+│       ├── security.md
+│       └── token-hygiene.md
+├── skills/                          ← slash commands (type /skill-name)
+│   ├── token-status/                ← /token-status
+│   ├── handover/                    ← /handover
+│   ├── model-switch/                ← /model-switch
+│   ├── compact-smart/               ← /compact-smart
+│   ├── session-sync/                ← /session-sync
+│   ├── context-health/              ← /context-health
+│   ├── usage-forecast/              ← /usage-forecast
+│   └── morning-brief/               ← /morning-brief
+├── agents/
+│   ├── context-updater.md
+│   └── session-scribe.md
 ├── scripts/
 │   ├── generate_session_handover.py ← called by pre-compact hook
 │   ├── update_context_files.py      ← updates README, CLAUDE.md, specs

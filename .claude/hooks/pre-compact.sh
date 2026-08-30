@@ -22,10 +22,6 @@ fi
 # shellcheck source=../../scripts/resolve_state_dir.sh
 source "${CLAUDE_PLUGIN_ROOT:-$PROJECT_DIR}/scripts/resolve_state_dir.sh"
 
-# Collapse a double fire (plugin + opened repo) so compact_count isn't double
-# incremented and we don't write two snapshot commits for one compaction.
-hook_once pre-compact || exit 0
-
 # Handover lives at MAIN_ROOT under auto/main scope so it survives worktree
 # deletion. Under scope=local it stays in the worktree by design.
 case "$STATE_SCOPE" in

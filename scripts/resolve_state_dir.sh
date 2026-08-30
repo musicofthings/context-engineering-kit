@@ -104,7 +104,7 @@ STATE_FILE="$STATE_DIR/state.json"
 # directory. auto_init_project.sh already refused non-git dirs; this helper
 # did not, and it is the one every hook goes through.
 #
-# CEK_STATE_OK=false makes state_write()/hook_once() no-op instead of writing.
+# CEK_STATE_OK=false makes state_write() no-op instead of writing.
 CEK_STATE_OK=true
 _rsd_reject=""
 if ! git -C "$_rsd_base" rev-parse --git-dir >/dev/null 2>&1; then
@@ -209,41 +209,11 @@ _state_release() {
   _state_lock_held=""
 }
 
-# hook_once <tag> [window_sec] — de-dupe guard for once-per-session/turn hooks.
-#
-# The kit can be active simultaneously as an installed plugin (hooks/hooks.json)
-# AND as the opened repo (.claude/settings.json) — Claude Code merges hooks from
-# all sources, so the same event fires every matching script twice. For idempotent
-# per-edit/per-turn hooks that's harmless, but for session-start, pre-compact,
-# post-compact and session-end a double fire means double context injection and
-# duplicate "chore(context)" git commits.
-#
-# Returns 0 the FIRST time it's called for <tag> within <window_sec> (default 5s),
-# and 1 on any duplicate inside that window. Two configs firing the same script
-# land within milliseconds, so they collapse to one; legitimately distinct
-# sessions are always seconds-to-minutes apart and pass through. Callers do:
-#   hook_once session-start || exit 0
-hook_once() {
-  local tag="$1" window="${2:-5}" f now last locked=0 rc=0
-  [ "${CEK_STATE_OK:-true}" = "true" ] || return 0
-  f="$STATE_DIR/.hookfire_${tag}"
-  now=$(date +%s)
-  # The two duplicate fires land within milliseconds — exactly where a bare
-  # read-check-write races (both read stale, both pass). Serialize the
-  # check-and-claim with the shared state lock; if the lock can't be taken,
-  # fall back to the unguarded check rather than blocking the hook.
-  if _state_acquire 2>/dev/null; then locked=1; fi
-  if [ -f "$f" ]; then
-    last=$(cat "$f" 2>/dev/null || echo 0)
-    case "$last" in ''|*[!0-9]*) last=0 ;; esac
-    if [ "$(( now - last ))" -lt "$window" ]; then
-      rc=1
-    fi
-  fi
-  if [ "$rc" -eq 0 ]; then echo "$now" > "$f" 2>/dev/null || true; fi
-  if [ "$locked" -eq 1 ]; then _state_release; fi
-  return "$rc"
-}
+# NOTE: a hook_once() de-dupe guard used to live here. It papered over the same
+# hooks being registered twice — once by the plugin manifest (hooks/hooks.json)
+# and once by the repo's .claude/settings.json. v3.0.0 removed the settings.json
+# hooks block, making the plugin manifest the single hook source, so the guard
+# (and its .hookfire_* marker files) is retired.
 
 # state_write '<jq filter>' [jq args...]
 # Lock-guarded, atomic read-modify-write of STATE_FILE. Missing/corrupt file is

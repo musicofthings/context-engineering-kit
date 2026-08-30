@@ -207,8 +207,6 @@ echo ""
 SCENARIO="S6: session-start preserves mid-flight subagents (grace)"
 echo "▶ $SCENARIO"
 write_state "{\"session_start_time\":\"$(minutes_ago 2)\",\"subagents_running\":3,\"last_subagent_activity\":\"$(minutes_ago 0)\",\"active_task\":\"preserve-me\",\"active_subagent_ids\":[\"x\"]}"
-# Remove hook_once marker so session-start can run
-rm -f .claude/session/.hookfire_session-start
 printf '%s' '{"session_id":"eval-s6","source":"startup","cwd":"'"$SANDBOX"'"}' \
   | bash .claude/hooks/session-start.sh >/dev/null 2>"$SANDBOX/sstart.err" || true
 R=$("$PYTHON" -c "import json;print(json.load(open('.claude/session/state.json')).get('subagents_running',0))")
@@ -223,7 +221,6 @@ SCENARIO="S7: session-start zeros stale subagents after grace"
 echo "▶ $SCENARIO"
 # Activity 10 minutes ago; grace is 120s → should zero
 write_state "{\"session_start_time\":\"$(minutes_ago 2)\",\"subagents_running\":5,\"last_subagent_activity\":\"$(minutes_ago 10)\",\"active_subagent_ids\":[\"stale\"]}"
-rm -f .claude/session/.hookfire_session-start
 printf '%s' '{"session_id":"eval-s7","source":"startup"}' \
   | bash .claude/hooks/session-start.sh >/dev/null 2>"$SANDBOX/sstart7.err" || true
 R=$("$PYTHON" -c "import json;print(json.load(open('.claude/session/state.json')).get('subagents_running',0))")

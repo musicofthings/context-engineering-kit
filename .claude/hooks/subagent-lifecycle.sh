@@ -65,14 +65,6 @@ jq -n \
   '{"ts":$ts,"event":$event,"agent_id":$id,"agent_type":$type,"description":$desc}' \
   >> "$SUBAGENT_LOG" 2>/dev/null || true
 
-# Collapse the plugin+repo double fire. Unlike the once-per-session hooks this
-# must be keyed by event AND agent id — several subagents legitimately start
-# within the same second, and a bare per-event guard would drop real starts.
-# Without any guard, subagents_started and subagents_running both counted twice.
-if declare -f hook_once >/dev/null 2>&1; then
-  hook_once "subagent-${HOOK_EVENT}-${AGENT_ID:-noid}" 3 || exit 0
-fi
-
 if [ "$HOOK_EVENT" = "SubagentStart" ]; then
   # Avoid jq `unique` (behaviour differs across builds); append + de-dupe with index.
   state_write \

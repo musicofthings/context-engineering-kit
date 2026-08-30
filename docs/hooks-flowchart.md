@@ -352,9 +352,10 @@ fields gracefully, so their adapters pass the payload through unchanged.
 not mapped. Dangerous-command blocking instead rides `beforeShellExecution`
 (exit code 2 = deny).
 
-**De-dupe:** `hook_once` in `resolve_state_dir.sh` collapses a double fire of
-`session-start` / `session-end` / `pre-compact` / `post-compact` when the kit is
-active simultaneously as an installed plugin and as the opened repo.
+**De-dupe:** since v3.0.0 the plugin manifest `hooks/hooks.json` is the single
+hook source — the repo's `.claude/settings.json` declares no hooks, so the old
+plugin+repo double fire (previously papered over by a `hook_once` guard) cannot
+occur.
 
 ---
 

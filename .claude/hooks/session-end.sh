@@ -19,9 +19,6 @@ log "Session ending at $TIMESTAMP"
 # shellcheck source=../../scripts/resolve_state_dir.sh
 source "${CLAUDE_PLUGIN_ROOT:-$PROJECT_DIR}/scripts/resolve_state_dir.sh"
 
-# Collapse a double fire (plugin + opened repo) so we don't commit twice.
-hook_once session-end || exit 0
-
 # ── Phase A+B: force handover before exit if children active or never saved ─
 # shellcheck source=../../scripts/find_python.sh
 source "${CLAUDE_PLUGIN_ROOT:-$PROJECT_DIR}/scripts/find_python.sh" 2>/dev/null || PYTHON=""

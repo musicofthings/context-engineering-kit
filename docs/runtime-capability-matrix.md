@@ -50,20 +50,10 @@ python scripts/generate_runtime_hooks.py --check   # CI / pre-commit
 ## Double-fire risk (Grok + Claude settings)
 
 Grok **merges** project `.claude/settings.json` and `.grok/hooks/*.json` when the
-folder is trusted. That can run the same logic twice.
-
-Mitigations already in the kit:
-
-- `hook_once` on session-start / pre-compact / post-compact / session-end
-- Atomic usage sentinels (Phase A) so 85%/92% save runs once per window
-
-Optional (user config, not required):
-
-```toml
-# ~/.grok/config.toml — use only .grok/hooks for this machine
-[compat.claude]
-hooks = false
-```
+folder is trusted. Since v3.0.0 `.claude/settings.json` declares **no hooks**
+(the plugin manifest `hooks/hooks.json` is the single Claude source), so nothing
+double-fires. Atomic usage sentinels (Phase A) additionally guarantee the
+85%/92% save runs once per window.
 
 ---
 

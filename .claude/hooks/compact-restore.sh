@@ -20,9 +20,6 @@ PROJECT_DIR="${CLAUDE_PROJECT_DIR:-$(pwd)}"
 # shellcheck source=../../scripts/resolve_state_dir.sh
 source "${CLAUDE_PLUGIN_ROOT:-$PROJECT_DIR}/scripts/resolve_state_dir.sh"
 
-# Collapse a double fire (plugin + opened repo) so context is injected once.
-hook_once compact-restore || exit 0
-
 HANDOVER_FILE="$MAIN_ROOT/session_handover.md"
 
 ACTIVE_TASK="unknown"; PHASE="unknown"; NEXT_ACTION="read session_handover.md"

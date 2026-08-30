@@ -18,9 +18,6 @@ TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 # shellcheck source=../../scripts/resolve_state_dir.sh
 source "${CLAUDE_PLUGIN_ROOT:-$PROJECT_DIR}/scripts/resolve_state_dir.sh"
 
-# Collapse a double fire (plugin + opened repo) so we archive once.
-hook_once post-compact || exit 0
-
 log() { echo "[post-compact] $*" >&2; }
 
 HOOK_INPUT=""

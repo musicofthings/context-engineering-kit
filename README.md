@@ -320,7 +320,7 @@ cd my-project
 ```
 
 - Entry: `.grok/hooks/cek-hooks.json` → `.grok/hooks/run.sh` → `.claude/hooks/*`
-- Grok may also load `.claude/settings.json` (doubles are safe via `hook_once` / usage sentinels)
+- Grok may also load `.claude/settings.json`, which declares **no hooks** since v3.0.0 — `.grok/hooks/cek-hooks.json` is the only Grok hook source (usage sentinels still guard threshold saves)
 - Uses `PermissionDenied` (not `PermissionRequest`); see capability matrix
 - Optional: disable Claude hook scan in `~/.grok/config.toml` with `[compat.claude] hooks = false` if you want a single source
 
@@ -467,7 +467,7 @@ All hooks fire automatically — you never call them manually.
 | `Notification` | `notify.sh` | On notifications | Cross-platform desktop notification |
 | `PermissionRequest` | `auto-approve-permissions.sh` | Permission dialogs | Auto-approves context-file writes + kit scripts (echoes back the firing event) |
 
-> The three `Stop` hooks run **sequentially in a single hook entry** (not async) so they can't race on `state.json`. Every hook that mutates `state.json` does so through `state_write()` in `scripts/resolve_state_dir.sh`, which takes a portable lock (`flock`, or a `mkdir` spinlock on macOS) and writes atomically — concurrent writers field-merge instead of clobbering. `hook_once()` de-dupes session-start / session-end / pre-compact / post-compact when the kit is active as both plugin and opened repo. Permission/deny rules in `.claude/settings.json` use the canonical `Read(./.env)` / `Write(./session_handover.md)` path-anchored form.
+> The three `Stop` hooks run **sequentially in a single hook entry** (not async) so they can't race on `state.json`. Every hook that mutates `state.json` does so through `state_write()` in `scripts/resolve_state_dir.sh`, which takes a portable lock (`flock`, or a `mkdir` spinlock on macOS) and writes atomically — concurrent writers field-merge instead of clobbering. Since v3.0.0, `hooks/hooks.json` is the **single hook source** (the repo's `.claude/settings.json` declares no hooks), so nothing fires twice. Permission/deny rules in `.claude/settings.json` use the canonical `Read(./.env)` / `Write(./session_handover.md)` path-anchored form.
 
 > **`guard-dangerous.sh` is defense-in-depth, not a hard guarantee.** It matches
 > the *literal text* of a command against a fixed regex list, so it catches the
