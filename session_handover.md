@@ -1,24 +1,21 @@
 # Session Handover
-_Generated: 2026-08-30T16:25:15Z_
+_Generated: 2026-08-30T17:47:03Z_
 _Branch: main_
-_Trigger: user request ("save session") | Context at compact: n/a_
+_Trigger: session-end | Context at compact: unknown%_
 _Compact count this project: 0_
 
 ---
 
 ## 🎯 Active Task
 **What we're building/fixing:**
-Upgrading context-engineering-kit to be compatible with the current Claude Code release (target: v3.0.0). A four-agent audit against the official 135-page Hooks reference plus the plugins/skills/sub-agents/settings specs is COMPLETE. A phased v3.0.0 plan has been presented and is **awaiting user approval — no Phase 0/1/2/3 work has started.**
+Upgrade CEK to current Claude Code compatibility (v3.0.0) — audit complete, plan awaiting approval
 
-Earlier in this same session, a separate piece of work (full repo code review + fixes) was completed, committed, and pushed — see "Completed This Session".
-
-**Phase:** Phase 0 not started — plan approved? NO. Awaiting decision on two open questions.
-**Next action:** Get the user's answer to the two open questions (see Remaining Work #1), then begin Phase 0. Do NOT start editing before that — the user explicitly asked to plan before making changes.
+**Phase:** Phase 0 not started — blocked on user decision
+**Next action:** Answer the 2 open questions in session_handover.md, then start Phase 0 (remove duplicate hooks block)
 
 ---
 
 ## ✅ Completed This Session
-
 **Merge + full repo code review (done, pushed):**
 - [x] Merged `origin/main` (12 upstream commits incl. Phase C multi-runtime adapters); resolved the `state.json` modify/delete conflict by taking upstream's untracking
 - [x] Reviewed the whole repo (~7.2k lines shell/Python/JSON); reported 20 findings by severity
@@ -40,15 +37,16 @@ Earlier in this same session, a separate piece of work (full repo code review + 
 
 ---
 
+---
+
 ## 🔄 In Progress (Exact Resume Point)
 **Branch:** `main`
-**Last commit:** `41b7c20 fix: close the five unreported findings; add hook smoke evals to CI`
-**Next immediate action:** Ask the user the two open questions, then start Phase 0. Working tree is clean and `main` is in sync with `origin/main` — nothing half-finished on disk.
+**Last commit:** `9627af2 chore(context): save session state — Upgrade CEK to current Claude Code compatibility (v3.0.0) — audit complete, plan awaiting approval [2026-08-30T17:47:03Z]`
+**Next immediate action:** Answer the 2 open questions in session_handover.md, then start Phase 0 (remove duplicate hooks block)
 
 ---
 
 ## 📋 Remaining Work
-
 1. **Get answers to two open questions** (blocking):
    - Phase 0 is **breaking** for anyone who opens this repo directly rather than installing it as a plugin — confirm that's acceptable.
    - Parallelize implementation across subagents by phase, or work through it in order? (Recommendation: do Phase 0+1 solo — overlapping files — and fan out on Phase 2.)
@@ -80,7 +78,11 @@ Earlier in this same session, a separate piece of work (full repo code review + 
 
 ---
 
+---
+
 ## 🏗 Architecture Decisions Made
+| Decision | Rationale | Date |
+|----------|-----------|------|
 | Decision | Rationale | Date |
 |----------|-----------|------|
 | `state.json` stays untracked/machine-local | Confirmed deliberate via `90545c6 "chore: ignore Claude session state"`; `session_handover.md` is the portable cross-device anchor | 2026-08-30 |
@@ -95,9 +97,29 @@ Earlier in this same session, a separate piece of work (full repo code review + 
 
 ---
 
+---
+
 ## 🔧 Commands to Resume
+
+**This exact conversation** (SDK/CLI transcript resume):
 ```bash
-# On any machine after git pull:
+# Same machine AND same directory it started in:
+claude --resume 79ac0a85-0835-4a44-a420-573f9c5d8778
+```
+- Session ID    : `79ac0a85-0835-4a44-a420-573f9c5d8778`
+- Transcript    : `/Users/theranosis_dx/.claude/projects/-Users-theranosis-dx-projects-context-engineering-kit/79ac0a85-0835-4a44-a420-573f9c5d8778.jsonl`
+- Bound to cwd  : `/Users/theranosis_dx/projects/context-engineering-kit`
+- Stored at     : `~/.claude/projects/-Users-theranosis-dx-projects-context-engineering-kit/79ac0a85-0835-4a44-a420-573f9c5d8778.jsonl`
+
+> ⚠️ Transcript resume is **cwd-bound**. It only works from the same directory
+> on the same machine. If this session started in a git **worktree**, that
+> worktree's path is the cwd — resuming from `main` (or after the worktree is
+> deleted) will silently start a *fresh* session. Per the Agent SDK docs, the
+> robust cross-host / cross-worktree path is **not** transcript resume — it's
+> this handover file: read it into a new session's prompt as application state.
+
+**Project state** (any machine — the robust path):
+```bash
 git pull origin main
 bash scripts/session_sync.sh --load
 
@@ -107,66 +129,45 @@ bash scripts/session_sync.sh --load
 # /token-status       — check context usage
 ```
 
-Verification suite (all green as of this handover):
-```bash
-ruff check . && python3 -m compileall -q scripts
-bash scripts/check_sync.sh
-bash scripts/eval_phase_c.sh          # 28/28
-bash scripts/eval_usage_lifecycle.sh  # 29/29
-bash scripts/eval_hooks_smoke.sh      # 60/60
-```
-
-Audit source of truth (regenerate if lost — the user supplied the PDF):
-`/private/tmp/claude-501/.../scratchpad/hooks-ref.txt` — full text of the official Hooks reference, extracted with PyMuPDF from `~/Downloads/Hooks reference - Claude Code Docs.pdf`.
-NOTE: WebFetch on `code.claude.com/docs/en/hooks.md` **truncates before the per-event schema sections** and the summarising model invents plausible field names from the remainder. Two such fabrications (`SessionStart.how`, `PreCompact.triggered_by`) were nearly acted on. Use the PDF text, not WebFetch, for field-level claims.
-
 ---
 
 ## 📁 Files Modified This Session
 | File | Status |
 |------|--------|
-| `scripts/find_jq.sh` | modified — committed |
-| `scripts/resolve_state_dir.sh` | modified — committed |
-| `scripts/usage-tracker.py` | modified — committed |
-| `scripts/cek_paths.py` | added — committed |
-| `scripts/generate_session_handover.py` | modified — committed |
-| `scripts/cek_auto_save.sh` | modified — committed |
-| `scripts/fetch_api_docs.py` | modified — committed |
-| `scripts/check_sync.sh` | modified — committed |
-| `scripts/session_sync.sh` | modified — committed |
-| `scripts/eval_hooks_smoke.sh` | added — committed |
-| `scripts/cek_runtime.sh` | modified — committed |
-| `.claude/hooks/auto-approve-permissions.sh` | modified — committed |
-| `.claude/hooks/extract-state-on-stop.sh` | modified — committed |
-| `.claude/hooks/session-end.sh` | modified — committed |
-| `.claude/hooks/pre-compact.sh` | modified — committed |
-| `.claude/hooks/guard-dangerous.sh` | modified — committed |
-| `.claude/hooks/subagent-lifecycle.sh` | modified — committed |
-| `.github/workflows/cek-quality.yml` | modified — committed |
-| `ruff.toml` | added — committed |
-| `.gitignore` | modified — committed |
-| `hooks/hooks.json` | modified — committed |
-| `.claude/subagents/` → `.claude/agents/` | renamed — committed (TO BE REVERSED in Phase 0) |
+| `.claude/hooks/auto-approve-permissions.sh` | modified |
+| `.claude/hooks/compact-restore.sh` | modified |
+| `.claude/hooks/extract-state-on-stop.sh` | modified |
+| `.claude/hooks/guard-dangerous.sh` | modified |
+| `.claude/hooks/post-compact.sh` | modified |
+| `.claude/hooks/pre-compact.sh` | modified |
+| `.claude/hooks/session-end.sh` | modified |
+| `.claude/hooks/session-start.sh` | modified |
+| `.claude/hooks/usage-sentinel.sh` | modified |
+| `.claude/settings.json` | modified |
+| `.claude/skills/compact-smart/SKILL.md` | modified |
+| `.cursor/hooks.json` | modified |
+| `.cursor/hooks/_common.sh` | modified |
+| `.cursor/hooks/guard-shell.sh` | modified |
+| `.cursor/hooks/on-precompact.sh` | modified |
+| _(+29 more files not shown)_ | — |
 
 ---
 
 ## 🌿 Git Context
 ```
 Branch  : main
-Commit  : 41b7c20 fix: close the five unreported findings; add hook smoke evals to CI
-Status  : clean (0 changed), in sync with origin/main (0 ahead, 0 behind)
+Commit  : 9627af2 chore(context): save session state — Upgrade CEK to current Claude Code compatibility (v3.0.0) — audit complete, plan awaiting approval [2026-08-30T17:47:03Z]
+Status  : clean
 ```
 
 Recent commits:
 ```
+9627af2 chore(context): save session state — Upgrade CEK to current Claude Code compatibility (v3.0.0) — audit complete, plan awaiting approval [2026-08-30T17:47:03Z]
 41b7c20 fix: close the five unreported findings; add hook smoke evals to CI
 2261f5d fix(ci): pin ruff and its rule set
 6409fe6 fix: stop kit state dirs dirtying host repos
 a68b93f fix: repair jq wrapper fork-bomb, close auto-approve traversal, contain state spillover
-3748da3 chore(context): merge origin/main — untrack state.json (now gitignored per upstream)
 ```
-
-CI: all workflows green on `41b7c20`.
 
 ---
 
@@ -177,6 +178,8 @@ CI: all workflows green on `41b7c20`.
 - **Do not trust WebFetch for Claude Code hook field names** — it truncates and the summariser fabricates. Use the extracted PDF text.
 - Verify subagent findings against the source before acting; two agents contradicted each other on `FileChanged` and one was wrong
 - `state.json` is gitignored by design — do not re-add it to any `git add` list
+
+---
 
 ---
 
