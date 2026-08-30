@@ -49,7 +49,7 @@ DANGEROUS_REGEXES=(
   'find[[:space:]]+/[[:space:]].*-delete'
   # destructive git operations on remote/main
   'git[[:space:]]+push[[:space:]]+(--force|-f)[[:space:]]+.*[[:space:]](main|master)'
-  'git[[:space:]]+clean[[:space:]]+-[a-zA-Z]*f[a-zA-Z]*d'
+  'git[[:space:]]+clean[[:space:]]+-[a-zA-Z]*(fd|df)[a-zA-Z]*'
   # disk wipers
   'dd[[:space:]]+if=/dev/zero'
   'dd[[:space:]]+if=[^[:space:]]*[[:space:]]+of=/dev/'

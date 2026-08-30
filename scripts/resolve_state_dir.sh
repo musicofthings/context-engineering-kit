@@ -95,10 +95,39 @@ esac
 
 STATE_DIR="$_rsd_base/.claude/session"
 STATE_FILE="$STATE_DIR/state.json"
-unset _rsd_base
-if ! mkdir -p "$STATE_DIR" 2>/dev/null; then
+
+# ── Containment: never create kit state outside a real project ───────────────
+# When CLAUDE_PROJECT_DIR is unset these helpers fall back to $(pwd), and if
+# that is not a git repo `git rev-parse --show-toplevel` fails and _rsd_base
+# silently becomes the cwd — so a hook firing from $HOME used to create
+# $HOME/.claude/session/, i.e. kit state inside Claude Code's OWN config
+# directory. auto_init_project.sh already refused non-git dirs; this helper
+# did not, and it is the one every hook goes through.
+#
+# CEK_STATE_OK=false makes state_write()/hook_once() no-op instead of writing.
+CEK_STATE_OK=true
+_rsd_reject=""
+if ! git -C "$_rsd_base" rev-parse --git-dir >/dev/null 2>&1; then
+  _rsd_reject="not a git repository"
+elif [ "$_rsd_base" = "$HOME" ]; then
+  _rsd_reject="\$HOME itself"
+else
+  case "$_rsd_base" in
+    "$HOME"/.claude|"$HOME"/.claude/*) _rsd_reject="inside Claude Code's config dir" ;;
+  esac
+fi
+
+if [ -n "$_rsd_reject" ]; then
+  CEK_STATE_OK=false
+  if [ -z "${CEK_STATE_WARNED:-}" ]; then
+    echo "[resolve_state_dir] skipping state for $_rsd_base ($_rsd_reject)" >&2
+    export CEK_STATE_WARNED=1
+  fi
+elif ! mkdir -p "$STATE_DIR" 2>/dev/null; then
+  CEK_STATE_OK=false
   echo "[resolve_state_dir] WARNING: could not create $STATE_DIR — state writes will fail" >&2
 fi
+unset _rsd_base _rsd_reject
 
 # ── Portable lock around STATE_FILE ──────────────────────────────────────────
 # flock when available (Linux / Git-Bash). macOS has no flock(1): fall back to
@@ -132,11 +161,16 @@ _state_acquire() {
   while ! mkdir "$_state_lock_dir" 2>/dev/null; do
     tries=$((tries + 1))
     if [ "$tries" -ge 50 ]; then
-      # Looks stale — try to steal, but only proceed if WE win the mkdir race
-      rm -rf "$_state_lock_dir" 2>/dev/null || true
-      if mkdir "$_state_lock_dir" 2>/dev/null; then
-        _state_lock_held="mkdir"
-        return 0
+      # Looks stale (>5s). Steal via an ATOMIC rename, not rm -rf + mkdir:
+      # with rm -rf, two waiters that both time out can each delete the other's
+      # freshly-won lock and both then "hold" it. Renaming the stale dir aside
+      # can only succeed for one process, so exactly one waiter proceeds.
+      if mv "$_state_lock_dir" "${_state_lock_dir}.stale.$$" 2>/dev/null; then
+        rmdir "${_state_lock_dir}.stale.$$" 2>/dev/null || true
+        if mkdir "$_state_lock_dir" 2>/dev/null; then
+          _state_lock_held="mkdir"
+          return 0
+        fi
       fi
       echo "[resolve_state_dir] WARNING: mkdir-spinlock contention on $_state_lock_dir — aborting write" >&2
       return 1
@@ -171,6 +205,7 @@ _state_release() {
 #   hook_once session-start || exit 0
 hook_once() {
   local tag="$1" window="${2:-5}" f now last locked=0 rc=0
+  [ "${CEK_STATE_OK:-true}" = "true" ] || return 0
   f="$STATE_DIR/.hookfire_${tag}"
   now=$(date +%s)
   # The two duplicate fires land within milliseconds — exactly where a bare
@@ -199,6 +234,9 @@ hook_once() {
 state_write() {
   local filter="$1"; shift
   local tmp base
+  # Containment guard (see CEK_STATE_OK above): refuse rather than create kit
+  # state outside a real project.
+  [ "${CEK_STATE_OK:-true}" = "true" ] || return 1
   if ! _state_acquire; then
     return 1
   fi

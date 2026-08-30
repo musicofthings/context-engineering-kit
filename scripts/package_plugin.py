@@ -15,7 +15,6 @@ Usage:
 import argparse
 import fnmatch
 import json
-import sys
 import zipfile
 from pathlib import Path
 
@@ -111,7 +110,7 @@ def main():
     final_size = out_path.stat().st_size
     print(f"[package] included: {file_count} files ({total_bytes:,} raw bytes)")
     print(f"[package] zip size: {final_size:,} bytes")
-    print(f"[package] OK")
+    print("[package] OK")
 
 
 if __name__ == "__main__":

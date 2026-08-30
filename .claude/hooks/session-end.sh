@@ -108,11 +108,13 @@ fi
 cd "$COMMIT_DIR"
 
 # Check both staged and unstaged changes for session files before adding
-CHANGED=$(git status --porcelain .claude/session/state.json session_handover.md CLAUDE.md 2>/dev/null || echo "")
+# state.json is gitignored and machine-local — including it here made the
+# commit path look like it synced state when `git add` was silently failing.
+CHANGED=$(git status --porcelain session_handover.md CLAUDE.md 2>/dev/null || echo "")
 
 if [ -n "$CHANGED" ]; then
   SESSION_PATHS=()
-  for p in .claude/session/state.json session_handover.md CLAUDE.md; do
+  for p in session_handover.md CLAUDE.md; do
     [ -f "$p" ] && SESSION_PATHS+=("$p")
   done
 

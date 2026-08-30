@@ -17,8 +17,16 @@ if hasattr(sys.stdout, "reconfigure"):
 from datetime import datetime, timezone
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from cek_paths import (  # noqa: E402
+    atomic_write_json, load_json, resolve_state_dir, state_update,
+)
+
 PROJECT_DIR      = Path(os.environ.get("CLAUDE_PROJECT_DIR", "."))
-SESSION_DIR      = PROJECT_DIR / ".claude" / "session"
+# Was PROJECT_DIR/.claude/session, which ignored worktree redirection: in a
+# worktree this wrote usage-forecast.json where usage-sentinel.sh (which does
+# honour the scope) would never read it.
+SESSION_DIR      = resolve_state_dir(PROJECT_DIR)
 DAILY_USAGE_FILE = SESSION_DIR / "daily-usage.json"
 FORECAST_FILE    = SESSION_DIR / "usage-forecast.json"
 TIMESTAMP_FMT    = "%Y-%m-%dT%H:%M:%SZ"
@@ -49,9 +57,12 @@ def get_tier() -> str:
     """Read subscription tier. Tries rate_limits.json (subscription_tier)
     then usage_budget.json (subscription_type) — these two configs use
     different field names for the same value, so we accept both."""
+    plugin_root = Path(os.environ.get("CLAUDE_PLUGIN_ROOT", str(PROJECT_DIR)))
     for path, key in [
         (PROJECT_DIR / "config" / "rate_limits.json", "subscription_tier"),
         (PROJECT_DIR / "config" / "usage_budget.json", "subscription_type"),
+        (plugin_root / "config" / "rate_limits.json", "subscription_tier"),
+        (plugin_root / "config" / "usage_budget.json", "subscription_type"),
     ]:
         if path.exists():
             try:
@@ -71,21 +82,11 @@ def today_key() -> str:
     return utc_now().strftime("%Y-%m-%d")
 
 
-def load_json(p: Path) -> dict:
-    try:
-        return json.loads(p.read_text(encoding="utf-8")) if p.exists() else {}
-    except Exception:
-        return {}
-
-
 def save_json(p: Path, d: dict):
     """Atomic write — tmp file in same dir, then os.replace.
     Prevents truncation if the script is killed mid-write (Stop hook
     is async and can be interrupted by the next turn)."""
-    SESSION_DIR.mkdir(parents=True, exist_ok=True)
-    tmp = p.with_suffix(p.suffix + ".tmp")
-    tmp.write_text(json.dumps(d, indent=2), encoding="utf-8")
-    os.replace(tmp, p)
+    atomic_write_json(p, d)
 
 
 def ingest_transcript(path: str) -> dict:
@@ -137,6 +138,11 @@ def ingest(ev: dict) -> dict:
         "dur_ms":         cost.get("totalDurationMS", 0),
         "turns":          ev.get("turn_count", 0),
         "model":          ev.get("model", {}).get("display_name", "unknown"),
+        # Claude Code passes the session id in the hook payload, NOT as
+        # CLAUDE_SESSION_ID in the environment. Reading the env var meant every
+        # session collapsed into one "unknown" bucket, so the per-session
+        # cost/token deltas below always compared against the wrong baseline.
+        "session_id":     ev.get("session_id") or os.environ.get("CLAUDE_SESSION_ID", "unknown"),
     }
 
     # No cost/usage in the event (the normal case for a Stop hook):
@@ -157,7 +163,7 @@ def accumulate(m: dict) -> dict:
     data   = load_json(DAILY_USAGE_FILE)
     key    = today_key()
     now_ts = utc_now().strftime(TIMESTAMP_FMT)
-    sid    = os.environ.get("CLAUDE_SESSION_ID", "unknown")
+    sid    = m.get("session_id") or "unknown"
 
     if key not in data:
         data[key] = {
@@ -167,18 +173,28 @@ def accumulate(m: dict) -> dict:
             "peak_5h_pct": 0.0, "peak_ctx_pct": 0.0,
         }
 
-    day     = data[key]
-    prev_c  = next((s["last_cost"] for s in day["sessions"] if s.get("id") == sid), 0.0)
-    turn_c  = max(0.0, m["session_cost"] - prev_c)
+    day  = data[key]
+    prev = next((s for s in day["sessions"] if s.get("id") == sid), {})
+
+    # cost/input/output all arrive as SESSION-CUMULATIVE totals — session_cost
+    # from the event, and input/output summed over the whole transcript by
+    # ingest_transcript(). Accumulate the delta against this session's previous
+    # reading, never the raw total: `+= total` on every turn inflates the daily
+    # figure quadratically (3 turns over a 300/110-token transcript recorded
+    # 900/330). Cost already did this; tokens did not.
+    turn_c = max(0.0, m["session_cost"] - prev.get("last_cost", 0.0))
+    turn_i = max(0, m["input_tok"] - prev.get("last_input", 0))
+    turn_o = max(0, m["output_tok"] - prev.get("last_output", 0))
 
     day["sessions"] = [s for s in day["sessions"] if s.get("id") != sid]
     day["sessions"].append({"id": sid, "last_cost": m["session_cost"],
-                             "turns": m["turns"], "model": m["model"], "updated": now_ts})
+                            "last_input": m["input_tok"], "last_output": m["output_tok"],
+                            "turns": m["turns"], "model": m["model"], "updated": now_ts})
 
     day["turns"]         += 1
     day["cost_usd"]      += turn_c
-    day["input_tokens"]  += m["input_tok"]
-    day["output_tokens"] += m["output_tok"]
+    day["input_tokens"]  += turn_i
+    day["output_tokens"] += turn_o
     day["last_activity"]  = now_ts
 
     if m["rl_5h_pct"] is not None:
@@ -234,18 +250,35 @@ def forecast(m: dict, day: dict, tier_name: str) -> dict:
     reset_str = ""
     rst = m.get("rl_5h_resets_at")
     if rst:
-        left = int(rst) - int(now.timestamp())
+        # resets_at may be an epoch int OR an ISO-8601 string depending on the
+        # Claude Code version. A bare int() on the ISO form raised ValueError
+        # and killed the whole Stop hook.
+        try:
+            left = int(rst) - int(now.timestamp())
+        except (TypeError, ValueError):
+            try:
+                reset_dt = datetime.fromisoformat(str(rst).replace("Z", "+00:00"))
+                if reset_dt.tzinfo is None:
+                    reset_dt = reset_dt.replace(tzinfo=timezone.utc)
+                left = int(reset_dt.timestamp()) - int(now.timestamp())
+            except Exception:
+                left = 0
         if left > 0:
             ml = left // 60
             reset_str = f"resets {ml}m" if ml < 60 else f"resets {ml//60}h{ml%60}m"
 
     # Ladder: WARN (70) → COMPACT (85) → CRITICAL (92).
     # COMPACT is the documented threshold for /compact-smart action.
-    if pct >= crit_p:           status, ind, action = "CRITICAL", "🔴", "compact_smart_now"
-    elif pct >= COMPACT_PCT:    status, ind, action = "COMPACT",  "🟠", "compact_smart_now"
-    elif pct >= warn_p:         status, ind, action = "WARNING",  "🟡", "compact_smart_soon"
-    elif pct >= warn_p * 0.7:   status, ind, action = "CAUTION",  "🟡", "monitor"
-    else:                       status, ind, action = "HEALTHY",  "🟢", "none"
+    if pct >= crit_p:
+        status, ind, action = "CRITICAL", "🔴", "compact_smart_now"
+    elif pct >= COMPACT_PCT:
+        status, ind, action = "COMPACT", "🟠", "compact_smart_now"
+    elif pct >= warn_p:
+        status, ind, action = "WARNING", "🟡", "compact_smart_soon"
+    elif pct >= warn_p * 0.7:
+        status, ind, action = "CAUTION", "🟡", "monitor"
+    else:
+        status, ind, action = "HEALTHY", "🟢", "none"
 
     return {
         "updated": now_ts, "tier": tier_name, "data_source": source,
@@ -266,24 +299,25 @@ def forecast(m: dict, day: dict, tier_name: str) -> dict:
 def report(fc: dict) -> str:
     src = "(real window)" if fc["data_source"] == "rate_limit_window" else "(cost proxy — upgrade Claude Code for real data)"
     lines = [
-        f"╔══════════════════════════════════════════════╗",
+        "╔══════════════════════════════════════════════╗",
         f"║  Usage Forecast  {fc['indicator']}  {fc['status']:<8}                 ║",
-        f"╚══════════════════════════════════════════════╝",
-        f"",
+        "╚══════════════════════════════════════════════╝",
+        "",
         f"Tier          : {fc['tier'].upper()}  {src}",
     ]
     if fc["rl_5h_pct"] is not None:
         lines += [f"5h window     : {fc['rl_5h_pct']:.1f}% used  {fc['rl_5h_reset']}"]
     if fc["rl_7d_pct"] is not None:
         lines += [f"7d window     : {fc['rl_7d_pct']:.1f}% used"]
+    ctx_now = "n/a" if fc.get("ctx_pct") is None else f"{fc['ctx_pct']}%"
     lines += [
-        f"Context now   : {fc['ctx_pct']}%   (peak: {fc['peak_ctx_pct']:.0f}%)",
+        f"Context now   : {ctx_now}   (peak: {fc['peak_ctx_pct']:.0f}%)",
         f"Cost today    : ${fc['cost_today_usd']:.4f}",
         f"Turns today   : {fc['turns_today']}",
-        f"",
+        "",
         f"To warn       : ~{fc['turns_to_warn']} turns",
         f"To critical   : ~{fc['turns_to_critical']} turns ({fc['eta_to_critical']})",
-        f"",
+        "",
     ]
     if fc["recommended_action"] == "compact_smart_now":
         lines += ["⚡ ACTION: /compact-smart NOW then /handover"]
@@ -310,9 +344,12 @@ def run_hook():
 
     # Mirror key metrics into state.json so usage-sentinel can prefer real
     # rate-limit % over wall-clock session age (Phase D / pending tasks).
-    try:
-        state_path = SESSION_DIR / "state.json"
-        st = load_json(state_path)
+    # Lock-guarded: extract-state-on-stop.sh fires on this same Stop event and
+    # does its own read-modify-write of state.json. A bare load/save here (what
+    # this used to do) races it and drops whichever writer finished first —
+    # resolve_state_dir.sh sets the contract that ALL state.json updates take
+    # the shared lock, and this was the one writer ignoring it.
+    def _mirror(st: dict) -> dict:
         st["usage_pct"] = fc.get("pct_used")
         st["usage_source"] = fc.get("data_source")
         st["rl_5h_pct"] = fc.get("rl_5h_pct")
@@ -321,7 +358,10 @@ def run_hook():
         st["usage_updated"] = fc.get("updated")
         if m.get("session_cost") is not None:
             st["session_cost_usd"] = str(m.get("session_cost") or st.get("session_cost_usd") or "0")
-        save_json(state_path, st)
+        return st
+
+    try:
+        state_update(SESSION_DIR / "state.json", _mirror)
     except Exception:
         pass
 

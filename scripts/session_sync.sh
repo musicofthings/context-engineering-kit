@@ -58,8 +58,11 @@ do_save() {
 
   cd "$MAIN_ROOT"
 
-  # Stage session files
-  git add .claude/session/state.json 2>/dev/null || true
+  # Stage the PORTABLE context files only. state.json is deliberately
+  # gitignored and machine-local — `git add` on it failed silently behind
+  # `|| true`, so this looked like it was syncing state when it never was.
+  # session_handover.md is the cross-device anchor; it is generated from
+  # state.json above, so the content still travels.
   git add session_handover.md 2>/dev/null || true
   git add CLAUDE.md 2>/dev/null || true
 
@@ -145,7 +148,7 @@ do_status() {
   log "Git branch    : $GIT_BRANCH"
   log "Commits ahead : $GIT_AHEAD"
 
-  UNCOMMITTED=$(git status --porcelain .claude/session/ session_handover.md CLAUDE.md 2>/dev/null | wc -l | tr -d ' ')
+  UNCOMMITTED=$(git status --porcelain session_handover.md CLAUDE.md 2>/dev/null | wc -l | tr -d ' ')
   if [ "$UNCOMMITTED" -gt 0 ]; then
     log "Uncommitted   : ⚠️  $UNCOMMITTED context files have local changes"
     log "  → Run: bash scripts/session_sync.sh --save"

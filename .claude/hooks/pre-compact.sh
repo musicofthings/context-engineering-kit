@@ -156,7 +156,8 @@ log "Committing session snapshot to git (cwd=$MAIN_ROOT)..."
   # commit in every project where any listed file didn't exist yet.
   # turn-ledger.jsonl / tool-failures.jsonl are deliberately absent: they are
   # per-session append-only logs, gitignored by design.
-  for _f in .claude/session/state.json session_handover.md CLAUDE.md; do
+  # state.json is gitignored (machine-local); only portable files are staged.
+  for _f in session_handover.md CLAUDE.md; do
     [ -f "$_f" ] && git add "$_f" 2>/dev/null || true
   done
   # If we're in a worktree under auto scope and the worktree itself has fresher

@@ -101,11 +101,20 @@ RESPONSE=""
 if [ -n "$TRANSCRIPT_PATH" ] && [ -f "$TRANSCRIPT_PATH" ]; then
   # Grep-prefilter so jq doesn't slurp a multi-MB transcript when only the
   # last assistant turn matters. Each line is one JSON object.
-  RESPONSE=$(grep -E '"type"\s*:\s*"assistant"' "$TRANSCRIPT_PATH" 2>/dev/null \
+  _ASSISTANT_LINES=$(grep -E '"type"\s*:\s*"assistant"' "$TRANSCRIPT_PATH" 2>/dev/null || true)
+  RESPONSE=$(printf '%s' "$_ASSISTANT_LINES" \
     | tail -1 \
     | jq -r '.message.content[]? | select(.type == "text") | .text' 2>/dev/null \
     | tr '\n' ' ' \
     || echo "")
+  # The Stop payload has no turn_count (see the schema note above), so the
+  # value read from it was always 0 and last_stop_turn never moved. Derive it
+  # from the transcript instead — that is the only real turn counter we have.
+  if [ "$TURN_COUNT" -eq 0 ] && [ -n "$_ASSISTANT_LINES" ]; then
+    TURN_COUNT=$(printf '%s\n' "$_ASSISTANT_LINES" | wc -l | tr -d ' ')
+    case "$TURN_COUNT" in ''|*[!0-9]*) TURN_COUNT=0 ;; esac
+  fi
+  unset _ASSISTANT_LINES
 fi
 
 # Even when we can't extract response text, keep state.json heartbeat fresh.
@@ -179,24 +188,15 @@ if echo "$RESPONSE_ONE_LINE" | grep -qiE "phase [0-9]|phase [a-z]+|step [0-9]"; 
 fi
 PHASE_HINT=$(normalize_hint "$PHASE_HINT" 60)
 
-# ── Pattern: detect completions ──────────────────────────────────────────────
-COMPLETED=""
-if echo "$RESPONSE" | grep -qE "(✅|done|complete|finished|created|written|updated)"; then
-  COMPLETED=$(echo "$RESPONSE" \
-    | grep -E "(✅|✓|DONE|done|complete|finished)" \
-    | grep -v "^#" \
-    | head -5 \
-    | tr '\n' '|' \
-    | sed 's/|$//' \
-    2>/dev/null \
-    || true)
-fi
+# NOTE: a "detect completions" block used to live here. It scanned $RESPONSE,
+# redacted the result, and then never wrote it anywhere — and since $RESPONSE
+# has already been flattened to one line by this point, its `head -5` could
+# only ever return that single line. Removed rather than left as dead work.
 
 # ── Redact extracted strings before they persist ─────────────────────────────
 NEXT_ACTION=$(redact "$NEXT_ACTION")
 ACTIVE_TASK_HINT=$(redact "$ACTIVE_TASK_HINT")
 PHASE_HINT=$(redact "$PHASE_HINT")
-COMPLETED=$(redact "$COMPLETED")
 # Re-validate after redact (redaction can shorten/empty a string)
 if ! is_usable_next_action "$NEXT_ACTION"; then
   NEXT_ACTION=""

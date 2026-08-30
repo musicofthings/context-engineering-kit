@@ -176,8 +176,15 @@ cek_run_handover() {
        --output "$out" \
        >/dev/null 2>&1; then
     rc=0
+  elif [ -s "$out" ] && [ "$(wc -l < "$out" 2>/dev/null || echo 0)" -gt 15 ]; then
+    # A real handover is already on disk. Do NOT replace it with the stub:
+    # this runs on every 85%/92% threshold and at session end, so one transient
+    # generator failure used to destroy the last good handover — the exact
+    # artifact this whole mechanism exists to protect. Keep it and say so.
+    echo "[cek_auto_save] WARNING: generator failed — KEEPING existing $out (not overwritten)" >&2
+    rc=1
   else
-    # Minimal fallback so something durable exists even if the generator fails
+    # Nothing worth preserving — a stub beats no handover at all.
     cat > "$out" <<EOF
 # Session Handover
 _Auto-generated fallback by cek_auto_save at $(date -u +"%Y-%m-%dT%H:%M:%SZ")_
@@ -189,7 +196,7 @@ See \`.claude/session/state.json\` — full generator failed; state.json is auth
 ## Next action
 Read session_handover.md and state.json; run /handover to regenerate fully.
 EOF
-    rc=0
+    rc=1
     echo "[cek_auto_save] WARNING: generator failed — wrote minimal fallback handover" >&2
   fi
 

@@ -35,7 +35,9 @@ case "$ACTION" in
     if [ -f "$CEK_SCRIPTS_DIR/find_python.sh" ]; then
       # shellcheck source=../../scripts/find_python.sh
       source "$CEK_SCRIPTS_DIR/find_python.sh"
-      "$PYTHON" "$CEK_SCRIPTS_DIR/usage-tracker.py" </dev/null || true
+      # usage-tracker reads the Stop event JSON from stdin and exits
+      # immediately when it is empty — </dev/null made this a silent no-op.
+      printf '%s' "$INPUT" | "$PYTHON" "$CEK_SCRIPTS_DIR/usage-tracker.py" || true
     fi
     printf '%s' "$INPUT" | cek_run_hook stop.sh || true
     ;;

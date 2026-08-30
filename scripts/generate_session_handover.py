@@ -14,6 +14,9 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from cek_paths import resolve_state_file  # noqa: E402
+
 
 def run(cmd, cwd: str = None) -> str:
     """Run a command list and return stdout. Accepts a string for legacy
@@ -28,46 +31,6 @@ def run(cmd, cwd: str = None) -> str:
         return result.stdout.strip()
     except Exception:
         return ""
-
-
-def resolve_state_file(project_dir: Path) -> Path:
-    """Mirror scripts/resolve_state_dir.sh so the handover reads the SAME
-    state.json the hooks write. Honours config/plugin_settings.json
-    state.scope (auto|main|local) and the branch-vs-worktree distinction."""
-    pd = str(project_dir)
-    scope = "auto"
-    # Check plugin root first (plugin mode), then project-local (standalone mode)
-    _plugin_root = Path(os.environ.get("CLAUDE_PLUGIN_ROOT", str(project_dir)))
-    settings = _plugin_root / "config" / "plugin_settings.json"
-    if not settings.exists():
-        settings = project_dir / "config" / "plugin_settings.json"
-    if settings.exists():
-        try:
-            scope = (json.loads(settings.read_text(encoding="utf-8", errors="replace"))
-                     .get("state", {}).get("scope", "auto"))
-        except Exception:
-            scope = "auto"
-    scope = {"repo": "main", "shared": "main", "worktree": "local"}.get(scope, scope)
-    if scope not in ("auto", "main", "local"):
-        scope = "auto"
-
-    repo_root = run(["git", "-C", pd, "rev-parse", "--show-toplevel"]) or pd
-    git_dir = run(["git", "-C", pd, "rev-parse", "--git-dir"])
-    in_worktree = "/worktrees/" in git_dir
-    main_root = repo_root
-    if in_worktree:
-        wl = run(["git", "-C", pd, "worktree", "list", "--porcelain"])
-        first = wl.splitlines()[0] if wl else ""
-        if first.startswith("worktree "):
-            main_root = first[len("worktree "):].strip() or repo_root
-
-    if scope == "local":
-        base = repo_root
-    elif scope == "main":
-        base = main_root
-    else:  # auto
-        base = main_root if in_worktree else repo_root
-    return Path(base) / ".claude" / "session" / "state.json"
 
 
 def load_state(project_dir: Path) -> dict:
@@ -93,9 +56,13 @@ def _extract_section(content: str, header: str) -> str:
     return m.group(1).strip() if m else ""
 
 
-def load_existing_handover(project_dir: Path) -> dict:
-    """Extract structured sections from existing session_handover.md"""
-    handover_file = project_dir / "session_handover.md"
+def load_existing_handover(handover_file: Path) -> dict:
+    """Extract structured sections from the handover we are about to rewrite.
+
+    Takes the OUTPUT path, not the project dir: callers pass --output pointing
+    at MAIN_ROOT under worktree/auto scope, so reading project_dir's copy meant
+    carrying sections over from a different file than the one being replaced.
+    """
     if not handover_file.exists():
         return {}
 
@@ -148,13 +115,13 @@ def get_git_context(project_dir: Path) -> dict:
     }
 
 
-def generate(args) -> str:
+def generate(args, output_path: Path) -> str:
     project_dir = Path(os.environ.get("CLAUDE_PROJECT_DIR", os.getcwd()))
     timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
     state = load_state(project_dir)
     git = get_git_context(project_dir)
-    existing = load_existing_handover(project_dir)
+    existing = load_existing_handover(output_path)
 
     active_task = state.get("active_task", "not set — update via /handover skill")
     phase = state.get("phase", "not set")
@@ -197,7 +164,10 @@ claude --resume {session_id}
     commit = args.commit or git["commit"]
 
     # Build modified files section
-    all_modified = list(set(
+    # sorted(), not list(set()) — this table lands in a git-committed file, and
+    # set iteration order varies between runs, producing a spurious diff every
+    # time the handover regenerates with an unchanged file list.
+    all_modified = sorted(set(
         changed_files
         + [f for f in git["modified_files"].split("\n") if f]
         + [f for f in git["staged_files"].split("\n") if f]
@@ -332,7 +302,7 @@ def main():
     project_dir = Path(os.environ.get("CLAUDE_PROJECT_DIR", os.getcwd()))
     output_path = Path(args.output) if args.output else project_dir / "session_handover.md"
 
-    content = generate(args)
+    content = generate(args, output_path)
     # Atomic write: PreCompact and /handover skill can race.
     tmp = output_path.with_suffix(output_path.suffix + ".tmp")
     tmp.write_text(content, encoding="utf-8")

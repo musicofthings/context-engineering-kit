@@ -8,10 +8,16 @@
 # system has no `jq` on PATH but we found a usable binary.
 
 _find_jq_bin() {
-  local c cand
+  local c cand resolved
   for c in jq jq.exe; do
-    if command -v "$c" >/dev/null 2>&1; then
-      echo "$c"
+    # Emit the RESOLVED PATH, never the bare name. The wrapper below defines a
+    # shell function called `jq`; bash resolves functions before PATH, so a bare
+    # "jq" here makes that wrapper call itself — unbounded recursion that forks
+    # once per level until the process table is exhausted. Every call site wraps
+    # jq in `2>/dev/null || echo <default>`, so the failure is invisible: hooks
+    # exit 0 having silently read nothing.
+    if resolved=$(command -v "$c" 2>/dev/null) && [ -n "$resolved" ]; then
+      echo "$resolved"
       return 0
     fi
   done
@@ -23,25 +29,24 @@ _find_jq_bin() {
       /mnt/c/ProgramData/chocolatey/bin/jq.exe \
       /mnt/c/tools/jq/jq.exe
     do
-      if [ -f "$cand" ] && [ -x "$cand" ] || [ -f "$cand" ]; then
+      if [ -f "$cand" ]; then
         echo "$cand"
         return 0
       fi
     done
   fi
-  # Git-Bash style paths when running under MSYS
+  # Git-Bash style paths when running under MSYS. The `for` list is itself
+  # glob-expanded, so each $cand is already a concrete path — re-splitting it
+  # unquoted would break on the spaces in %LOCALAPPDATA%.
   for cand in \
     /usr/bin/jq \
     /mingw64/bin/jq.exe \
-    "$LOCALAPPDATA/Microsoft/WinGet/Packages"/jqlang.jq_*/jq.exe
+    "${LOCALAPPDATA:-}/Microsoft/WinGet/Packages"/jqlang.jq_*/jq.exe
   do
-    # shellcheck disable=SC2086
-    for f in $cand; do
-      if [ -f "$f" ]; then
-        echo "$f"
-        return 0
-      fi
-    done
+    if [ -f "$cand" ]; then
+      echo "$cand"
+      return 0
+    fi
   done
   return 1
 }
@@ -57,7 +62,10 @@ if [ -n "$JQ" ]; then
   _CEK_JQ_BIN="$JQ"
   jq() {
     local ec
-    "$_CEK_JQ_BIN" "$@" | tr -d '\r'
+    # `command` bypasses function lookup. _CEK_JQ_BIN is already an absolute
+    # path, so this is belt-and-braces — but it makes self-recursion impossible
+    # even if someone reintroduces a bare name here.
+    command "$_CEK_JQ_BIN" "$@" | tr -d '\r'
     ec=${PIPESTATUS[0]}
     return "$ec"
   }

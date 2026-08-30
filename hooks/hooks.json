@@ -47,6 +47,15 @@
             "command": "bash \"${CLAUDE_PLUGIN_ROOT}/.claude/hooks/compact-restore.sh\""
           }
         ]
+      },
+      {
+        "matcher": "startup|resume",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/.claude/hooks/session-title.sh\""
+          }
+        ]
       }
     ],
     "UserPromptSubmit": [
@@ -226,7 +235,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash -c 'echo \"[cek] Config file changed: $CLAUDE_FILE_PATH — thresholds reloaded\" >&2'",
+            "command": "bash -c 'echo \"[cek] Config file changed: $CLAUDE_FILE_PATH \u2014 thresholds reloaded\" >&2'",
             "async": true
           }
         ]

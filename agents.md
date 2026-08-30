@@ -2,7 +2,7 @@
 _Part of context-engineering-kit_
 
 This file defines the roles and responsibilities of subagents used in this project.
-Reference these in `.claude/subagents/` files or when orchestrating multi-agent tasks.
+Reference these in `.claude/agents/` files or when orchestrating multi-agent tasks.
 
 ---
 

@@ -50,6 +50,14 @@ jobs:
           done
           echo "bash -n OK"
 
+      - name: Lint Python (ruff)
+        run: |
+          pip install --quiet ruff
+          ruff check .
+
+      - name: Compile-check Python
+        run: python -m compileall -q scripts
+
       - name: generate_runtime_hooks --check
         run: python scripts/generate_runtime_hooks.py --check
 

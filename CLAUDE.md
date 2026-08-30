@@ -48,7 +48,7 @@ context-engineering-kit/
 │   │   ├── commit-protocol.md
 │   │   ├── security.md
 │   │   └── token-hygiene.md
-│   └── subagents/
+│   └── agents/
 │       ├── context-updater.md
 │       └── session-scribe.md
 ├── scripts/

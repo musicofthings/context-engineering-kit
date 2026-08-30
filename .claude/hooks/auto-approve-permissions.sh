@@ -64,13 +64,32 @@ if [[ "$TOOL_NAME" == "Write" || "$TOOL_NAME" == "Edit" || "$TOOL_NAME" == "Mult
   # the POSIX-style APPROVED_PATHS list.
   NORM_PATH="${NORM_PATH//\\//}"
 
+  # Refuse any path with a parent-directory segment. The prefix matches below
+  # are globs, and `*` spans `/` — so without this, a path like
+  #   .claude/session/../../../../etc/passwd
+  # matches `.claude/session/*` and gets silently auto-approved. This gate
+  # exists to REMOVE a human check, so it must never approve a path it has
+  # not actually confined to the project.
+  case "/$NORM_PATH/" in
+    */../*) exit 0 ;;
+  esac
+
+  # Anything still absolute (or a Windows drive path) escaped the project dir
+  # prefix-strip above and is by definition outside the project.
+  case "$NORM_PATH" in
+    /*|[A-Za-z]:/*) exit 0 ;;
+  esac
+
   # Auto-approve list — exact matches and prefix patterns
+  # Deliberately NOT here: README.md and a blanket docs/* rule. Both were
+  # wider than this hook's stated purpose ("files the kit itself writes") and
+  # this hook ships to every project the plugin is installed in. Dropping them
+  # only restores the normal permission prompt — nothing breaks.
   APPROVED_PATHS=(
     "session_handover.md"
     "CLAUDE.md"
     "agents.md"
     "api_docs.md"
-    "README.md"
     ".claude/session/state.json"
     ".claude/session/history.jsonl"
     ".claude/session/turn-ledger.jsonl"
@@ -82,11 +101,6 @@ if [[ "$TOOL_NAME" == "Write" || "$TOOL_NAME" == "Edit" || "$TOOL_NAME" == "Mult
 
   # Auto-approve any path under .claude/session/
   if [[ "$NORM_PATH" == .claude/session/* ]]; then
-    auto_approve
-  fi
-
-  # Auto-approve any path under docs/ (context kit docs)
-  if [[ "$NORM_PATH" == docs/* ]]; then
     auto_approve
   fi
 
