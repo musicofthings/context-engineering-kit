@@ -105,14 +105,10 @@ cek_runtime_supports() {
   esac
 }
 
-# No-op exit for unsupported events (adapters call this before expensive work).
-cek_skip_if_unsupported() {
-  local evt="$1"
-  if ! cek_runtime_supports "$evt"; then
-    echo "[cek_runtime] skip $evt on CEK_RUNTIME=$CEK_RUNTIME (unsupported)" >&2
-    exit 0
-  fi
-}
+# NOTE: a cek_skip_if_unsupported() helper used to live here. It called `exit`
+# from this *sourced* library, so it would terminate the caller's shell rather
+# than just the check. It had zero callers and was not in the documented helper
+# list above. Use `cek_runtime_supports <evt> || exit 0` at the call site.
 
 # Run a kit hook script. Preserves stdin via a temp copy when needed.
 cek_run_hook() {

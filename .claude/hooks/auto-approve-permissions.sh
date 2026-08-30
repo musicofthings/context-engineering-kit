@@ -36,17 +36,35 @@ HOOK_EVENT=$(echo "$INPUT" | jq -r '.hook_event_name // "PermissionRequest"' 2>/
 # Anything in this list gets silently approved without prompting the user.
 
 auto_approve() {
-  # Return JSON decision to stdout — Claude Code reads this.
-  # PermissionRequest uses hookSpecificOutput.decision.behavior (allow/deny).
-  # PreToolUse uses hookSpecificOutput.permissionDecision — different schema.
-  jq -nc --arg ev "$HOOK_EVENT" '{
-    hookSpecificOutput: {
-      hookEventName: $ev,
-      decision: {
-        behavior: "allow"
-      }
-    }
-  }'
+  # Return the JSON decision Claude Code reads. The two events this script can
+  # receive use DIFFERENT schemas, and the payload must match the event name we
+  # echo back or the decision is ignored:
+  #   PermissionRequest -> hookSpecificOutput.decision.behavior
+  #   PreToolUse        -> hookSpecificOutput.permissionDecision
+  # This previously emitted the PermissionRequest shape unconditionally while
+  # echoing back whichever event arrived — latent today (only PermissionRequest
+  # is wired) but silently wrong the moment this is reused for PreToolUse.
+  case "$HOOK_EVENT" in
+    PreToolUse)
+      jq -nc --arg ev "$HOOK_EVENT" '{
+        hookSpecificOutput: {
+          hookEventName: $ev,
+          permissionDecision: "allow",
+          permissionDecisionReason: "context-engineering-kit managed file"
+        }
+      }'
+      ;;
+    *)
+      jq -nc --arg ev "$HOOK_EVENT" '{
+        hookSpecificOutput: {
+          hookEventName: $ev,
+          decision: {
+            behavior: "allow"
+          }
+        }
+      }'
+      ;;
+  esac
   exit 0
 }
 

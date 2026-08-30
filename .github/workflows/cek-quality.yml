@@ -72,6 +72,9 @@ jobs:
       - name: Phase A/B usage lifecycle evals
         run: bash scripts/eval_usage_lifecycle.sh
 
+      - name: Hook + trigger smoke evals
+        run: bash scripts/eval_hooks_smoke.sh
+
       - name: Summary
         run: |
           echo "CEK quality checks passed"

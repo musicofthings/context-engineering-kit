@@ -271,6 +271,17 @@ state_write() {
     return 1
   }
   if printf '%s' "$base" | jq "$@" "$filter" > "$tmp" 2>/dev/null && [ -s "$tmp" ]; then
+    # mktemp creates 0600. Carry the existing file's mode across the replace so
+    # state.json does not silently flip between 0600 and 0644 depending on
+    # whether a shell hook or usage-tracker.py wrote it last; 0600 for a new
+    # file, since state.json can hold extracted task text.
+    if [ -f "$STATE_FILE" ]; then
+      chmod --reference="$STATE_FILE" "$tmp" 2>/dev/null \
+        || chmod "$(stat -f '%Lp' "$STATE_FILE" 2>/dev/null || echo 600)" "$tmp" 2>/dev/null \
+        || true
+    else
+      chmod 600 "$tmp" 2>/dev/null || true
+    fi
     mv "$tmp" "$STATE_FILE"
     _state_release
     return 0

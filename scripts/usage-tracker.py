@@ -46,6 +46,13 @@ WARN_PCT      = _env_int("CEK_TOKEN_WARN_PCT", 70)
 COMPACT_PCT   = _env_int("CEK_TOKEN_COMPACT_PCT", 85)
 CRITICAL_PCT  = _env_int("CEK_TOKEN_CRITICAL_PCT", 92)
 
+# Rolling window for daily-usage.json (see accumulate()).
+DAILY_RETENTION_DAYS = _env_int("CEK_DAILY_RETENTION_DAYS", 90)
+# Minimum turns before a "~N turns until warn/critical" projection means
+# anything. Dividing a percentage by 1 turn extrapolates the entire session
+# from a single sample and produced confidently wrong ETAs on the first Stop.
+MIN_TURNS_FOR_PROJECTION = 3
+
 TIER_LIMITS = {
     "pro":  {"5h_warn": WARN_PCT, "5h_critical": CRITICAL_PCT, "cost_warn": 0.50, "cost_crit": 0.90},
     "max":  {"5h_warn": WARN_PCT, "5h_critical": CRITICAL_PCT, "cost_warn": 2.00, "cost_crit": 4.00},
@@ -203,6 +210,12 @@ def accumulate(m: dict) -> dict:
         day["peak_ctx_pct"] = max(day.get("peak_ctx_pct", 0), m["ctx_pct"])
 
     data[key] = day
+    # Retention: this file is appended to on every Stop of every session and
+    # nothing ever removed a day, so it grew without bound. Keep a rolling
+    # window — anything older is not used by the forecast or any skill.
+    if len(data) > DAILY_RETENTION_DAYS:
+        for stale in sorted(data)[:-DAILY_RETENTION_DAYS]:
+            data.pop(stale, None)
     save_json(DAILY_USAGE_FILE, data)
     return day
 
@@ -229,12 +242,14 @@ def forecast(m: dict, day: dict, tier_name: str) -> dict:
         turns_to_warn  = int((warn_p - pct) / ppt) if ppt > 0 and pct < warn_p else 0
         turns_to_crit  = int((crit_p - pct) / ppt) if ppt > 0 and pct < crit_p else 0
         source         = "rate_limit_window"
+        reliable       = session_turns >= MIN_TURNS_FOR_PROJECTION
     else:
         pct           = (cost_t / crit_c * 100) if crit_c > 0 else 0
         cpt           = cost_t / turns
         turns_to_warn = int((warn_c - cost_t) / cpt) if cpt > 0 and cost_t < warn_c else 0
         turns_to_crit = int((crit_c - cost_t) / cpt) if cpt > 0 and cost_t < crit_c else 0
         source        = "cost_proxy"
+        reliable      = turns >= MIN_TURNS_FOR_PROJECTION
 
     # ETA
     try:
@@ -289,7 +304,8 @@ def forecast(m: dict, day: dict, tier_name: str) -> dict:
         "turns_today": turns, "cost_today_usd": round(cost_t, 4),
         "turns_to_warn": max(0, turns_to_warn),
         "turns_to_critical": max(0, turns_to_crit),
-        "eta_to_critical": eta,
+        "eta_to_critical": eta if reliable else "unknown",
+        "projection_reliable": reliable,
         "ctx_pct": m.get("ctx_pct"),
         "peak_5h_pct": day.get("peak_5h_pct", 0),
         "peak_ctx_pct": day.get("peak_ctx_pct", 0),
@@ -315,8 +331,12 @@ def report(fc: dict) -> str:
         f"Cost today    : ${fc['cost_today_usd']:.4f}",
         f"Turns today   : {fc['turns_today']}",
         "",
-        f"To warn       : ~{fc['turns_to_warn']} turns",
-        f"To critical   : ~{fc['turns_to_critical']} turns ({fc['eta_to_critical']})",
+        (f"To warn       : ~{fc['turns_to_warn']} turns"
+         if fc.get("projection_reliable", True)
+         else f"To warn       : — (need {MIN_TURNS_FOR_PROJECTION}+ turns to project)"),
+        (f"To critical   : ~{fc['turns_to_critical']} turns ({fc['eta_to_critical']})"
+         if fc.get("projection_reliable", True)
+         else "To critical   : — (not enough turns yet)"),
         "",
     ]
     if fc["recommended_action"] == "compact_smart_now":
