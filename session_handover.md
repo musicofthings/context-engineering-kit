@@ -1,5 +1,5 @@
 # Session Handover
-_Generated: 2026-08-30T17:47:03Z_
+_Generated: 2026-08-31T16:35:32Z_
 _Branch: main_
 _Trigger: session-end | Context at compact: unknown%_
 _Compact count this project: 0_
@@ -16,32 +16,13 @@ Upgrade CEK to current Claude Code compatibility (v3.0.0) — audit complete, pl
 ---
 
 ## ✅ Completed This Session
-**Merge + full repo code review (done, pushed):**
-- [x] Merged `origin/main` (12 upstream commits incl. Phase C multi-runtime adapters); resolved the `state.json` modify/delete conflict by taking upstream's untracking
-- [x] Reviewed the whole repo (~7.2k lines shell/Python/JSON); reported 20 findings by severity
-- [x] Fixed **critical** `find_jq.sh` fork-bomb: the wrapper emitted the bare name `jq`, and bash resolves functions before PATH, so it called itself. Because every call site is `$(jq … 2>/dev/null || echo <default>)`, the failure was invisible — hooks exited 0 having read nothing and all config silently read as its default. CI's usage-lifecycle eval had hung 3m35s→SIGTERM since `0f1184e`; now ~7s, 29/29
-- [x] Fixed **security** path-traversal in `auto-approve-permissions.sh` (`.claude/session/../../../../etc/passwd` was auto-approved because `*` spans `/`); dropped the over-broad `docs/*` and `README.md` approvals
-- [x] Fixed `usage-tracker.py`: token double-counting (cumulative→delta; 3 turns over a 300/110 transcript recorded 900/330), session id read from payload not the never-set `CLAUDE_SESSION_ID`, lock-guarded `state.json` write, worktree-aware dir, ISO `resets_at` guard, plugin-root config fallback
-- [x] Added `scripts/cek_paths.py` — replaced two divergent Python copies of the state-path logic
-- [x] Containment: `resolve_state_dir.sh` refuses non-git dirs, `$HOME`, and `~/.claude`; removed the kit state that had leaked into `~/.claude/session/` and `~/projects/.claude/session/`
-- [x] Host-repo hygiene: the kit now drops a self-ignoring `.claude/session/.gitignore` wherever it creates state, so its churn stops being swept into other projects' commits
-- [x] Fixed the 5 previously-unreported findings (daily-usage retention, unreliable early projection, PreToolUse-vs-PermissionRequest output schema, `exit`-from-sourced-library, state.json mode flapping)
-- [x] Added `scripts/eval_hooks_smoke.sh` — 60 assertions firing every wired hook in plugin mode; wired into CI
-- [x] Pinned ruff + rule set in `ruff.toml` after an unpinned lint gate turned CI red
-- [x] Untracked kit session files across 8 other repos; pushed 4 of them
-
-**Compatibility audit (done, nothing implemented):**
-- [x] Extracted the full Hooks reference from the user-supplied PDF (135 pages, 215k chars) → `hooks-ref.txt`
-- [x] Ran 4 parallel subagents: wired-event schema conformance, new-capability adoption, unwired-event triage, packaging conformance
-- [x] Produced the v3.0.0 phased plan (below)
-
----
+- [ ] (track completed items here)
 
 ---
 
 ## 🔄 In Progress (Exact Resume Point)
 **Branch:** `main`
-**Last commit:** `9627af2 chore(context): save session state — Upgrade CEK to current Claude Code compatibility (v3.0.0) — audit complete, plan awaiting approval [2026-08-30T17:47:03Z]`
+**Last commit:** `addf15a chore(context): save session state — Upgrade CEK to current Claude Code compatibility (v3.0.0) — audit complete, plan awaiting approval [2026-08-30T17:47:03Z]`
 **Next immediate action:** Answer the 2 open questions in session_handover.md, then start Phase 0 (remove duplicate hooks block)
 
 ---
@@ -80,7 +61,11 @@ Upgrade CEK to current Claude Code compatibility (v3.0.0) — audit complete, pl
 
 ---
 
+---
+
 ## 🏗 Architecture Decisions Made
+| Decision | Rationale | Date |
+|----------|-----------|------|
 | Decision | Rationale | Date |
 |----------|-----------|------|
 | Decision | Rationale | Date |
@@ -99,17 +84,19 @@ Upgrade CEK to current Claude Code compatibility (v3.0.0) — audit complete, pl
 
 ---
 
+---
+
 ## 🔧 Commands to Resume
 
 **This exact conversation** (SDK/CLI transcript resume):
 ```bash
 # Same machine AND same directory it started in:
-claude --resume 79ac0a85-0835-4a44-a420-573f9c5d8778
+claude --resume 88dd051b-1977-405a-b066-5584b9e2dc80
 ```
-- Session ID    : `79ac0a85-0835-4a44-a420-573f9c5d8778`
-- Transcript    : `/Users/theranosis_dx/.claude/projects/-Users-theranosis-dx-projects-context-engineering-kit/79ac0a85-0835-4a44-a420-573f9c5d8778.jsonl`
+- Session ID    : `88dd051b-1977-405a-b066-5584b9e2dc80`
+- Transcript    : `/Users/theranosis_dx/.claude/projects/-Users-theranosis-dx-projects-context-engineering-kit/88dd051b-1977-405a-b066-5584b9e2dc80.jsonl`
 - Bound to cwd  : `/Users/theranosis_dx/projects/context-engineering-kit`
-- Stored at     : `~/.claude/projects/-Users-theranosis-dx-projects-context-engineering-kit/79ac0a85-0835-4a44-a420-573f9c5d8778.jsonl`
+- Stored at     : `~/.claude/projects/-Users-theranosis-dx-projects-context-engineering-kit/88dd051b-1977-405a-b066-5584b9e2dc80.jsonl`
 
 > ⚠️ Transcript resume is **cwd-bound**. It only works from the same directory
 > on the same machine. If this session started in a git **worktree**, that
@@ -156,17 +143,17 @@ bash scripts/session_sync.sh --load
 ## 🌿 Git Context
 ```
 Branch  : main
-Commit  : 9627af2 chore(context): save session state — Upgrade CEK to current Claude Code compatibility (v3.0.0) — audit complete, plan awaiting approval [2026-08-30T17:47:03Z]
+Commit  : addf15a chore(context): save session state — Upgrade CEK to current Claude Code compatibility (v3.0.0) — audit complete, plan awaiting approval [2026-08-30T17:47:03Z]
 Status  : clean
 ```
 
 Recent commits:
 ```
+addf15a chore(context): save session state — Upgrade CEK to current Claude Code compatibility (v3.0.0) — audit complete, plan awaiting approval [2026-08-30T17:47:03Z]
 9627af2 chore(context): save session state — Upgrade CEK to current Claude Code compatibility (v3.0.0) — audit complete, plan awaiting approval [2026-08-30T17:47:03Z]
 41b7c20 fix: close the five unreported findings; add hook smoke evals to CI
 2261f5d fix(ci): pin ruff and its rule set
 6409fe6 fix: stop kit state dirs dirtying host repos
-a68b93f fix: repair jq wrapper fork-bomb, close auto-approve traversal, contain state spillover
 ```
 
 ---
@@ -178,6 +165,8 @@ a68b93f fix: repair jq wrapper fork-bomb, close auto-approve traversal, contain 
 - **Do not trust WebFetch for Claude Code hook field names** — it truncates and the summariser fabricates. Use the extracted PDF text.
 - Verify subagent findings against the source before acting; two agents contradicted each other on `FileChanged` and one was wrong
 - `state.json` is gitignored by design — do not re-add it to any `git add` list
+
+---
 
 ---
 
