@@ -123,6 +123,15 @@ if [ -n "$_rsd_reject" ]; then
     echo "[resolve_state_dir] skipping state for $_rsd_base ($_rsd_reject)" >&2
     export CEK_STATE_WARNED=1
   fi
+  # Defensive cleanup for stale home-directory state left by older kit versions.
+  # This directory is machine-local and must never be created outside a real
+  # project checkout, so if we are rejecting $HOME/.claude we clear the stale
+  # session state instead of leaving it behind for future hooks.
+  case "$_rsd_base" in
+    "$HOME"|"$HOME"/.claude|"$HOME"/.claude/*)
+      rm -rf "${STATE_DIR:-$HOME/.claude/session}" 2>/dev/null || true
+      ;;
+  esac
 elif ! mkdir -p "$STATE_DIR" 2>/dev/null; then
   CEK_STATE_OK=false
   echo "[resolve_state_dir] WARNING: could not create $STATE_DIR — state writes will fail" >&2
