@@ -12,9 +12,11 @@
 >   `.cursor/hooks/*.sh` translate Cursor's payloads into the Claude Code shape
 >   and exec the same underlying scripts. See §7.
 >
-> **Removed (do not re-add):** `InstructionsLoaded` and `ConfigChange` are NOT
-> real Claude Code events (not in the [hooks reference](https://code.claude.com/docs/en/hooks)),
-> so those entries never fired and were deleted from both configs.
+> **Native coverage now includes:** `Setup`, `UserPromptExpansion`, `PermissionDenied`,
+> `PostToolBatch`, `TaskCreated`, `TaskCompleted`, `TeammateIdle`,
+> `PreModelSwitch`, `PostModelSwitch`, `CwdChanged`, `DirectoryAdded`,
+> `WorktreeCreate`, `WorktreeRemove`, and `ConfigChange` via the generic
+> `native-event-log.sh` observer.
 
 ---
 

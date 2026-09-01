@@ -64,9 +64,12 @@ cek_runtime_supports() {
   case "$CEK_RUNTIME" in
     claude)
       case "$evt" in
-        SessionStart|SessionEnd|UserPromptSubmit|PreToolUse|PostToolUse|PostToolUseFailure|\
-        PermissionRequest|Stop|StopFailure|Notification|SubagentStart|SubagentStop|\
-        PreCompact|PostCompact|InstructionsLoaded|FileChanged) return 0 ;;
+        Setup|SessionStart|SessionEnd|UserPromptSubmit|UserPromptExpansion|PreToolUse|\
+        PostToolUse|PostToolUseFailure|PostToolBatch|PermissionRequest|PermissionDenied|\
+        Stop|StopFailure|Notification|TaskCreated|TaskCompleted|TeammateIdle|\
+        SubagentStart|SubagentStop|PreCompact|PostCompact|PreModelSwitch|PostModelSwitch|\
+        InstructionsLoaded|ConfigChange|CwdChanged|DirectoryAdded|WorktreeCreate|\
+        WorktreeRemove|FileChanged) return 0 ;;
         *) return 1 ;;
       esac
       ;;

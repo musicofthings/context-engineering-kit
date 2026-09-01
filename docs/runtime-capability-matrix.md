@@ -23,25 +23,38 @@ python scripts/generate_runtime_hooks.py --check   # CI / pre-commit
 
 | Event | Claude | Cursor | Codex | Grok | Kit hook / chain |
 |-------|:------:|:------:|:-----:|:----:|------------------|
+| Setup | ✅ | ❌ | ❌ | ❌ | `native-event-log.sh` |
 | SessionStart | ✅ | ✅ | ✅ | ✅ | `session-start` chain (+ morning-brief) |
 | SessionStart `compact` | ✅ | — | ✅ | ✅ | `compact-restore.sh` |
 | SessionStart `startup\|resume` | ✅ | — | ✅ | ✅ | `session-title.sh` |
-| SessionEnd | ✅ | ✅ | ✅ | ✅ | `session-end.sh` |
 | UserPromptSubmit | ✅ | ✅ (`beforeSubmitPrompt`) | ✅ | ✅ | `usage-sentinel.sh` (Phase A auto-save) |
+| UserPromptExpansion | ✅ | ❌ | ❌ | ❌ | `native-event-log.sh` |
 | PreToolUse (Bash) | ✅ | ✅ | ✅ | ✅ | `guard-dangerous.sh` |
+| PermissionRequest | ✅ | ❌ | ✅ | ❌ | `auto-approve-permissions.sh` |
+| PermissionDenied | ✅ | ❌ | ❌ | ✅ | `permission-denied.sh` + `native-event-log.sh` |
 | PostToolUse (Edit/Write) | ✅ | ✅ | ✅ | ✅ | `track-changes.sh` |
 | PostToolUseFailure | ✅ | ✅ | ✅ | ✅ | `post-tool-failure.sh` |
-| PermissionRequest | ✅ | ❌ | ✅ | ❌ | `auto-approve-permissions.sh` |
-| PermissionDenied | ❌ | ❌ | ❌ | ✅ | `permission-denied.sh` (log-only; deny already applied) |
-| PreCompact | ✅ | ✅ | ✅ | ✅ | `pre-compact.sh` |
-| PostCompact | ✅ | ❌* | ✅ | ✅ | `post-compact.sh` (*Cursor re-injects via SessionStart compact) |
+| PostToolBatch | ✅ | ❌ | ❌ | ❌ | `native-event-log.sh` |
+| TaskCreated | ✅ | ❌ | ❌ | ❌ | `native-event-log.sh` |
+| TaskCompleted | ✅ | ❌ | ❌ | ❌ | `native-event-log.sh` |
+| TeammateIdle | ✅ | ❌ | ❌ | ❌ | `native-event-log.sh` |
 | Stop | ✅ | ✅ | ✅ | ✅ | `stop` chain: extract-state → usage-tracker → stop |
 | StopFailure | ✅ | ❌ | ✅ | ✅ | `stop-failure.sh` |
 | SubagentStart | ✅ | ✅ | ✅ | ✅ | `subagent-lifecycle.sh` |
 | SubagentStop | ✅ | ✅ | ✅ | ✅ | `subagent-lifecycle.sh` |
+| PreCompact | ✅ | ✅ | ✅ | ✅ | `pre-compact.sh` |
+| PostCompact | ✅ | ❌* | ✅ | ✅ | `post-compact.sh` (*Cursor re-injects via SessionStart compact) |
 | Notification | ✅ | ❌ | ✅ | ✅ | `notify.sh` |
+| PreModelSwitch | ✅ | ❌ | ❌ | ❌ | `native-event-log.sh` |
+| PostModelSwitch | ✅ | ❌ | ❌ | ❌ | `native-event-log.sh` |
+| CwdChanged | ✅ | ❌ | ❌ | ❌ | `native-event-log.sh` |
+| DirectoryAdded | ✅ | ❌ | ❌ | ❌ | `native-event-log.sh` |
+| WorktreeCreate | ✅ | ❌ | ❌ | ❌ | `native-event-log.sh` |
+| WorktreeRemove | ✅ | ❌ | ❌ | ❌ | `native-event-log.sh` |
+| ConfigChange | ✅ | ❌ | ❌ | ❌ | `native-event-log.sh` |
 | InstructionsLoaded | ✅ | ❌ | ❌ | ❌ | `instructions-loaded.sh` (Claude only) |
 | FileChanged | ✅ | ❌ | ❌ | ❌ | config audit echo (Claude only) |
+| SessionEnd | ✅ | ✅ | ✅ | ✅ | `session-end.sh` |
 
 `cek_runtime_supports <Event>` in `scripts/cek_runtime.sh` encodes the same table for runtime no-ops.
 
