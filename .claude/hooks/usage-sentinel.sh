@@ -63,11 +63,21 @@ if [ -f "$BUDGET_FILE" ]; then
   AUTO_SAVE_PCT=$(_num "$(jq -r '.thresholds.auto_save_pct // 85' "$BUDGET_FILE" 2>/dev/null || echo 85)" 85)
   CRITICAL_PCT=$(_num "$(jq -r '.thresholds.critical_pct // 92' "$BUDGET_FILE" 2>/dev/null || echo 92)" 92)
 
-  if [ "$SUB_TYPE" = "api" ]; then
-    DAILY_BUDGET_USD=$(_str "$(jq -r ".subscriptions.api.daily_budget_usd // 10.0" "$BUDGET_FILE" 2>/dev/null || echo "10.0")")
-  else
-    WINDOW_MINUTES=$(_num "$(jq -r ".subscriptions.${SUB_TYPE}.window_minutes // 300" "$BUDGET_FILE" 2>/dev/null || echo 300)" 300)
-  fi
+fi
+
+# An environment value is an explicit per-session override. Validate it before
+# interpolating the selected tier into jq below.
+if [ -n "${CEK_SUBSCRIPTION_TIER:-}" ]; then
+  case "$CEK_SUBSCRIPTION_TIER" in
+    pro|max|api|team) SUB_TYPE="$CEK_SUBSCRIPTION_TIER" ;;
+    *) echo "[usage-sentinel] Warning: ignoring invalid CEK_SUBSCRIPTION_TIER='$CEK_SUBSCRIPTION_TIER'." >&2 ;;
+  esac
+fi
+
+if [ "$SUB_TYPE" = "api" ]; then
+  DAILY_BUDGET_USD=$(_str "$(jq -r '.subscriptions.api.daily_budget_usd // 10.0' "$BUDGET_FILE" 2>/dev/null || echo "10.0")")
+else
+  WINDOW_MINUTES=$(_num "$(jq -r ".subscriptions.${SUB_TYPE}.window_minutes // 300" "$BUDGET_FILE" 2>/dev/null || echo 300)" 300)
 fi
 
 # ── Load session start time ───────────────────────────────────────────────────

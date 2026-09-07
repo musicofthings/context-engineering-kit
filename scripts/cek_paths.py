@@ -24,6 +24,7 @@ from __future__ import annotations
 import json
 import os
 import subprocess
+import tempfile
 import time
 from contextlib import contextmanager
 from pathlib import Path
@@ -146,11 +147,24 @@ def state_lock(state_file: Path):
                 pass
 
 
-def atomic_write_json(path: Path, data: dict) -> None:
+def atomic_write_text(path: Path, text: str) -> None:
+    """Atomically replace path without sharing a temporary file between writers."""
     path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_suffix(path.suffix + ".tmp")
-    tmp.write_text(json.dumps(data, indent=2), encoding="utf-8")
-    os.replace(tmp, path)
+    fd, tmp_name = tempfile.mkstemp(prefix=f".{path.name}.", suffix=".tmp", dir=path.parent)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as tmp:
+            tmp.write(text)
+        os.replace(tmp_name, path)
+    except Exception:
+        try:
+            os.unlink(tmp_name)
+        except FileNotFoundError:
+            pass
+        raise
+
+
+def atomic_write_json(path: Path, data: dict) -> None:
+    atomic_write_text(path, json.dumps(data, indent=2))
 
 
 def load_json(path: Path) -> dict:

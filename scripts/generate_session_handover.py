@@ -15,7 +15,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from cek_paths import resolve_state_file  # noqa: E402
+from cek_paths import atomic_write_text, resolve_state_file, state_lock  # noqa: E402
 
 
 def run(cmd, cwd: str = None) -> str:
@@ -302,11 +302,13 @@ def main():
     project_dir = Path(os.environ.get("CLAUDE_PROJECT_DIR", os.getcwd()))
     output_path = Path(args.output) if args.output else project_dir / "session_handover.md"
 
-    content = generate(args, output_path)
-    # Atomic write: PreCompact and /handover skill can race.
-    tmp = output_path.with_suffix(output_path.suffix + ".tmp")
-    tmp.write_text(content, encoding="utf-8")
-    os.replace(tmp, output_path)
+    # PreCompact and /handover can target the same shared handover file.
+    # Hold the lock through generation because generate() reads prior state.
+    with state_lock(output_path) as locked:
+        if not locked:
+            raise RuntimeError(f"Timed out waiting to write {output_path}")
+        content = generate(args, output_path)
+        atomic_write_text(output_path, content)
     print(f"[handover] Written to {output_path}", file=sys.stderr)
     sys.exit(0)
 

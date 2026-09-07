@@ -18,9 +18,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from cek_paths import (  # noqa: E402
-    atomic_write_json, load_json, resolve_state_dir, state_update,
-)
+from cek_paths import atomic_write_json, load_json, resolve_state_dir, state_lock, state_update  # noqa: E402
 
 PROJECT_DIR      = Path(os.environ.get("CLAUDE_PROJECT_DIR", "."))
 # Was PROJECT_DIR/.claude/session, which ignored worktree redirection: in a
@@ -57,13 +55,16 @@ TIER_LIMITS = {
     "pro":  {"5h_warn": WARN_PCT, "5h_critical": CRITICAL_PCT, "cost_warn": 0.50, "cost_crit": 0.90},
     "max":  {"5h_warn": WARN_PCT, "5h_critical": CRITICAL_PCT, "cost_warn": 2.00, "cost_crit": 4.00},
     "api":  {"5h_warn": None,     "5h_critical": None,         "cost_warn": 5.00, "cost_crit": 9.00},
+    "team": {"5h_warn": WARN_PCT, "5h_critical": CRITICAL_PCT, "cost_warn": 0.50, "cost_crit": 0.90},
 }
 
 
 def get_tier() -> str:
-    """Read subscription tier. Tries rate_limits.json (subscription_tier)
-    then usage_budget.json (subscription_type) — these two configs use
-    different field names for the same value, so we accept both."""
+    """Read a validated subscription tier, preferring an explicit environment override."""
+    override = os.environ.get("CEK_SUBSCRIPTION_TIER", "").strip().lower()
+    if override in TIER_LIMITS:
+        return override
+
     plugin_root = Path(os.environ.get("CLAUDE_PLUGIN_ROOT", str(PROJECT_DIR)))
     for path, key in [
         (PROJECT_DIR / "config" / "rate_limits.json", "subscription_tier"),
@@ -74,11 +75,11 @@ def get_tier() -> str:
         if path.exists():
             try:
                 v = json.loads(path.read_text(encoding="utf-8")).get(key)
-                if v:
-                    return v
+                if isinstance(v, str) and v.lower() in TIER_LIMITS:
+                    return v.lower()
             except Exception:
                 continue
-    return os.environ.get("CEK_SUBSCRIPTION_TIER", "pro")
+    return "pro"
 
 
 def utc_now() -> datetime:
@@ -167,57 +168,53 @@ def ingest(ev: dict) -> dict:
 
 
 def accumulate(m: dict) -> dict:
-    data   = load_json(DAILY_USAGE_FILE)
-    key    = today_key()
-    now_ts = utc_now().strftime(TIMESTAMP_FMT)
-    sid    = m.get("session_id") or "unknown"
+    with state_lock(DAILY_USAGE_FILE) as locked:
+        if not locked:
+            raise RuntimeError(f"Timed out waiting to update {DAILY_USAGE_FILE}")
 
-    if key not in data:
-        data[key] = {
-            "date": key, "turns": 0, "sessions": [],
-            "cost_usd": 0.0, "input_tokens": 0, "output_tokens": 0,
-            "first_activity": now_ts, "last_activity": now_ts,
-            "peak_5h_pct": 0.0, "peak_ctx_pct": 0.0,
-        }
+        data   = load_json(DAILY_USAGE_FILE)
+        key    = today_key()
+        now_ts = utc_now().strftime(TIMESTAMP_FMT)
+        sid    = m.get("session_id") or "unknown"
 
-    day  = data[key]
-    prev = next((s for s in day["sessions"] if s.get("id") == sid), {})
+        if key not in data:
+            data[key] = {
+                "date": key, "turns": 0, "sessions": [],
+                "cost_usd": 0.0, "input_tokens": 0, "output_tokens": 0,
+                "first_activity": now_ts, "last_activity": now_ts,
+                "peak_5h_pct": 0.0, "peak_ctx_pct": 0.0,
+            }
 
-    # cost/input/output all arrive as SESSION-CUMULATIVE totals — session_cost
-    # from the event, and input/output summed over the whole transcript by
-    # ingest_transcript(). Accumulate the delta against this session's previous
-    # reading, never the raw total: `+= total` on every turn inflates the daily
-    # figure quadratically (3 turns over a 300/110-token transcript recorded
-    # 900/330). Cost already did this; tokens did not.
-    turn_c = max(0.0, m["session_cost"] - prev.get("last_cost", 0.0))
-    turn_i = max(0, m["input_tok"] - prev.get("last_input", 0))
-    turn_o = max(0, m["output_tok"] - prev.get("last_output", 0))
+        day  = data[key]
+        prev = next((s for s in day["sessions"] if s.get("id") == sid), {})
 
-    day["sessions"] = [s for s in day["sessions"] if s.get("id") != sid]
-    day["sessions"].append({"id": sid, "last_cost": m["session_cost"],
-                            "last_input": m["input_tok"], "last_output": m["output_tok"],
-                            "turns": m["turns"], "model": m["model"], "updated": now_ts})
+        # Metrics are cumulative for a session, so record only their delta.
+        turn_c = max(0.0, m["session_cost"] - prev.get("last_cost", 0.0))
+        turn_i = max(0, m["input_tok"] - prev.get("last_input", 0))
+        turn_o = max(0, m["output_tok"] - prev.get("last_output", 0))
 
-    day["turns"]         += 1
-    day["cost_usd"]      += turn_c
-    day["input_tokens"]  += turn_i
-    day["output_tokens"] += turn_o
-    day["last_activity"]  = now_ts
+        day["sessions"] = [s for s in day["sessions"] if s.get("id") != sid]
+        day["sessions"].append({"id": sid, "last_cost": m["session_cost"],
+                                "last_input": m["input_tok"], "last_output": m["output_tok"],
+                                "turns": m["turns"], "model": m["model"], "updated": now_ts})
 
-    if m["rl_5h_pct"] is not None:
-        day["peak_5h_pct"] = max(day.get("peak_5h_pct", 0), m["rl_5h_pct"])
-    if m["ctx_pct"] is not None:
-        day["peak_ctx_pct"] = max(day.get("peak_ctx_pct", 0), m["ctx_pct"])
+        day["turns"]         += 1
+        day["cost_usd"]      += turn_c
+        day["input_tokens"]  += turn_i
+        day["output_tokens"] += turn_o
+        day["last_activity"]  = now_ts
 
-    data[key] = day
-    # Retention: this file is appended to on every Stop of every session and
-    # nothing ever removed a day, so it grew without bound. Keep a rolling
-    # window — anything older is not used by the forecast or any skill.
-    if len(data) > DAILY_RETENTION_DAYS:
-        for stale in sorted(data)[:-DAILY_RETENTION_DAYS]:
-            data.pop(stale, None)
-    save_json(DAILY_USAGE_FILE, data)
-    return day
+        if m["rl_5h_pct"] is not None:
+            day["peak_5h_pct"] = max(day.get("peak_5h_pct", 0), m["rl_5h_pct"])
+        if m["ctx_pct"] is not None:
+            day["peak_ctx_pct"] = max(day.get("peak_ctx_pct", 0), m["ctx_pct"])
+
+        data[key] = day
+        if len(data) > DAILY_RETENTION_DAYS:
+            for stale in sorted(data)[:-DAILY_RETENTION_DAYS]:
+                data.pop(stale, None)
+        save_json(DAILY_USAGE_FILE, data)
+        return day
 
 
 def forecast(m: dict, day: dict, tier_name: str) -> dict:

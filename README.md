@@ -176,9 +176,12 @@ Valid tiers: `pro` | `max` | `api` | `team`
 
 ---
 
-## Option B — Claude Code CLI (standalone, per-project, full hooks)
+## Option B — Claude Code CLI (installed plugin, full hooks)
 
-Use this if you run `claude` from the terminal. Hooks wire directly into the project's `.claude/settings.json`. Skill names are short (`/handover` instead of `/context-engineering-kit:handover`).
+Use this if you run `claude` from the terminal. Install the repository as a Claude
+Code plugin so its single `hooks/hooks.json` manifest is loaded; this avoids the
+duplicate hook registration that occurs when the same hooks are copied into
+`.claude/settings.json`.
 
 ### Prerequisites
 
@@ -194,7 +197,8 @@ Use this if you run `claude` from the terminal. Hooks wire directly into the pro
 git clone https://github.com/musicofthings/context-engineering-kit.git my-project
 cd my-project
 
-# 2. Run setup
+# 2. Install the plugin, then run its local setup
+claude plugin install .
 bash setup.sh          # Mac / Linux
 bash.exe setup.sh      # Windows Git Bash (no-admin)
 ```
@@ -204,7 +208,7 @@ bash.exe setup.sh      # Windows Git Bash (no-admin)
 - Make hook scripts executable
 - Initialise `state.json` with your machine's hostname
 - Set `subscription_type` in `config/usage_budget.json`
-- Confirm hooks are wired in `.claude/settings.json`
+- Confirm the plugin hook manifest is installed
 
 ```bash
 # 3. Set subscription type in config/usage_budget.json
@@ -221,17 +225,17 @@ claude.cmd      # Windows no-admin
 
 ### Skills in CLI mode
 
-Short names — no prefix needed:
+Plugin skills are namespaced:
 
 ```
-/context-health      ← run this first to verify the install
-/handover
-/token-status
-/compact-smart
-/model-switch
-/session-sync
-/usage-forecast
-/morning-brief
+/context-engineering-kit:context-health      ← run this first to verify the install
+/context-engineering-kit:handover
+/context-engineering-kit:token-status
+/context-engineering-kit:compact-smart
+/context-engineering-kit:model-switch
+/context-engineering-kit:session-sync
+/context-engineering-kit:usage-forecast
+/context-engineering-kit:morning-brief
 ```
 
 ---

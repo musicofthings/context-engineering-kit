@@ -15,10 +15,6 @@
 {{PROJECT_TREE}}
 ```
 
-## Active work context
-<!-- AUTO-UPDATED by hooks — do not edit this section manually -->
-<!-- END AUTO-UPDATED -->
-
 ## Architecture decisions
 <!-- Add significant design decisions here as they are made -->
 
@@ -32,3 +28,13 @@
 ```bash
 # {{ADD_PROJECT_COMMANDS_HERE}}
 ```
+
+## Session efficiency
+- Reference relevant files with `@path` once rather than pasting contents or re-attaching them.
+- Keep frequent test, lint, and build commands concise; prefer a focused test command and quiet reporter.
+- Choose model and effort at the start of a session. Avoid switching either mid-task unless necessary.
+- Use `/clear` for a new, unrelated task. For the same task, use `/compact` only after completing a coherent stage; use `/rewind` to discard recent unhelpful turns.
+
+## Active work context
+<!-- AUTO-UPDATED by hooks — do not edit this section manually -->
+<!-- END AUTO-UPDATED -->

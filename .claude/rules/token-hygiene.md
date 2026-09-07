@@ -3,12 +3,12 @@ _Loaded automatically by Claude Code from .claude/rules/_
 
 ## Context window management
 
-- Use `@filepath` references instead of pasting file contents inline
+- Use `@filepath` references instead of pasting file contents inline; attach each file only once per conversation
 - Never paste entire VCF, FASTA, BAM, or log files — reference by path
-- Use `/compact-smart` when context exceeds 70% (not the default `/compact`)
+- Use `/compact-smart` after completing a coherent stage of the current task; do not compact solely because a warning threshold was crossed
 - Run `/handover` before any compaction to preserve task state
 - Use `/clear` only to start a genuinely new task — it loses conversation history
-- Prefer `/compact` over `/clear` when continuing the same task
+- Prefer `/compact` over `/clear` when continuing the same task; use `/rewind` to discard only recent unhelpful turns
 
 ## Model selection for efficiency
 
@@ -16,6 +16,7 @@ _Loaded automatically by Claude Code from .claude/rules/_
 - Use Sonnet (default) for: standard development, analysis, pipelines
 - Use Opus only for: architecture decisions, complex reasoning, edge-case ACMG classification
 - Activate `/fast` for Opus when context > 70% and Opus reasoning is needed
+- Pick model and effort at a session boundary where possible; changing either mid-session resets the prompt cache
 
 ## Context rot prevention
 
@@ -23,6 +24,7 @@ _Loaded automatically by Claude Code from .claude/rules/_
 - Keep CLAUDE.md under 500 lines — move detail to `.claude/rules/` files
 - Archive completed project phases to `docs/archive/` rather than keeping in CLAUDE.md
 - After each session: run `/handover` to externalise state before it's lost
+- Keep a small set of focused, quiet test/lint/build commands in the project CLAUDE.md
 
 ## Bioinformatics-specific
 
