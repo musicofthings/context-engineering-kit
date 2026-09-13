@@ -93,11 +93,15 @@ cek_runtime_supports() {
       esac
       ;;
     codex)
+      # Verified against learn.chatgpt.com/docs/hooks on 2026-09-13. Codex has
+      # no PostToolUseFailure, StopFailure or Notification — they were listed
+      # here (and generated into .codex/hooks.json) for months. Detect a failed
+      # shell command by parsing tool_response inside PostToolUse instead.
       case "$evt" in
-        SessionStart|SessionEnd|UserPromptSubmit|PreToolUse|PostToolUse|PostToolUseFailure|\
-        PermissionRequest|Stop|StopFailure|SubagentStart|SubagentStop|PreCompact|PostCompact|\
-        Notification) return 0 ;;
-        InstructionsLoaded|FileChanged) return 1 ;;
+        SessionStart|SessionEnd|UserPromptSubmit|PreToolUse|PostToolUse|\
+        PermissionRequest|Stop|SubagentStart|SubagentStop|PreCompact|PostCompact|\
+        Interrupt) return 0 ;;
+        PostToolUseFailure|StopFailure|Notification|InstructionsLoaded|FileChanged) return 1 ;;
         *) return 1 ;;
       esac
       ;;

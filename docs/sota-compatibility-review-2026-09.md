@@ -118,11 +118,18 @@ runtime-neutral project context from Claude-specific instructions, and making
 
 ## P1 — silently dead or factually wrong
 
+> **R-004 through R-013 are fixed.** R-014 went with them, since correcting the
+> Codex event set meant correcting the matrix and `cek_runtime.sh` in the same
+> change. Entries are kept as the record of what was wrong.
+
 ### R-004 `bash_path` is not a settings key
+_Status: **fixed** — key removed._
 
 `.claude/settings.json:3`. Not in the settings schema; ignored.
 
 ### R-005 Stale and inconsistent Claude model IDs
+_Status: **fixed** — `claude-opus-5` everywhere; Haiku normalised to the undated
+`claude-haiku-4-5`. No Fable tier added — that is a feature, not a correction._
 
 | File | Value | Current |
 |---|---|---|
@@ -141,6 +148,10 @@ Separately, Haiku is spelled two ways across the repo — `claude-haiku-4-5`
 No tier exists for the Fable 5.1 class of model at all.
 
 ### R-006 `config/rate_limits.json` token budgets are both dead and wrong
+_Status: **fixed** — windows corrected (Opus 5 / Sonnet 5 to 1M, Haiku stays
+200K) and the block is now labelled REFERENCE ONLY with a pointer to where the
+live thresholds actually come from. Kept rather than deleted: the numbers are
+what you need to reason about burn rate by hand._
 
 ```json
 "claude_opus":   { "context_window": 200000, "warn_at_pct": 65, … }
@@ -157,6 +168,9 @@ tunable budget file. Either wire it up with correct windows or delete the
 `token_budgets` block.
 
 ### R-007 `FileChanged` hook cannot fire, and reads a variable that does not exist
+_Status: **fixed** — matcher is bare basenames; the inline `echo` is replaced by
+`.claude/hooks/config-changed.sh`, which reads `file_path` from stdin, appends to
+`config-audit.log`, and reports on stderr. Verified end to end._
 
 `hooks/hooks.json`:
 
@@ -178,6 +192,7 @@ file's absolute path arrives as `file_path` on stdin (`FILE=$(jq -r .file_path)`
 read `file_path` from stdin.
 
 ### R-008 `SessionEnd` timeout is ignored for plugin installs
+_Status: **fixed** — the work moved out of the hook rather than fighting the budget._
 
 `hooks/hooks.json` sets `"timeout": 30` on `session-end.sh`. From the hooks
 reference:
@@ -192,11 +207,23 @@ worked while `.claude/settings.json` also declared the hook (project scope
 *does* raise the budget); Phase 0 removed that block, so the behaviour now
 differs between "repo is open in Claude Code" and "plugin is installed".
 
-**Fix:** move the expensive work to `Stop` with `async: true`, leave
-`SessionEnd` a fast marker write, and document
-`CLAUDE_CODE_SESSIONEND_HOOKS_TIMEOUT_MS`.
+**Fixed**, though not the way the v3.0.0 notes proposed. Moving the work to
+`Stop` with `async: true` would have run a handover regeneration and a git commit
+on *every turn*, which is worse than the bug. Instead the body moved to
+`scripts/session_finalize.sh`, and `session-end.sh` detaches it (`setsid`, or
+`nohup` on BSD/macOS) and returns immediately — so the work outlives the 1.5s
+budget instead of racing it. `CEK_SESSION_END_SYNC=1` runs it inline, which is
+how the eval suite exercises the side effects; `CLAUDE_CODE_SESSIONEND_HOOKS_TIMEOUT_MS`
+is documented as the other escape hatch. The ignored `timeout: 30` is gone from
+the manifest. This also fixes Codex, which caps `SessionEnd` at 3s and always
+runs it synchronously.
+
+Not addressed here: `SessionEnd` also fires on `/clear` and `/resume`, so the
+kit still commits on those. Gating on `reason` is a separate change.
 
 ### R-009 Skill frontmatter uses keys that do not exist
+_Status: **fixed** — `auto-invoke-when` → `when_to_use` in 8 skills, `args` →
+`argument-hint` (plus a real `when_to_use`) in `init-cek`._
 
 The Agent Skills frontmatter reference lists `name`, `description`,
 `when_to_use`, `argument-hint`, `arguments`, `disable-model-invocation`,
@@ -214,6 +241,7 @@ allowed fields (`allowed-tools`, `compatibility`, `description`, `license`,
 advertises the zip "for Cowork or Desktop Plugin upload".
 
 ### R-010 `agents/precompact-extract-agent.md` is an orphan
+_Status: **fixed** — deleted._
 
 Its frontmatter block contains only `#` comments — no `name:`, no
 `description:` — so it never registers as a subagent. It documents itself as
@@ -221,6 +249,7 @@ serving a `type: agent` PreCompact hook, which no longer exists in the wiring.
 The `.claude/agents/` copy was deleted in Phase 0; this one was left behind.
 
 ### R-011 Codex config emits three unsupported events and an out-of-range timeout
+_Status: **fixed** — and the gate that let it through is closed._
 
 Codex's current event set is: `PreToolUse`, `PermissionRequest`, `PostToolUse`,
 `PreCompact`, `PostCompact`, `UserPromptSubmit`, `SubagentStart`,
@@ -232,10 +261,21 @@ Codex's current event set is: `PreToolUse`, `PermissionRequest`, `PostToolUse`,
 It also sets `"timeout": 30` on `SessionEnd`. Codex: *"`SessionEnd` and
 `Interrupt` use `1` second by default and support up to `3` seconds."*
 
-`Interrupt` is a Codex event the kit does not use and arguably should
-(recording an interrupted turn is squarely a handover concern).
+**Fixed:** the three events are Grok-only in the generator, and `SessionEnd` now
+takes a per-runtime timeout (Codex 3, Grok 30). More importantly the *gate* is
+fixed: `generate_runtime_hooks.py` gained `RUNTIME_EVENTS`, an authoritative
+per-runtime allow-list, and generation now raises if the event table names an
+event a runtime lacks. `--check` could never have caught this — it only proved
+the generated files matched the generator. `RUNTIME_TIMEOUT_MAX` does the same
+for timeout ceilings. `scripts/cek_runtime.sh` and the capability matrix were
+corrected to match (that was R-014).
+
+Still unused: `Interrupt`, a Codex event the kit arguably should wire — recording
+an interrupted turn is squarely a handover concern.
 
 ### R-012 Codex `Stop` rejects the kit's plain-text output
+_Status: **fixed** — the sentinel line goes to stderr; the `/token-status` report
+path keeps stdout._
 
 Codex: *"`Stop` expects JSON on `stdout` when it exits `0`. Plain text output
 is invalid for this event."* Same for `SubagentStop`.
@@ -246,18 +286,44 @@ Codex `stop` chain. Exactly when the sentinel matters most, Codex will mark the
 hook run failed. Route that line to stderr, or emit `systemMessage` JSON.
 
 ### R-013 No `.codex-plugin/plugin.json`
+_Status: **fixed** — with one trap worth naming._
 
 Codex loads plugin hooks from `.codex-plugin/plugin.json` (`hooks` entry, or a
 default `hooks/hooks.json`) and exports `PLUGIN_ROOT` / `PLUGIN_DATA` alongside
-`CLAUDE_PLUGIN_ROOT` / `CLAUDE_PLUGIN_DATA` for compatibility. The kit ships no
-Codex manifest, so the only Codex install path is cloning the repo into the
-target project. CEK-CODEX-001; still open.
+`CLAUDE_PLUGIN_ROOT` / `CLAUDE_PLUGIN_DATA` for compatibility. The kit shipped no
+Codex manifest, so the only Codex install path was cloning the repo into the
+target project. CEK-CODEX-001.
+
+**The trap:** that default matters here. *"If your plugin stores hooks at
+`./hooks/hooks.json`, you don't need a `hooks` entry; Codex checks that default
+file automatically."* In this repo `hooks/hooks.json` **is the Claude manifest** —
+29 events including `InstructionsLoaded`, `FileChanged`, `Pre/PostModelSwitch`,
+`TaskCreated`, `TeammateIdle`. A Codex manifest without an explicit `hooks` entry
+would have pointed Codex straight at it.
+
+**Fixed:** `.codex-plugin/plugin.json` declares `hooks: "./hooks/codex-hooks.json"`
+and `skills: "./skills/"`. The generator emits `hooks/codex-hooks.json` as a third
+target, with commands resolved under `${CLAUDE_PLUGIN_ROOT}` rather than repo-relative.
+`package_plugin.py` now refuses to build if the manifests are missing, disagree on
+name/version, or if the Codex manifest would inherit `hooks/hooks.json`;
+`check_sync.sh` asserts the same. Codex also reads the repo's existing
+`.claude-plugin/marketplace.json` as a legacy-compatible marketplace, so no second
+marketplace file is needed.
+
+Fixed in passing: `EXCLUDE_FILES` in `package_plugin.py` matches whole relative
+paths, so the bare `.DS_Store` entry only ever caught the one at the repo root —
+nested copies shipped in every zip. Moved to `EXCLUDE_GLOBS`, which matches on
+basename (124 → 119 files).
+
+**Still open** from CEK-CODEX-001: nothing verifies a Codex install end to end.
+That needs the CI work in R-020.
 
 ---
 
 ## P2 — stale documentation and unused capability
 
 ### R-014 The capability matrix contradicts the live specs *and* the repo's own review
+_Status: **fixed** alongside R-011._
 
 `docs/runtime-capability-matrix.md` marks `PostToolUseFailure`, `StopFailure`,
 and `Notification` as ✅ for Codex. `docs/codex-cli-compatibility-review.md`

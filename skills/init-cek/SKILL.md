@@ -2,7 +2,8 @@
 name: init-cek
 description: Bootstrap context-engineering-kit in any project folder — creates CLAUDE.md, session_handover.md, state.json, and usage config so auto-save, /handover, and context tracking work from the very first session. Run once per project.
 user-invocable: true
-args: "[project description] — optional one-line description; if omitted, Claude infers from the codebase"
+argument-hint: "[project description]"
+when_to_use: user is setting up context-engineering-kit in a new project, or a project has no session_handover.md yet
 ---
 
 # CEK Project Init

@@ -2,7 +2,7 @@
 name: usage-forecast
 description: Show daily usage burn rate, cost tracking, and predicted time to subscription limit. Recommends when to compact. Use /usage-forecast to see current status.
 user-invocable: true
-auto-invoke-when: user asks about usage limits, remaining capacity, how many more turns today, subscription usage
+when_to_use: user asks about usage limits, remaining capacity, how many more turns today, subscription usage
 ---
 
 # Usage Forecast — Daily Burn Rate & Limit Prediction

@@ -166,8 +166,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/.claude/hooks/session-end.sh\"",
-            "timeout": 30
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/.claude/hooks/session-end.sh\""
           }
         ]
       }
@@ -387,11 +386,11 @@
     ],
     "FileChanged": [
       {
-        "matcher": "config/model_thresholds.json|config/usage_budget.json|config/plugin_settings.json",
+        "matcher": "model_thresholds.json|usage_budget.json|plugin_settings.json",
         "hooks": [
           {
             "type": "command",
-            "command": "bash -c 'echo \"[cek] Config file changed: $CLAUDE_FILE_PATH \u2014 thresholds reloaded\" >&2'",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/.claude/hooks/config-changed.sh\"",
             "async": true
           }
         ]

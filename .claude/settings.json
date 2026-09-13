@@ -1,6 +1,5 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
-  "bash_path": "bash",
   "permissions": {
     "allow": [
       "Write(./session_handover.md)",
@@ -44,7 +43,7 @@
     "CEK_TOKEN_CRITICAL_PCT": "92",
     "CEK_MODEL_HAIKU": "claude-haiku-4-5",
     "CEK_MODEL_SONNET": "claude-sonnet-5",
-    "CEK_MODEL_OPUS": "claude-opus-4-8",
+    "CEK_MODEL_OPUS": "claude-opus-5",
     "CEK_SUBSCRIPTION_TIER": ""
   },
   "statusLine": {

@@ -2,7 +2,7 @@
 name: token-status
 description: Show context window usage, burn rate, model recommendation, session time elapsed vs budget window, and daily token/cost metrics from ccusage. Invoke with /token-status. Auto-invoked when context exceeds 65%.
 user-invocable: true
-auto-invoke-when: context usage is high, tokens are running out, before starting a large task, user asks about usage or limits
+when_to_use: context usage is high, tokens are running out, before starting a large task, user asks about usage or limits
 ---
 
 # Token Status v2.2 — Context + Usage Monitor
@@ -69,9 +69,9 @@ Read `.claude/session/` for sentinel files:
 
 | Situation | Action |
 |-----------|--------|
-| Simple edits | `/model claude-haiku-4-5-20251001` |
+| Simple edits | `/model claude-haiku-4-5` |
 | Standard dev | Stay on Sonnet (default) |
-| Architecture | `/model claude-opus-4-8` |
+| Architecture | `/model claude-opus-5` |
 | Context > 80% | `/fast` mode |
 | Budget > 80% | Switch to Haiku to extend remaining window |
 

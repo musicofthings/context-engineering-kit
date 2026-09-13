@@ -2,7 +2,7 @@
 name: session-sync
 description: Save or load session state to/from git for cross-device and cross-subscription continuity. Use /session-sync save before switching machines or subscriptions. Use /session-sync load on a new device after git pull.
 user-invocable: true
-auto-invoke-when: user mentions switching devices, switching subscriptions, working from home vs office
+when_to_use: user mentions switching devices, switching subscriptions, working from home vs office
 ---
 
 # Session Sync — Cross-Device Continuity

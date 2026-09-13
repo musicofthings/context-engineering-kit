@@ -2,7 +2,7 @@
 name: compact-smart
 description: Run a relevance-scored compaction that preserves the most important context. Unlike /compact which summarises everything uniformly, this retains code snippets, architecture decisions, and active task state at higher fidelity.
 user-invocable: true
-auto-invoke-when: context is above 70%, user wants to compact without losing important details
+when_to_use: context is above 70%, user wants to compact without losing important details
 ---
 
 # Smart Compaction — Relevance-Scored Context Preservation

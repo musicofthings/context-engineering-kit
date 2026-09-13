@@ -170,8 +170,14 @@ fire notify.sh "{$BASE,\"message\":\"test\",\"hook_event_name\":\"Notification\"
 
 # ── SessionEnd ───────────────────────────────────────────────────────────────
 head_ "SessionEnd"
+# SessionEnd hooks share a 1.5s budget that a plugin's own `timeout` cannot
+# raise, so the hook detaches scripts/session_finalize.sh and returns. Run the
+# synchronous path first so the side-effect assertions below are deterministic,
+# then assert the default path really does hand off.
+export CEK_SESSION_END_SYNC=1
 fire session-end.sh "{$BASE,\"reason\":\"exit\",\"hook_event_name\":\"SessionEnd\"}"
-[ "$RC" -eq 0 ] && ok "session-end exit 0" || bad "session-end exit 0" "rc=$RC $ERR"
+[ "$RC" -eq 0 ] && ok "session-end exit 0 (CEK_SESSION_END_SYNC=1)" || bad "session-end exit 0" "rc=$RC $ERR"
+unset CEK_SESSION_END_SYNC
 [ -s "$SANDBOX/.claude/session/history.jsonl" ] && ok "history.jsonl appended" || bad "history.jsonl appended" "empty"
 # NB: no pipe into grep -q here — under `set -o pipefail` the early grep exit
 # SIGPIPEs git and the pipeline reports failure even on a match.
@@ -180,6 +186,14 @@ case "$LOG" in *"chore(context)"*) ok "session state committed to git" ;; *) bad
 git -C "$SANDBOX" show --stat --oneline HEAD | grep -q "state.json" \
   && bad "commit excludes gitignored state.json" "state.json was committed" \
   || ok "commit excludes gitignored state.json"
+
+# Default (no CEK_SESSION_END_SYNC) must hand off instead of working inline.
+fire session-end.sh "{$BASE,\"reason\":\"exit\",\"hook_event_name\":\"SessionEnd\"}"
+[ "$RC" -eq 0 ] && ok "session-end exit 0 (detached default)" || bad "session-end detached exit 0" "rc=$RC $ERR"
+case "$ERR" in
+  *"session finalize detached"*) ok "session-end detaches rather than blocking the 1.5s budget" ;;
+  *) bad "session-end detaches" "stderr did not report a handoff: $ERR" ;;
+esac
 
 # ── Regression guards for previously-fixed defects ───────────────────────────
 head_ "Regressions"

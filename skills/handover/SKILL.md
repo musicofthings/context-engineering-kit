@@ -2,7 +2,7 @@
 name: handover
 description: Generate or display a complete session handover document capturing all active task state, progress, blockers, and next actions. Run /handover before compacting, switching devices, or ending a session.
 user-invocable: true
-auto-invoke-when: user mentions switching devices, ending session, or asks about current task state
+when_to_use: user mentions switching devices, ending session, or asks about current task state
 ---
 
 # Session Handover Generator

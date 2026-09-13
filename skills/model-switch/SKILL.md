@@ -2,7 +2,7 @@
 name: model-switch
 description: Switch between Claude models (Haiku/Sonnet/Opus) based on task complexity. Use /model-switch [haiku|sonnet|opus|auto]. Auto mode analyses the current task and recommends the right model.
 user-invocable: true
-auto-invoke-when: user asks about model switching, token optimization, or cost reduction
+when_to_use: user asks about model switching, token optimization, or cost reduction
 ---
 
 # Model Switch — Intelligent Model Selection
@@ -13,7 +13,7 @@ Usage: `/model-switch [haiku|sonnet|opus|auto]`
 
 Analyse the current task context and recommend a model:
 
-**Switch to Haiku** (`/model claude-haiku-4-5-20251001`) when:
+**Switch to Haiku** (`/model claude-haiku-4-5`) when:
 - Formatting, linting, or style fixes
 - Simple variable renames or typo corrections
 - Running/checking test output
@@ -29,7 +29,7 @@ Analyse the current task context and recommend a model:
 - Writing documentation
 - Standard analysis tasks
 
-**Switch to Opus** (`/model claude-opus-4-8`) when:
+**Switch to Opus** (`/model claude-opus-5`) when:
 - Designing system architecture
 - Complex multi-step reasoning
 - Reviewing security or compliance decisions

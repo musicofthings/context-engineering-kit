@@ -7,7 +7,7 @@ Thin adapters set `CLAUDE_PROJECT_DIR` / `CEK_RUNTIME` and dispatch into that co
 |---------|-------------------|---------|--------|
 | **Claude Code** | `hooks/hooks.json` (plugin) + `.claude/settings.json` (project) | direct | Full event set; injects SessionStart / UserPromptSubmit stdout into context |
 | **Cursor** | `.cursor/hooks.json` | `.cursor/hooks/*.sh` → `cek_runtime.sh` | camelCase events; inject text → stderr |
-| **Codex** | `.codex/hooks.json` | `.codex/hooks/run.sh` | Portable relative commands only (no absolute machine paths) |
+| **Codex** | `.codex/hooks.json` (project) + `.codex-plugin/plugin.json` → `hooks/codex-hooks.json` (plugin) | `.codex/hooks/run.sh` | Portable relative commands only. The plugin manifest **must** name its hooks file — Codex otherwise defaults to `hooks/hooks.json`, the Claude manifest |
 | **Grok Build** | `.grok/hooks/cek-hooks.json` **and** may also load `.claude/settings.json` | `.grok/hooks/run.sh` | Skips unknown event names; PermissionDenied ≠ PermissionRequest |
 
 Regenerate Codex/Grok JSON after editing the event table:
@@ -16,6 +16,18 @@ Regenerate Codex/Grok JSON after editing the event table:
 python scripts/generate_runtime_hooks.py
 python scripts/generate_runtime_hooks.py --check   # CI / pre-commit
 ```
+
+`RUNTIME_EVENTS` in that script is the authoritative per-runtime allow-list, and
+generation now **fails** if the event table names an event a runtime does not
+implement. `--check` alone never caught that: it only proves the generated files
+match the generator, so `.codex/hooks.json` shipped `PostToolUseFailure`,
+`StopFailure` and `Notification` — none of which Codex has — while staying green.
+`RUNTIME_TIMEOUT_MAX` does the same for per-runtime timeout ceilings (Codex caps
+`SessionEnd` and `Interrupt` at 3s).
+
+Codex sources verified 2026-09-13. **Grok remains unverified** — no authoritative
+public hook spec was found; its column mirrors the Claude schema in practice and
+additions to it are provisional.
 
 ---
 
@@ -33,18 +45,18 @@ python scripts/generate_runtime_hooks.py --check   # CI / pre-commit
 | PermissionRequest | ✅ | ❌ | ✅ | ❌ | `auto-approve-permissions.sh` |
 | PermissionDenied | ✅ | ❌ | ❌ | ✅ | `permission-denied.sh` + `native-event-log.sh` |
 | PostToolUse (Edit/Write) | ✅ | ✅ | ✅ | ✅ | `track-changes.sh` |
-| PostToolUseFailure | ✅ | ✅ | ✅ | ✅ | `post-tool-failure.sh` |
+| PostToolUseFailure | ✅ | ✅ | ❌ | ✅ | `post-tool-failure.sh` |
 | PostToolBatch | ✅ | ❌ | ❌ | ❌ | `native-event-log.sh` |
 | TaskCreated | ✅ | ❌ | ❌ | ❌ | `native-event-log.sh` |
 | TaskCompleted | ✅ | ❌ | ❌ | ❌ | `native-event-log.sh` |
 | TeammateIdle | ✅ | ❌ | ❌ | ❌ | `native-event-log.sh` |
 | Stop | ✅ | ✅ | ✅ | ✅ | `stop` chain: extract-state → usage-tracker → stop |
-| StopFailure | ✅ | ❌ | ✅ | ✅ | `stop-failure.sh` |
+| StopFailure | ✅ | ❌ | ❌ | ✅ | `stop-failure.sh` |
 | SubagentStart | ✅ | ✅ | ✅ | ✅ | `subagent-lifecycle.sh` |
 | SubagentStop | ✅ | ✅ | ✅ | ✅ | `subagent-lifecycle.sh` |
 | PreCompact | ✅ | ✅ | ✅ | ✅ | `pre-compact.sh` |
 | PostCompact | ✅ | ❌* | ✅ | ✅ | `post-compact.sh` (*Cursor re-injects via SessionStart compact) |
-| Notification | ✅ | ❌ | ✅ | ✅ | `notify.sh` |
+| Notification | ✅ | ❌ | ❌ | ✅ | `notify.sh` |
 | PreModelSwitch | ✅ | ❌ | ❌ | ❌ | `native-event-log.sh` |
 | PostModelSwitch | ✅ | ❌ | ❌ | ❌ | `native-event-log.sh` |
 | CwdChanged | ✅ | ❌ | ❌ | ❌ | `native-event-log.sh` |
@@ -53,8 +65,8 @@ python scripts/generate_runtime_hooks.py --check   # CI / pre-commit
 | WorktreeRemove | ✅ | ❌ | ❌ | ❌ | `native-event-log.sh` |
 | ConfigChange | ✅ | ❌ | ❌ | ❌ | `native-event-log.sh` |
 | InstructionsLoaded | ✅ | ❌ | ❌ | ❌ | `instructions-loaded.sh` (Claude only) |
-| FileChanged | ✅ | ❌ | ❌ | ❌ | config audit echo (Claude only) |
-| SessionEnd | ✅ | ✅ | ✅ | ✅ | `session-end.sh` |
+| FileChanged | ✅ | ❌ | ❌ | ❌ | `config-changed.sh` (Claude only) |
+| SessionEnd | ✅ | ✅ | ✅ | ✅ | `session-end.sh` → detaches `scripts/session_finalize.sh` |
 
 `cek_runtime_supports <Event>` in `scripts/cek_runtime.sh` encodes the same table
 for runtime no-ops. It answers "does this runtime emit this event", **not** "does
@@ -106,8 +118,18 @@ Adapters must export before calling `.claude/hooks/*`:
 
 **Cursor** — open the project; `.cursor/hooks.json` is picked up automatically.
 
-**Codex** — ensure project root is the cwd; `.codex/hooks.json` is portable.
-Do **not** commit machine-local absolute paths.
+**Codex** — two supported modes:
+
+- *Plugin* — install from a marketplace entry; `.codex-plugin/plugin.json` names
+  `./hooks/codex-hooks.json`, whose commands resolve under `${CLAUDE_PLUGIN_ROOT}`.
+  Codex also reads the repo's existing `.claude-plugin/marketplace.json` as a
+  legacy-compatible marketplace.
+- *Project adapter* — ensure the repo root is the cwd; `.codex/hooks.json` is
+  portable. Do **not** commit machine-local absolute paths.
+
+Either way, run `/hooks` once to review and trust the hooks: installing or
+enabling a plugin does not trust its hooks, and Codex records trust against each
+hook's hash, so a changed hook needs re-approval.
 
 **Grok** — open the project and run `/hooks-trust` once. Confirm Hooks tab shows
 `cek-hooks.json` entries. Prefer Grok  + Claude settings together (deduped) or

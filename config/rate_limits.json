@@ -5,6 +5,14 @@
   "_field_note": "This file uses subscription_tier; usage_budget.json uses subscription_type. Both refer to the same value — set CEK_SUBSCRIPTION_TIER env var to override.",
   "subscription_tier": "pro",
 
+  "_token_budgets_note": [
+    "REFERENCE ONLY — nothing reads this block. The live thresholds come from",
+    "usage_budget.json (warn/pre_save/auto_save/critical) and the CEK_TOKEN_* env",
+    "vars in settings.json; usage-tracker.py reads only subscription_tier from",
+    "this file. Kept because the windows below are the numbers you need when",
+    "reasoning about burn rate by hand.",
+    "Windows corrected 2026-09-13: Opus 5 and Sonnet 5 are 1M, not 200K."
+  ],
   "token_budgets": {
     "claude_haiku": {
       "context_window": 200000,
@@ -12,12 +20,12 @@
       "compact_at_pct": 85
     },
     "claude_sonnet": {
-      "context_window": 200000,
+      "context_window": 1000000,
       "warn_at_pct": 70,
       "compact_at_pct": 85
     },
     "claude_opus": {
-      "context_window": 200000,
+      "context_window": 1000000,
       "warn_at_pct": 65,
       "compact_at_pct": 80
     }

@@ -6,6 +6,7 @@
 #   skills/ and agents/ are the ONLY copies (.claude/ duplicates must not return)
 #   .claude/settings.json declares NO hooks (hooks/hooks.json is the single source)
 #   generate_runtime_hooks.py --check         (Codex/Grok hooks.json)
+#   .codex-plugin/plugin.json exists and does NOT inherit hooks/hooks.json
 #   no absolute machine paths in runtime JSON
 #
 # Usage: bash scripts/check_sync.sh
@@ -64,8 +65,33 @@ if [ -f .claude/settings.json ] && [ -n "${PY:-}" ]; then
   fi
 fi
 
+# Codex plugin manifest must exist and must point away from hooks/hooks.json.
+# Codex falls back to hooks/hooks.json when a manifest declares no `hooks`
+# entry, and that file is the Claude manifest — events Codex has never had.
+if [ -n "${PY:-}" ]; then
+  if [ ! -f .codex-plugin/plugin.json ]; then
+    echo "ERROR: missing .codex-plugin/plugin.json — Codex cannot install this as a plugin"
+    status=1
+  elif "$PY" - <<'CODEXCHK'
+import json, sys
+m = json.load(open(".codex-plugin/plugin.json"))
+h = m.get("hooks")
+entries = h if isinstance(h, list) else ([h] if h else [])
+bad = (not entries) or any(
+    isinstance(e, str) and e.rstrip("/").endswith("hooks/hooks.json") for e in entries
+)
+sys.exit(1 if bad else 0)
+CODEXCHK
+  then
+    echo "OK: .codex-plugin/plugin.json declares its own hooks file"
+  else
+    echo "ERROR: .codex-plugin/plugin.json would inherit hooks/hooks.json (Claude-only events)"
+    status=1
+  fi
+fi
+
 # Absolute path smell test on tracked runtime entrypoints
-for f in .codex/hooks.json .grok/hooks/cek-hooks.json .cursor/hooks.json; do
+for f in .codex/hooks.json hooks/codex-hooks.json .grok/hooks/cek-hooks.json .cursor/hooks.json; do
   if [ -f "$f" ]; then
     if grep -E 'C:\\\\Users|/Users/[A-Za-z]|C:/Users' "$f" >/dev/null 2>&1; then
       echo "ERROR: absolute machine path in $f"

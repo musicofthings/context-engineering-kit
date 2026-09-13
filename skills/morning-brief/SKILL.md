@@ -2,7 +2,7 @@
 name: morning-brief
 description: Display the daily AI news digest from configured RSS feeds. Auto-generated once per day at session start. Use /context-engineering-kit:morning-brief to read today's brief.
 user-invocable: true
-auto-invoke-when: user asks about today's AI news, what's new in AI, or morning brief
+when_to_use: user asks about today's AI news, what's new in AI, or morning brief
 ---
 
 # /morning-brief

@@ -4,10 +4,17 @@ generate_runtime_hooks.py
 Single source of truth for multi-runtime hook wiring (Phase C).
 
 Generates:
-  .codex/hooks.json
-  .grok/hooks/cek-hooks.json
+  .codex/hooks.json          project adapter  — commands relative to the repo root
+  .grok/hooks/cek-hooks.json project adapter  — commands relative to the repo root
+  hooks/codex-hooks.json     Codex plugin     — commands under ${CLAUDE_PLUGIN_ROOT}
 
-Commands are always portable (relative to project cwd), never absolute machine paths.
+Commands are always portable — repo-relative or plugin-root-relative, never
+absolute machine paths.
+
+The plugin file must exist and must be named in .codex-plugin/plugin.json:
+Codex falls back to `hooks/hooks.json` when a manifest declares no `hooks`
+entry, and that file is the *Claude* manifest, full of events Codex has never
+had. The explicit `hooks` entry is what keeps the two apart.
 
 Usage:
   python scripts/generate_runtime_hooks.py
@@ -52,7 +59,9 @@ EVENTS: list[dict] = [
         "event": "SessionEnd",
         "hook": "session-end.sh",
         "runtimes": ["codex", "grok"],
-        "timeout": 30,
+        # Codex caps SessionEnd at 3s (1s default) and always runs it
+        # synchronously; session-end.sh detaches its work, so 3 is ample.
+        "timeout": {"codex": 3, "grok": 30},
     },
     {
         "event": "UserPromptSubmit",
@@ -74,7 +83,7 @@ EVENTS: list[dict] = [
     {
         "event": "PostToolUseFailure",
         "hook": "post-tool-failure.sh",
-        "runtimes": ["codex", "grok"],
+        "runtimes": ["grok"],  # Codex has no PostToolUseFailure event
         "async": True,
     },
     {
@@ -107,7 +116,7 @@ EVENTS: list[dict] = [
     {
         "event": "StopFailure",
         "hook": "stop-failure.sh",
-        "runtimes": ["codex", "grok"],
+        "runtimes": ["grok"],  # Codex has no StopFailure event
     },
     {
         "event": "SubagentStart",
@@ -124,9 +133,43 @@ EVENTS: list[dict] = [
     {
         "event": "Notification",
         "hook": "notify.sh",
-        "runtimes": ["codex", "grok"],
+        "runtimes": ["grok"],  # Codex has no Notification event
     },
 ]
+
+
+# Authoritative per-runtime event allow-list.
+#
+# `--check` only proves the generated files match this generator, so a wrong
+# EVENTS entry used to stay green forever: .codex/hooks.json shipped
+# PostToolUseFailure, StopFailure and Notification, none of which Codex has.
+# Generation now fails if EVENTS names an event a runtime does not implement.
+#
+# codex: learn.chatgpt.com/docs/hooks, verified 2026-09-13.
+# grok:  UNVERIFIED — no authoritative public hook spec. Mirrors the Claude
+#        schema in practice; treat additions here as provisional.
+RUNTIME_EVENTS: dict[str, set[str]] = {
+    "codex": {
+        "SessionStart", "SessionEnd", "UserPromptSubmit",
+        "PreToolUse", "PermissionRequest", "PostToolUse",
+        "PreCompact", "PostCompact",
+        "SubagentStart", "SubagentStop", "Stop", "Interrupt",
+    },
+    "grok": {
+        "SessionStart", "SessionEnd", "UserPromptSubmit",
+        "PreToolUse", "PostToolUse", "PostToolUseFailure",
+        "PermissionDenied",
+        "PreCompact", "PostCompact",
+        "SubagentStart", "SubagentStop", "Stop", "StopFailure", "Notification",
+    },
+}
+
+# Per-runtime hard timeout ceilings, in seconds. Codex: "SessionEnd and
+# Interrupt use 1 second by default and support up to 3 seconds."
+RUNTIME_TIMEOUT_MAX: dict[str, dict[str, int]] = {
+    "codex": {"SessionEnd": 3, "Interrupt": 3},
+    "grok": {},
+}
 
 
 def _cmd_codex(entry: dict) -> str:
@@ -135,19 +178,51 @@ def _cmd_codex(entry: dict) -> str:
     return f'bash .codex/hooks/run.sh hook {entry["hook"]}'
 
 
+def _cmd_codex_plugin(entry: dict) -> str:
+    root = '"${CLAUDE_PLUGIN_ROOT}/.codex/hooks/run.sh"'
+    if "chain" in entry:
+        return f'bash {root} {entry["chain"]}'
+    return f'bash {root} hook {entry["hook"]}'
+
+
 def _cmd_grok(entry: dict) -> str:
     if "chain" in entry:
         return f'bash .grok/hooks/run.sh {entry["chain"]}'
     return f'bash .grok/hooks/run.sh hook {entry["hook"]}'
 
 
-def build_hooks(runtime: str) -> dict:
-    cmd_fn = _cmd_codex if runtime == "codex" else _cmd_grok
+def _timeout_for(entry: dict, runtime: str, evt: str) -> int | None:
+    """Resolve an entry's timeout for one runtime, clamped to that runtime's max."""
+    raw = entry.get("timeout")
+    if isinstance(raw, dict):
+        raw = raw.get(runtime)
+    if not raw:
+        return None
+    ceiling = RUNTIME_TIMEOUT_MAX.get(runtime, {}).get(evt)
+    if ceiling is not None and raw > ceiling:
+        raise ValueError(
+            f"{runtime}: {evt} timeout {raw}s exceeds the runtime maximum of {ceiling}s"
+        )
+    return raw
+
+
+def build_hooks(runtime: str, *, plugin: bool = False) -> dict:
+    if runtime == "codex":
+        cmd_fn = _cmd_codex_plugin if plugin else _cmd_codex
+    else:
+        cmd_fn = _cmd_grok
+    supported = RUNTIME_EVENTS[runtime]
     hooks: dict[str, list] = {}
     for entry in EVENTS:
         if runtime not in entry["runtimes"]:
             continue
         evt = entry["event"]
+        if evt not in supported:
+            raise ValueError(
+                f"{runtime}: EVENTS declares {evt}, which this runtime does not "
+                f"implement. Fix the entry's `runtimes`, or add {evt} to "
+                f"RUNTIME_EVENTS[{runtime!r}] with a doc reference."
+            )
         block: dict = {"hooks": [{"type": "command", "command": cmd_fn(entry)}]}
         if entry.get("matcher") is not None and entry.get("matcher") != "":
             block["matcher"] = entry["matcher"]
@@ -155,8 +230,9 @@ def build_hooks(runtime: str) -> dict:
             block["matcher"] = entry["matcher"]
         if entry.get("async"):
             block["hooks"][0]["async"] = True
-        if entry.get("timeout"):
-            block["hooks"][0]["timeout"] = entry["timeout"]
+        timeout = _timeout_for(entry, runtime, evt)
+        if timeout:
+            block["hooks"][0]["timeout"] = timeout
         hooks.setdefault(evt, []).append(block)
     return {"hooks": hooks}
 
@@ -178,6 +254,7 @@ def main() -> int:
 
     targets = {
         ROOT / ".codex" / "hooks.json": build_hooks("codex"),
+        ROOT / "hooks" / "codex-hooks.json": build_hooks("codex", plugin=True),
         ROOT / ".grok" / "hooks" / "cek-hooks.json": build_hooks("grok"),
     }
 

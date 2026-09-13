@@ -5,7 +5,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash .codex/hooks/run.sh session-start"
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/.codex/hooks/run.sh\" session-start"
           }
         ],
         "matcher": ""
@@ -14,7 +14,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash .codex/hooks/run.sh hook compact-restore.sh"
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/.codex/hooks/run.sh\" hook compact-restore.sh"
           }
         ],
         "matcher": "compact"
@@ -23,7 +23,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash .codex/hooks/run.sh hook session-title.sh"
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/.codex/hooks/run.sh\" hook session-title.sh"
           }
         ],
         "matcher": "startup|resume"
@@ -34,7 +34,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash .codex/hooks/run.sh hook session-end.sh",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/.codex/hooks/run.sh\" hook session-end.sh",
             "timeout": 3
           }
         ]
@@ -45,7 +45,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash .codex/hooks/run.sh hook usage-sentinel.sh"
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/.codex/hooks/run.sh\" hook usage-sentinel.sh"
           }
         ]
       }
@@ -55,7 +55,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash .codex/hooks/run.sh hook guard-dangerous.sh"
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/.codex/hooks/run.sh\" hook guard-dangerous.sh"
           }
         ],
         "matcher": "Bash"
@@ -66,7 +66,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash .codex/hooks/run.sh hook track-changes.sh"
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/.codex/hooks/run.sh\" hook track-changes.sh"
           }
         ],
         "matcher": "Edit|Write"
@@ -77,7 +77,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash .codex/hooks/run.sh hook auto-approve-permissions.sh"
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/.codex/hooks/run.sh\" hook auto-approve-permissions.sh"
           }
         ],
         "matcher": "Write|Edit|MultiEdit|Bash"
@@ -88,7 +88,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash .codex/hooks/run.sh hook pre-compact.sh"
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/.codex/hooks/run.sh\" hook pre-compact.sh"
           }
         ]
       }
@@ -98,7 +98,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash .codex/hooks/run.sh hook post-compact.sh"
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/.codex/hooks/run.sh\" hook post-compact.sh"
           }
         ]
       }
@@ -108,7 +108,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash .codex/hooks/run.sh stop"
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/.codex/hooks/run.sh\" stop"
           }
         ]
       }
@@ -118,7 +118,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash .codex/hooks/run.sh subagent-start",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/.codex/hooks/run.sh\" subagent-start",
             "async": true
           }
         ]
@@ -129,7 +129,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash .codex/hooks/run.sh subagent-stop",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/.codex/hooks/run.sh\" subagent-stop",
             "async": true
           }
         ]

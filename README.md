@@ -646,9 +646,9 @@ Set in Claude Code settings under `"env"`, or export in your shell:
 | `CEK_SUBSCRIPTION_TIER` | `pro` | Subscription tier |
 | `CEK_TOKEN_WARN_PCT` | `70` | Context % at which to warn |
 | `CEK_TOKEN_CRITICAL_PCT` | `85` | Context % at which to auto-save |
-| `CEK_MODEL_HAIKU` | `claude-haiku-4-5-20251001` | Haiku model ID |
+| `CEK_MODEL_HAIKU` | `claude-haiku-4-5` | Haiku model ID |
 | `CEK_MODEL_SONNET` | `claude-sonnet-5` | Sonnet model ID |
-| `CEK_MODEL_OPUS` | `claude-opus-4-8` | Opus model ID |
+| `CEK_MODEL_OPUS` | `claude-opus-5` | Opus model ID |
 
 ---
 

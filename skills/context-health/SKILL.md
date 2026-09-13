@@ -2,7 +2,7 @@
 name: context-health
 description: Run a full health check on all context engineering files. Checks CLAUDE.md freshness, session_handover.md completeness, hook wiring, session state, and git sync status. Use /context-health at session start or after switching devices.
 user-invocable: true
-auto-invoke-when: session just started, user asks if context files are up to date, after git pull
+when_to_use: session just started, user asks if context files are up to date, after git pull
 ---
 
 # Context Health Check

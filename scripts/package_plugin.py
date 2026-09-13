@@ -52,6 +52,12 @@ EXCLUDE_GLOBS = [
     "*.swp",
     "*.zip",
     "*.tar.gz",
+    # EXCLUDE_FILES matches whole relative paths, so a bare ".DS_Store" entry
+    # only ever caught the one at the repo root; nested copies shipped.
+    # EXCLUDE_GLOBS matches the basename, which catches them all.
+    ".DS_Store",
+    "Thumbs.db",
+    "desktop.ini",
 ]
 
 
@@ -72,6 +78,52 @@ def is_excluded(rel_posix: str, is_dir: bool) -> bool:
 def read_version() -> str:
     manifest = ROOT / ".claude-plugin" / "plugin.json"
     return json.loads(manifest.read_text(encoding="utf-8"))["version"]
+
+
+def validate_manifests() -> str:
+    """Both runtime manifests must exist, agree on version, and keep their hooks apart.
+
+    The Codex manifest MUST declare an explicit `hooks` entry. Codex falls back
+    to `hooks/hooks.json` when a manifest declares none, and that file is the
+    Claude manifest — it carries events Codex has never implemented
+    (InstructionsLoaded, FileChanged, Pre/PostModelSwitch, TaskCreated, ...).
+    Shipping without the explicit entry silently points Codex at it.
+    """
+    claude_path = ROOT / ".claude-plugin" / "plugin.json"
+    codex_path = ROOT / ".codex-plugin" / "plugin.json"
+    for path in (claude_path, codex_path):
+        if not path.exists():
+            raise SystemExit(f"ERROR: missing runtime manifest {path.relative_to(ROOT)}")
+
+    claude = json.loads(claude_path.read_text(encoding="utf-8"))
+    codex = json.loads(codex_path.read_text(encoding="utf-8"))
+
+    if claude["version"] != codex.get("version"):
+        raise SystemExit(
+            f"ERROR: manifest version mismatch — "
+            f".claude-plugin={claude['version']} .codex-plugin={codex.get('version')}"
+        )
+    if claude["name"] != codex.get("name"):
+        raise SystemExit("ERROR: manifest name mismatch between runtimes")
+
+    hooks_entry = codex.get("hooks")
+    if not hooks_entry:
+        raise SystemExit(
+            "ERROR: .codex-plugin/plugin.json declares no `hooks` entry, so Codex "
+            "would fall back to hooks/hooks.json — the Claude manifest."
+        )
+    entries = hooks_entry if isinstance(hooks_entry, list) else [hooks_entry]
+    for entry in entries:
+        if isinstance(entry, str):
+            if entry.rstrip("/").endswith("hooks/hooks.json"):
+                raise SystemExit(
+                    "ERROR: .codex-plugin/plugin.json points at hooks/hooks.json "
+                    "(Claude-only events). Point it at hooks/codex-hooks.json."
+                )
+            if not (ROOT / entry.lstrip("./")).exists():
+                raise SystemExit(f"ERROR: Codex hooks file {entry} does not exist")
+
+    return claude["version"]
 
 
 def build(out_path: Path) -> tuple[int, int]:
@@ -97,7 +149,7 @@ def main():
                         help="Output path (default: context-engineering-kit-<version>.zip)")
     args = parser.parse_args()
 
-    version = read_version()
+    version = validate_manifests()
     out_path = args.out or (ROOT / f"context-engineering-kit-{version}.zip")
     out_path = out_path.resolve()
 

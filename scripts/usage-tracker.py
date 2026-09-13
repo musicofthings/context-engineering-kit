@@ -386,10 +386,17 @@ def run_hook():
         src  = "5h" if fc["data_source"] == "rate_limit_window" else "est"
         left = fc["turns_to_critical"]
         eta  = fc["eta_to_critical"]
+        # stderr, not stdout: this runs inside the Stop chain, and Codex treats
+        # plain text on a Stop hook's stdout as invalid ("Stop expects JSON on
+        # stdout when it exits 0"), so the sentinel marked the hook failed on
+        # exactly the turns it mattered. Claude Code surfaces stderr the same
+        # way it surfaces stdout here, and neither is injected into context.
+        # The /token-status report path (run_report) keeps stdout.
         print(
             f"\n[usage] {fc['indicator']} {fc['status']} "
             f"({src}: {fc['pct_used']:.0f}%) — "
             f"~{left} turns left ({eta}). /compact-smart to extend.",
+            file=sys.stderr,
             flush=True
         )
     sys.exit(0)
