@@ -238,7 +238,7 @@ fi
 cat << INJECT
 
 ╔══════════════════════════════════════════════════════════╗
-║  context-engineering-kit v3.0.0 — Session Started         ║
+║  context-engineering-kit v3.0.1 — Session Started         ║
 ────────────────────────────────────────────────────────────
 $JQ_WARNING
 📅 Date/Time    : $TODAY
