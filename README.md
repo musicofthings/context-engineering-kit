@@ -8,7 +8,8 @@ Works in **Claude Cowork**, **Claude Code Desktop**, **Claude Code CLI**, **Curs
 
 🌐 **[Landing page & full docs →](https://musicofthings.github.io/context-engineering-kit/)**  
 📦 **[Download plugin zip (v3.0.0) →](https://github.com/musicofthings/context-engineering-kit/releases/latest)** — for Cowork or Desktop Plugin upload  
-📐 **[Runtime capability matrix →](docs/runtime-capability-matrix.md)**
+📐 **[Runtime capability matrix →](docs/runtime-capability-matrix.md)**  
+📝 **[Release notes (v3.0.0) →](docs/RELEASE_NOTES_3.0.0.md)** — breaking changes, upgrade steps, known gaps
 
 ---
 
@@ -32,6 +33,10 @@ Works in **Claude Cowork**, **Claude Code Desktop**, **Claude Code CLI**, **Curs
   context percentage comes from `preCompact`, and `beforeReadFile` now enforces
   the `.env` rule
 
+Full detail, upgrade steps and known gaps:
+[`docs/RELEASE_NOTES_3.0.0.md`](docs/RELEASE_NOTES_3.0.0.md). The review behind
+this release is [`docs/sota-compatibility-review-2026-09.md`](docs/sota-compatibility-review-2026-09.md).
+
 ## What's new in v2.7.0
 
 - **Real auto-save at usage thresholds (Phase A).** At 85% / 92%, the kit **writes** `session_handover.md` (and optionally `session_sync --save`) — it no longer only injects “please run /handover” for the model to obey.
@@ -47,6 +52,8 @@ Works in **Claude Cowork**, **Claude Code Desktop**, **Claude Code CLI**, **Curs
 - Prompt caching strategy documented for CLAUDE.md stable prefix.
 - PermissionRequest schema, sentinel WARN path, statusLine path, and Actions pin fixes.
 - Default models: Sonnet 5 / Opus 4.8.
+
+Release notes: [`docs/RELEASE_NOTES_2.7.0.md`](docs/RELEASE_NOTES_2.7.0.md).
 
 ## What's new in v2.5.0
 
