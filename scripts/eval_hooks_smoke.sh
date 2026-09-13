@@ -224,6 +224,26 @@ git -C "$SANDBOX" show --stat --oneline HEAD | grep -q "state.json" \
   && bad "commit excludes gitignored state.json" "state.json was committed" \
   || ok "commit excludes gitignored state.json"
 
+# SessionEnd fires on /clear and /resume too, and the kit used to commit on
+# both — a "save session state" commit every time someone cleared the context
+# mid-task. State is still saved on those; only the commit is skipped.
+COMMITS_BEFORE=$(git -C "$SANDBOX" log --oneline | grep -c "chore(context)" || true)
+printf 'edited for clear\n' >> "$SANDBOX/session_handover.md"
+export CEK_SESSION_END_SYNC=1
+fire session-end.sh "{$BASE,\"reason\":\"clear\",\"hook_event_name\":\"SessionEnd\"}"
+COMMITS_AFTER=$(git -C "$SANDBOX" log --oneline | grep -c "chore(context)" || true)
+[ "$COMMITS_AFTER" = "$COMMITS_BEFORE" ] && ok "reason=clear saves state without committing" \
+  || bad "reason=clear skips the commit" "commits went $COMMITS_BEFORE -> $COMMITS_AFTER"
+[ -f "$SANDBOX/session_handover.md" ] && ok "reason=clear still leaves a handover" \
+  || bad "reason=clear handover" "missing"
+
+printf 'edited for exit\n' >> "$SANDBOX/session_handover.md"
+fire session-end.sh "{$BASE,\"reason\":\"logout\",\"hook_event_name\":\"SessionEnd\"}"
+COMMITS_EXIT=$(git -C "$SANDBOX" log --oneline | grep -c "chore(context)" || true)
+[ "$COMMITS_EXIT" -gt "$COMMITS_AFTER" ] && ok "reason=logout does commit" \
+  || bad "reason=logout commits" "commits stayed at $COMMITS_EXIT"
+unset CEK_SESSION_END_SYNC
+
 # Default (no CEK_SESSION_END_SYNC) must hand off instead of working inline.
 fire session-end.sh "{$BASE,\"reason\":\"exit\",\"hook_event_name\":\"SessionEnd\"}"
 [ "$RC" -eq 0 ] && ok "session-end exit 0 (detached default)" || bad "session-end detached exit 0" "rc=$RC $ERR"

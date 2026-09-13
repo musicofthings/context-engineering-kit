@@ -121,6 +121,18 @@ if [ -f "$STATE_FILE" ]; then
 fi
 
 # ── Git commit session files ─────────────────────────────────────────────────
+# Skip the commit on /clear and /resume. Both fire SessionEnd, but neither ends
+# the work — the handover above has already been refreshed, which is the part
+# that matters. Committing on them produced a "chore(context): save session
+# state" commit every time someone cleared the context mid-task.
+case "${CEK_SESSION_END_REASON:-other}" in
+  clear|resume)
+    log "reason=${CEK_SESSION_END_REASON} — state saved, skipping git commit"
+    log "Session end complete"
+    exit 0
+    ;;
+esac
+
 cd "$COMMIT_DIR"
 
 # Check both staged and unstaged changes for session files before adding

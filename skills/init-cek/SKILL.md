@@ -1,6 +1,6 @@
 ---
 name: init-cek
-description: Bootstrap context-engineering-kit in any project folder — creates CLAUDE.md, session_handover.md, state.json, and usage config so auto-save, /handover, and context tracking work from the very first session. Run once per project.
+description: Bootstrap context-engineering-kit in any project folder — creates CLAUDE.md, AGENTS.md, session_handover.md, state.json, and usage config so auto-save, /handover, and context tracking work from the very first session. Run once per project.
 user-invocable: true
 argument-hint: "[project description]"
 when_to_use: user is setting up context-engineering-kit in a new project, or a project has no session_handover.md yet
@@ -26,6 +26,7 @@ git log --oneline -1            # last commit
 
 Check which of these already exist (skip creation for those that do, unless `--force` was passed):
 - `CLAUDE.md`
+- `AGENTS.md`
 - `session_handover.md`
 - `.claude/session/state.json`
 - `config/usage_budget.json`
@@ -46,6 +47,30 @@ Analyse the codebase and write a project-specific `CLAUDE.md`. Use the template 
 - `{{ADD_PROJECT_COMMANDS_HERE}}` — real commands from package.json scripts, Makefile, or README
 
 If `CLAUDE.md` already exists and contains real content (not just template placeholders), **do not overwrite it**. Ask the user if they want to regenerate it.
+
+## Step 2b — AGENTS.md (if missing)
+
+`AGENTS.md` is the cross-runtime instruction file. Codex discovers it by that
+exact name, and other agents increasingly read it too; `CLAUDE.md` stays the
+Claude-specific adapter beside it.
+
+Rules, in order of precedence:
+
+1. **Never overwrite an existing `AGENTS.md` that has substantive content** —
+   not even with `--force`. It is very often hand-written, and it may predate
+   this kit entirely. Report it as `already existed — left untouched`.
+   "Substantive" means more than a heading and whitespace.
+2. If it exists but is empty or placeholder-only, offer to fill it in. Ask
+   first; do not assume.
+3. If it is missing, create it with the runtime-neutral content only: what the
+   project is, how to build and test it, and the conventions an agent must
+   follow. Keep Claude-specific material — slash commands, `.claude/` paths,
+   hook names — in `CLAUDE.md`, not here.
+4. Check for a lowercase `agents.md` first. On a case-insensitive filesystem
+   (macOS, Windows) it looks identical but Linux and CI see only the lowercase
+   name, so Codex finds nothing. If you find one, `git mv` it through a
+   temporary name (a direct rename is a no-op under `core.ignorecase`) rather
+   than writing a second file.
 
 ---
 
@@ -121,7 +146,7 @@ git rev-parse --git-dir   # contains /worktrees/ → skip commit, we're in a wor
 
 If safe to commit:
 ```bash
-git add CLAUDE.md session_handover.md .claude/session/state.json config/usage_budget.json
+git add CLAUDE.md AGENTS.md session_handover.md .claude/session/state.json config/usage_budget.json
 git commit -m "chore(context): init CEK scaffolding [<timestamp>]"
 ```
 
@@ -139,6 +164,7 @@ Output a clean summary:
 ╚══════════════════════════════════════════════════════════╝
 
   CLAUDE.md              ✅ [created | already existed — skipped]
+  AGENTS.md              ✅ [created | already existed — left untouched]
   session_handover.md    ✅ [created | already existed — skipped]
   .claude/session/       ✅ [created | already existed — skipped]
   config/usage_budget.json ✅ [created | already existed — skipped]
@@ -165,5 +191,6 @@ Next steps:
 | File exists but is empty or template-only | Offer to regenerate |
 | Not a git repo | Create files, skip git commit, suggest `git init` |
 | In a linked worktree | Create files, skip git commit (state lives on main branch) |
-| `--force` arg passed | Overwrite all files, even if they already exist |
+| `--force` arg passed | Overwrite all files, even if they already exist — **except `AGENTS.md` with substantive content, which is never overwritten** |
+| Lowercase `agents.md` found | `git mv` it to `AGENTS.md` via a temp name; do not create a second file |
 | User provides a description arg | Use it as `{{PROJECT_DESCRIPTION}}` instead of inferring |

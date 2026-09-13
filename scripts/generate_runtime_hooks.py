@@ -131,6 +131,16 @@ EVENTS: list[dict] = [
         "async": True,
     },
     {
+        # Codex-only. An interrupted turn is squarely a handover concern: the
+        # next session should know the last turn was cut off rather than
+        # completed. Passive — output cannot stop the interruption — and capped
+        # at 3s (1s default), which RUNTIME_TIMEOUT_MAX enforces.
+        "event": "Interrupt",
+        "hook": "native-event-log.sh",
+        "runtimes": ["codex"],
+        "timeout": {"codex": 3},
+    },
+    {
         "event": "Notification",
         "hook": "notify.sh",
         "runtimes": ["grok"],  # Codex has no Notification event
@@ -146,8 +156,9 @@ EVENTS: list[dict] = [
 # Generation now fails if EVENTS names an event a runtime does not implement.
 #
 # codex: learn.chatgpt.com/docs/hooks, verified 2026-09-13.
-# grok:  UNVERIFIED — no authoritative public hook spec. Mirrors the Claude
-#        schema in practice; treat additions here as provisional.
+# grok:  docs.x.ai/build/features/hooks, verified 2026-09-13. The set below is
+#        exactly the documented one. Note PreToolUse is the ONLY blocking event
+#        on Grok (exit 2 denies); every other event is passive and fails open.
 RUNTIME_EVENTS: dict[str, set[str]] = {
     "codex": {
         "SessionStart", "SessionEnd", "UserPromptSubmit",
@@ -170,6 +181,11 @@ RUNTIME_TIMEOUT_MAX: dict[str, dict[str, int]] = {
     "codex": {"SessionEnd": 3, "Interrupt": 3},
     "grok": {},
 }
+
+# Codex documents background hooks (`"async": true`, 8 concurrent per session).
+# Grok's documented schema is matcher / type / command / url / timeout only —
+# no async — so emitting the key there is guesswork, not configuration.
+RUNTIME_SUPPORTS_ASYNC: dict[str, bool] = {"codex": True, "grok": False}
 
 
 def _cmd_codex(entry: dict) -> str:
@@ -228,7 +244,7 @@ def build_hooks(runtime: str, *, plugin: bool = False) -> dict:
             block["matcher"] = entry["matcher"]
         elif "matcher" in entry:
             block["matcher"] = entry["matcher"]
-        if entry.get("async"):
+        if entry.get("async") and RUNTIME_SUPPORTS_ASYNC.get(runtime, False):
             block["hooks"][0]["async"] = True
         timeout = _timeout_for(entry, runtime, evt)
         if timeout:

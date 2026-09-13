@@ -7,11 +7,27 @@ Hooks, skills, and scripts that keep your context alive through compaction, devi
 Works in **Claude Cowork**, **Claude Code Desktop**, **Claude Code CLI**, **Cursor IDE**, **Grok Build**, and **Codex**.
 
 🌐 **[Landing page & full docs →](https://musicofthings.github.io/context-engineering-kit/)**  
-📦 **[Download plugin zip (v3.0.1) →](https://github.com/musicofthings/context-engineering-kit/releases/latest)** — for Cowork or Desktop Plugin upload  
+📦 **[Download plugin zip (v3.1.0) →](https://github.com/musicofthings/context-engineering-kit/releases/latest)** — for Cowork or Desktop Plugin upload  
 📐 **[Runtime capability matrix →](docs/runtime-capability-matrix.md)**  
-📝 **[Release notes (v3.0.1) →](docs/RELEASE_NOTES_3.0.1.md)** — state containment fix · [v3.0.0](docs/RELEASE_NOTES_3.0.0.md) for the breaking changes
+📝 **[Release notes (v3.1.0) →](docs/RELEASE_NOTES_3.1.0.md)** — Grok verified, known gaps closed · [v3.0.1](docs/RELEASE_NOTES_3.0.1.md) · [v3.0.0](docs/RELEASE_NOTES_3.0.0.md)
 
 ---
+
+## What's new in v3.1.0
+
+Every gap the v3.0.0 notes listed as known is now closed.
+
+- **Grok verified** against `docs.x.ai/build/features/hooks`. Its event set was
+  right; two inferences were not. The payload is **camelCase**, so the shared
+  core read empty on every field and `guard-dangerous.sh` never saw the command
+  it inspects — the adapter now normalises it. `PreToolUse` is Grok's only
+  blocking event, and the `|| true` that swallowed its exit 2 is gone.
+- `SessionEnd` no longer commits on `/clear` and `/resume`. State is still saved
+  on both.
+- `AGENTS.md` is runtime-neutral, and `init-cek` never overwrites one that has
+  real content.
+- CI packages the plugin and drives it from an unrelated project — 20 new checks.
+- Codex `Interrupt` wired.
 
 ## What's new in v3.0.1
 
@@ -98,7 +114,7 @@ Choose the path that matches your agent runtime:
 
 | | Claude Cowork | Claude Code Desktop | Claude Code CLI | Cursor | Grok Build | Codex |
 |--|--------------|---------------------|-----------------|--------|------------|-------|
-| **How** | Upload zip | Upload zip | Clone + `setup.sh` | Clone (`.cursor/`) | Clone; `/hooks-trust` | Clone (`.codex/`) |
+| **How** | Upload zip | Upload zip | Clone + `setup.sh` | Clone (`.cursor/`) | Clone; trust the project | Clone (`.codex/`) |
 | **Skills** | `/context-engineering-kit:*` | `/context-engineering-kit:*` | `/handover` etc. | Chat / scripts | Skills if mirrored | Scripts |
 | **Hooks** | Skills only | ✅ Full | ✅ Full | ✅ Adapters | ✅ `.grok/hooks` (+ optional Claude settings) | ✅ `.codex/hooks` |
 | **Best for** | Chat context | Always-on desktop | Terminal project | Cursor agents | Grok TUI | Codex CLI |
@@ -118,7 +134,7 @@ The easiest path. One zip works in both **Claude Cowork** and **Claude Code Desk
 **Either** download the prebuilt zip from the [latest GitHub release](https://github.com/musicofthings/context-engineering-kit/releases/latest):
 
 ```
-context-engineering-kit-3.0.1.zip
+context-engineering-kit-3.1.0.zip
 ```
 
 **Or** build it from source (requires Python 3):
@@ -127,7 +143,7 @@ context-engineering-kit-3.0.1.zip
 git clone https://github.com/musicofthings/context-engineering-kit.git
 cd context-engineering-kit
 python scripts/package_plugin.py
-# → writes context-engineering-kit-3.0.1.zip in the project root
+# → writes context-engineering-kit-3.1.0.zip in the project root
 ```
 
 The packaging script reads the version from `.claude-plugin/plugin.json` and excludes git history, runtime session state, audit logs, and caches automatically.
@@ -135,7 +151,7 @@ The packaging script reads the version from `.claude-plugin/plugin.json` and exc
 ### Step 2a — Upload to Claude Cowork
 
 1. Open Cowork → **Settings** → **Plugins** (or **Skills** → **Add plugin**)
-2. Click **Upload plugin** → select `context-engineering-kit-3.0.1.zip`
+2. Click **Upload plugin** → select `context-engineering-kit-3.1.0.zip`
 3. Confirm install — the eight skills appear as `/context-engineering-kit:*` commands
 4. Type `/context-engineering-kit:handover` in any conversation to use it
 
@@ -144,7 +160,7 @@ The packaging script reads the version from `.claude-plugin/plugin.json` and exc
 ### Step 2b — Upload to Claude Code Desktop
 
 1. Open **Claude Code Desktop** → click **Customize** (bottom-left gear) → **Upload Plugin**
-2. Select `context-engineering-kit-3.0.1.zip` and restart Claude Code
+2. Select `context-engineering-kit-3.1.0.zip` and restart Claude Code
 3. Verify in any project:
    ```
    /context-engineering-kit:context-health
@@ -353,9 +369,8 @@ Grok discovers project hooks under `.grok/hooks/` when the folder is trusted.
 ```bash
 git clone https://github.com/musicofthings/context-engineering-kit.git my-project
 cd my-project
-# In Grok: open the project, then:
-#   /hooks-trust
-# Confirm Hooks tab shows cek-hooks.json entries
+# In Grok: open the project and trust it, then confirm Grok's hooks UI
+# lists the cek-hooks.json entries. Hooks load from .grok/hooks/*.json.
 ```
 
 - Entry: `.grok/hooks/cek-hooks.json` → `.grok/hooks/run.sh` → `.claude/hooks/*`
@@ -803,7 +818,7 @@ Resuming on another device
 | Windows (Git Bash) | `bash.exe setup.sh`; use `claude.cmd` not `claude` |
 | Windows (no `python3`) | `scripts/find_python.sh` auto-detects `python` and `py.exe` |
 | Cursor IDE | Project hooks in `.cursor/` — no plugin upload; open repo in Cursor |
-| Grok Build | `.grok/hooks/cek-hooks.json`; trust project with `/hooks-trust` |
+| Grok Build | `.grok/hooks/cek-hooks.json`; trust the project so its hooks load |
 | Codex | `.codex/hooks.json` relative paths; cwd = project root |
 | CI/CD | `cek-quality.yml` runs evals + `generate_runtime_hooks --check` |
 
@@ -813,7 +828,7 @@ Resuming on another device
 bash scripts/check_sync.sh
 bash scripts/eval_phase_c.sh
 bash scripts/eval_usage_lifecycle.sh
-python scripts/package_plugin.py    # → context-engineering-kit-3.0.1.zip
+python scripts/package_plugin.py    # → context-engineering-kit-3.1.0.zip
 ```
 
 ---
@@ -876,4 +891,4 @@ Then in Claude Code: `/my-skill`
 
 ---
 
-*context-engineering-kit v3.0.1 — Multi-runtime context preservation for Claude Code, Cursor, Grok, and Codex.*
+*context-engineering-kit v3.1.0 — Multi-runtime context preservation for Claude Code, Cursor, Grok, and Codex.*

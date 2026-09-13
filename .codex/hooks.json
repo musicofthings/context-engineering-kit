@@ -134,6 +134,17 @@
           }
         ]
       }
+    ],
+    "Interrupt": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .codex/hooks/run.sh hook native-event-log.sh",
+            "timeout": 3
+          }
+        ]
+      }
     ]
   }
 }

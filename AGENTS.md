@@ -9,8 +9,12 @@ Reference these in `agents/` files or when orchestrating multi-agent tasks.
 > on case-insensitive filesystems (macOS, Windows) but not on Linux or in CI, so
 > Codex found no instruction file there. Keep the name uppercase.
 
-Slash commands below (`/handover`, `/token-status`, `/compact-smart`) are Claude
-Code syntax. See **Invoking subagents** at the end for the Codex equivalents.
+**How to read this file.** The agent roles and the communication protocol below
+are runtime-neutral — they describe what each agent is responsible for, and hold
+on any harness. Anything harness-specific is confined to two places: the
+*Runtime mechanics* table under each role, and **Invoking subagents** at the end.
+Claude-only material (slash commands, `.claude/` paths, hook filenames) lives in
+`CLAUDE.md`, not here.
 
 ---
 
@@ -22,19 +26,26 @@ subagent to dispatch. Writes task completion state back to session_handover.md.
 - Read session state before every work session
 - Dispatch specialised agents for defined tasks
 - Enforce commit protocol (solo default: commit on main; branches only when requested)
-- Call `/handover` before any compaction
+- Refresh the handover before any compaction (see Runtime mechanics below)
 - Update `session_handover.md` with every completed phase gate
 
-**Decision tree:**
+**Decision tree** (runtime-neutral):
 ```
 New session start
-  → Read session_handover.md
-  → Read CLAUDE.md
-  → Assess context usage (/token-status)
-  → If context > 70%: run /compact-smart first
-  → Dispatch appropriate agent for active task
-  → After task: update handover + check git status
+  → Read session_handover.md          ← always; this is the state anchor
+  → Read the project instruction file  ← AGENTS.md, plus CLAUDE.md on Claude Code
+  → Assess context usage
+  → If context is high: compact before starting new work, not during it
+  → Dispatch the appropriate agent for the active task
+  → After the task: update the handover, then check git status
 ```
+
+**Runtime mechanics for the two harness-specific steps:**
+
+| Step | Claude Code | Codex | Cursor / Grok |
+|------|-------------|-------|---------------|
+| Assess context usage | `/token-status` | no equivalent — read `.claude/session/usage-forecast.json` | same as Codex |
+| Compact | `/compact-smart` | prepare the handover, then tell the user to run `/compact` | Cursor compacts on its own; `preCompact` reports the real percentage |
 
 ---
 
@@ -47,7 +58,8 @@ New session start
 - Update README.md synopsis if architecture changed
 - Commit updated files with `chore(context):` prefix
 
-**Trigger:** Called by `.claude/hooks/pre-compact.sh` and by `/handover` skill.
+**Trigger:** the pre-compact hook on any runtime, or an explicit handover request
+(`/handover` on Claude Code, `$context-engineering-kit:handover` on Codex).
 
 **Output:** Updated files + confirmation message with files changed.
 
@@ -62,7 +74,7 @@ New session start
 - Identify and record any frozen constraints or hard requirements
 - Tag high-value code snippets for preservation before compaction
 
-**Trigger:** Invoked by `/handover` and `session-end.sh` hook.
+**Trigger:** an explicit handover request, or the session-end hook on any runtime.
 
 **Output:** Appended sections in CLAUDE.md + confirmation.
 
@@ -126,7 +138,7 @@ Append them to CLAUDE.md in the correct sections with today's date.
 | Claude Code | `/context-health`, `/handover`, `/token-status` | Plugin-scoped form also works: `/context-engineering-kit:handover` |
 | Codex | `$context-engineering-kit:context-health`, or the `/skills` picker | Codex has no `/model`; recommend a model and reasoning setting, don't claim to switch it |
 | Cursor | Skills are not slash commands — state the task in prose | |
-| Grok | `/hooks-trust` once, then prose | |
+| Grok | Prose; skills are not slash commands | Hooks load from `.grok/hooks/*.json` in a trusted project; review them in Grok's own hooks UI before they run |
 
 Codex-specific caveats:
 

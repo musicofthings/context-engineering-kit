@@ -27,6 +27,15 @@ FINALIZE="$KIT_ROOT/scripts/session_finalize.sh"
 
 log() { echo "[session-end] $*" >&2; }
 
+# `reason` tells us whether the session is really ending. Values (Claude Code):
+# clear | resume | logout | prompt_input_exit | other. Codex sends only "other".
+# /clear and /resume are mid-work transitions, not exits, so the finalizer
+# writes the handover on those but skips the git commit — the kit was producing
+# a "save session state" commit every time someone typed /clear.
+INPUT=$(cat 2>/dev/null || true)
+REASON=$(printf '%s' "$INPUT" | jq -r '.reason // "other"' 2>/dev/null || echo "other")
+export CEK_SESSION_END_REASON="$REASON"
+
 if [ ! -f "$FINALIZE" ]; then
   log "finalizer missing at $FINALIZE — nothing to do"
   exit 0

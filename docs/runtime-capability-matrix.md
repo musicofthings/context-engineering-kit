@@ -8,7 +8,7 @@ Thin adapters set `CLAUDE_PROJECT_DIR` / `CEK_RUNTIME` and dispatch into that co
 | **Claude Code** | `hooks/hooks.json` (plugin) + `.claude/settings.json` (project) | direct | Full event set; injects SessionStart / UserPromptSubmit stdout into context |
 | **Cursor** | `.cursor/hooks.json` | `.cursor/hooks/*.sh` → `cek_runtime.sh` | camelCase events; `sessionStart` injects via JSON `additional_context`, everything else → stderr |
 | **Codex** | `.codex/hooks.json` (project) + `.codex-plugin/plugin.json` → `hooks/codex-hooks.json` (plugin) | `.codex/hooks/run.sh` | Portable relative commands only. The plugin manifest **must** name its hooks file — Codex otherwise defaults to `hooks/hooks.json`, the Claude manifest |
-| **Grok Build** | `.grok/hooks/cek-hooks.json` **and** may also load `.claude/settings.json` | `.grok/hooks/run.sh` | Skips unknown event names; PermissionDenied ≠ PermissionRequest |
+| **Grok Build** | `.grok/hooks/cek-hooks.json`; Grok also reads `.claude/settings.json` and `.cursor/hooks.json` | `.grok/hooks/run.sh` | **camelCase payload** — the adapter normalises it to the core's snake_case. `PreToolUse` is the only blocking event (exit 2 denies); everything else fails open. No `async` in its schema |
 
 Regenerate Codex/Grok JSON after editing the event table:
 
@@ -25,9 +25,11 @@ match the generator, so `.codex/hooks.json` shipped `PostToolUseFailure`,
 `RUNTIME_TIMEOUT_MAX` does the same for per-runtime timeout ceilings (Codex caps
 `SessionEnd` and `Interrupt` at 3s).
 
-Codex sources verified 2026-09-13. **Grok remains unverified** — no authoritative
-public hook spec was found; its column mirrors the Claude schema in practice and
-additions to it are provisional.
+Both verified 2026-09-13 — Codex against `learn.chatgpt.com/docs/hooks`, Grok
+against `docs.x.ai/build/features/hooks`. Grok's documented event set matches the
+column below exactly. Two things the spec settled that inference had got wrong:
+its payload is **camelCase** (`hookEventName`, `toolName`, `toolInput`), not the
+Claude snake_case the shared core reads, and `async` is not in its schema.
 
 ---
 
@@ -66,12 +68,27 @@ additions to it are provisional.
 | ConfigChange | ✅ | ❌ | ❌ | ❌ | `native-event-log.sh` |
 | InstructionsLoaded | ✅ | ❌ | ❌ | ❌ | `instructions-loaded.sh` (Claude only) |
 | FileChanged | ✅ | ❌ | ❌ | ❌ | `config-changed.sh` (Claude only) |
-| SessionEnd | ✅ | ✅ | ✅ | ✅ | `session-end.sh` → detaches `scripts/session_finalize.sh` |
+| SessionEnd | ✅ | ✅ | ✅ | ✅ | `session-end.sh` → detaches `scripts/session_finalize.sh`; commits only on a real exit, not `clear`/`resume` |
+| Interrupt | ❌ | ❌ | ✅ | ❌ | `native-event-log.sh` (Codex-only; 3s ceiling) |
 
 `cek_runtime_supports <Event>` in `scripts/cek_runtime.sh` encodes the same table
 for runtime no-ops. It answers "does this runtime emit this event", **not** "does
 the kit wire it" — `WorktreeCreate` is supported by Claude Code and still absent
 from `hooks/hooks.json` on purpose.
+
+### Grok speaks camelCase
+
+Grok's hook payload is `hookEventName` / `sessionId` / `cwd` / `workspaceRoot` /
+`toolName` / `toolInput`. The shared core under `.claude/hooks/` reads the Claude
+snake_case names — `.tool_input` in seven places, `.transcript_path` in six,
+`.file_path` in six, `.session_id` in five. Every one of those resolved to empty
+on Grok, which meant `guard-dangerous.sh` could not see the command it exists to
+inspect: the only blocking event Grok has was inert regardless of exit codes.
+
+`.grok/hooks/run.sh` now normalises the payload before dispatch, additively — the
+camelCase keys stay, snake_case aliases are added only where absent, so a future
+Grok that sends both keeps working. Environment detection already matched
+(`GROK_SESSION_ID` is one of the documented variables).
 
 ### Cursor-native hooks the kit uses
 
@@ -90,8 +107,15 @@ the kit banner that way, so Cursor sessions start with the same handover state
 Claude Code sessions get. Raw stdout is *not* injected — the JSON shape is
 required.
 
-Still unused on Cursor: `preToolUse` / `postToolUse` (generic tool hooks),
-`beforeMCPExecution`, `afterShellExecution`, `workspaceOpen`, and the Tab hooks.
+**Deliberately unused, not overlooked.** On Cursor: `preToolUse` / `postToolUse`
+duplicate coverage the kit already gets from `beforeShellExecution` and
+`afterFileEdit`; `beforeMCPExecution` and `afterShellExecution` are governance
+surfaces this kit has no policy for; `workspaceOpen` fires outside any session,
+where there is no session state to maintain; the Tab hooks cover inline
+completions, which never touch context state. On Claude Code: `MessageDisplay`
+(10s budget on a per-message event), `Elicitation` / `ElicitationResult` (MCP
+input, not context), and `WorktreeCreate` (see below). Wiring any of these would
+add per-event cost for no handover benefit.
 
 ### Why `WorktreeCreate` is not wired
 
@@ -154,6 +178,9 @@ Either way, run `/hooks` once to review and trust the hooks: installing or
 enabling a plugin does not trust its hooks, and Codex records trust against each
 hook's hash, so a changed hook needs re-approval.
 
-**Grok** — open the project and run `/hooks-trust` once. Confirm Hooks tab shows
-`cek-hooks.json` entries. Prefer Grok  + Claude settings together (deduped) or
-disable Claude compat hooks if you want a single source.
+**Grok** — open the project; hooks load from `.grok/hooks/*.json` once the
+project is trusted, and Grok's hooks UI lists what it found. Note that Grok also
+reads `.claude/settings.json` **and** `.cursor/hooks.json` (documented), so this
+repo ships three files Grok may load; `.claude/settings.json` declares no hooks
+since v3.0.0, and the Cursor file targets Cursor-only event names, so
+`cek-hooks.json` remains the only set that fires.

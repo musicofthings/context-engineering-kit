@@ -12,7 +12,7 @@ Runtimes checked against their **live** specs, not cached docs:
 | Cursor | `cursor.com/docs/hooks` |
 | Codex CLI | `learn.chatgpt.com/docs/hooks` |
 | Claude API model IDs | bundled `claude-api` skill model table |
-| Grok Build | **not verified** — no authoritative public hook spec located |
+| Grok Build | `docs.x.ai/build/features/hooks` — **verified 2026-09-13**, see R-027 |
 
 The repo's own gates (`generate_runtime_hooks.py --check`, `check_sync.sh`,
 `ruff`, `bash -n`) all pass. Every finding below is something those gates do
@@ -524,3 +524,91 @@ git repo, so it exercises the `$HOME` branch rather than stopping at the git
 check; without the normalisation fix, five of its seven assertions fail.
 
 Covered by three new assertions in `eval_hooks_smoke.sh` (67 checks, was 64).
+
+---
+
+## Known gaps closed (R-027..R-030)
+
+The v3.0.0 notes listed five things as known gaps rather than findings. All are
+now closed.
+
+### R-027 Grok was never verified — and two inferences were wrong
+_Status: **fixed**._
+
+The capability matrix said Grok's column "mirrors the Claude schema in practice"
+and treated additions as provisional, because no public spec had been found. One
+exists: `docs.x.ai/build/features/hooks`.
+
+The **event set was right** — the documented list matches the kit's column
+exactly, all fourteen. Two inferences were wrong, and one of them mattered:
+
+1. **The payload is camelCase.** `hookEventName`, `sessionId`, `cwd`,
+   `workspaceRoot`, `toolName`, `toolInput`. The shared core reads the Claude
+   snake_case names — `.tool_input` in seven places, `.transcript_path` in six,
+   `.file_path` in six, `.session_id` in five — so on Grok every one of those
+   read empty. `guard-dangerous.sh` could not see the command it exists to
+   inspect. Combined with the `|| true` below, the only blocking event Grok has
+   was doubly inert.
+2. **`async` is not in Grok's schema** (`matcher`, `type`, `command`, `url`,
+   `timeout`). The generator was emitting it on four entries.
+
+Also settled: **`PreToolUse` is the only blocking event** (exit 2 denies, reason
+on stderr); everything else is passive and fails open. That retires the
+"unverified, so left alone" note on `.grok/hooks/run.sh` — the `|| true` there
+was a real defect, same as CEK-CODEX-002, and is fixed the same way.
+
+And a detail worth knowing: Grok reads `.claude/settings.json` **and**
+`.cursor/hooks.json`, both of which this repo ships. Neither fires — the former
+declares no hooks since v3.0.0, the latter uses Cursor-only event names — but
+that is now stated rather than assumed.
+
+### R-028 SessionEnd committed on `/clear` and `/resume`
+_Status: **fixed**._
+
+`SessionEnd` fires on `clear`, `resume`, `logout`, `prompt_input_exit` and
+`other`. The kit treated all five as a session ending, so clearing context
+mid-task produced a `chore(context): save session state` commit.
+
+State is still saved on every reason — that is the kit's whole job, and `/clear`
+is exactly when losing it hurts. Only the git commit is now gated, on a real
+exit.
+
+### R-029 `AGENTS.md` read Claude-first, and `init-cek` ignored it
+_Status: **fixed** — closes the rest of CEK-CODEX-006._
+
+The rename in R-003 made Codex able to *find* the file; its contents still
+assumed Claude Code. The roles and the communication protocol are now
+runtime-neutral, with harness-specific mechanics confined to a *Runtime
+mechanics* table and the invocation section. `init-cek` creates `AGENTS.md`,
+**never** overwrites one with substantive content (not even under `--force`),
+and detects a lowercase `agents.md` so it renames rather than adding a second
+file.
+
+Removed while here: `/hooks-trust`, an unverified Grok command the README, the
+matrix and `AGENTS.md` all asserted. It is not in the documentation; the install
+notes now describe trusting the project without naming a command that may not
+exist.
+
+### R-030 CI never exercised a Codex install
+_Status: **fixed**._
+
+Manifest validation proved the JSON parsed. It could not prove the thing a user
+actually does. `scripts/eval_codex_install.sh` packages the plugin, unpacks it
+to a separate plugin root, and drives its hooks against an unrelated git project
+— from the project root *and* from a nested subdirectory, since Codex may start
+below it. 20 checks: packaging completeness, the manifest never inheriting
+`hooks/hooks.json`, only Codex-implemented events declared, commands resolving
+under `${CLAUDE_PLUGIN_ROOT}`, state landing in the project and not the plugin
+root, the guard still denying with exit 2 through the installed copy, and the
+3-second `SessionEnd` ceiling.
+
+### Not closed, and why
+
+`Interrupt` is now wired on Codex — an interrupted turn is a handover concern.
+The rest of the unused surface is a deliberate decision, recorded in the
+capability matrix: Cursor's `preToolUse`/`postToolUse` duplicate coverage the
+kit already has, `beforeMCPExecution` and `afterShellExecution` are governance
+surfaces it has no policy for, `workspaceOpen` fires where there is no session
+state, the Tab hooks never touch context; on Claude Code `MessageDisplay`,
+`Elicitation`/`ElicitationResult`, and `WorktreeCreate`. Each would add per-event
+cost for no handover benefit.

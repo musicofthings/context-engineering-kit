@@ -152,6 +152,12 @@ jobs:
       - name: Hook + trigger smoke evals
         run: bash scripts/eval_hooks_smoke.sh
 
+      - name: Codex plugin install evals
+        # Packages the plugin, unpacks it elsewhere, and drives its hooks from
+        # an unrelated project (and a nested subdirectory). Manifest validation
+        # alone never proved the thing a user actually does.
+        run: bash scripts/eval_codex_install.sh
+
       - name: Summary
         run: |
           echo "CEK quality checks passed"
@@ -217,3 +223,6 @@ jobs:
 
       - name: Usage lifecycle evals
         run: /bin/bash scripts/eval_usage_lifecycle.sh
+
+      - name: Codex plugin install evals
+        run: /bin/bash scripts/eval_codex_install.sh

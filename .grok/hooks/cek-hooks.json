@@ -77,8 +77,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash .grok/hooks/run.sh hook post-tool-failure.sh",
-            "async": true
+            "command": "bash .grok/hooks/run.sh hook post-tool-failure.sh"
           }
         ]
       }
@@ -88,8 +87,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash .grok/hooks/run.sh hook permission-denied.sh",
-            "async": true
+            "command": "bash .grok/hooks/run.sh hook permission-denied.sh"
           }
         ]
       }
@@ -139,8 +137,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash .grok/hooks/run.sh subagent-start",
-            "async": true
+            "command": "bash .grok/hooks/run.sh subagent-start"
           }
         ]
       }
@@ -150,8 +147,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash .grok/hooks/run.sh subagent-stop",
-            "async": true
+            "command": "bash .grok/hooks/run.sh subagent-stop"
           }
         ]
       }

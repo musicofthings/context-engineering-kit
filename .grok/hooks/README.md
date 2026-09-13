@@ -1,7 +1,8 @@
 # Grok adapter (Phase C)
 
 `cek-hooks.json` is discovered by Grok Build when this folder is trusted
-(`/hooks-trust`). `run.sh` sets `CEK_RUNTIME=grok` and dispatches to
+(trust the project in Grok's hooks UI). `run.sh` sets `CEK_RUNTIME=grok`, normalises
+Grok's camelCase payload to the snake_case names the shared core reads, and dispatches to
 `.claude/hooks/*`.
 
 Grok may also load `.claude/settings.json`, which declares no hooks since

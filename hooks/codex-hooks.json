@@ -134,6 +134,17 @@
           }
         ]
       }
+    ],
+    "Interrupt": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/.codex/hooks/run.sh\" hook native-event-log.sh",
+            "timeout": 3
+          }
+        ]
+      }
     ]
   }
 }

@@ -127,6 +127,50 @@ else
   fail "missing docs/runtime-capability-matrix.md"
 fi
 
+# 11) Grok speaks camelCase. Verified against docs.x.ai/build/features/hooks on
+# 2026-09-13: the payload is hookEventName / sessionId / toolName / toolInput,
+# while the shared core reads the Claude snake_case names. Without the adapter's
+# normalisation, guard-dangerous.sh cannot see the command it inspects — so the
+# only blocking event Grok has was inert.
+GROK_SANDBOX=$(mktemp -d "${TMPDIR:-/tmp}/cek-phasec-grok.XXXXXX")
+git -C "$GROK_SANDBOX" init -q .
+git -C "$GROK_SANDBOX" config user.email eval@test
+git -C "$GROK_SANDBOX" config user.name eval
+printf '# x\n' > "$GROK_SANDBOX/CLAUDE.md"
+git -C "$GROK_SANDBOX" add -A >/dev/null 2>&1
+git -C "$GROK_SANDBOX" commit -qm init >/dev/null 2>&1
+
+GROK_DANGER=$(python3 -c "
+import json
+print(json.dumps({'hookEventName':'PreToolUse','sessionId':'g1','toolName':'Bash',
+ 'toolInput':{'command':'rm'+' -'+'rf'+' '+'/'}}))" 2>/dev/null)
+GROK_RC=0
+printf '%s' "$GROK_DANGER" | env CLAUDE_PROJECT_DIR="$GROK_SANDBOX" CLAUDE_PLUGIN_ROOT="$PWD" \
+  GROK_SESSION_ID=g1 bash .grok/hooks/run.sh hook guard-dangerous.sh >/dev/null 2>&1 || GROK_RC=$?
+if [ "$GROK_RC" -eq 2 ]; then
+  pass "grok camelCase payload reaches the guard (denies with exit 2)"
+else
+  fail "grok camelCase payload denied — adapter normalisation missing?"
+fi
+
+GROK_RC=0
+printf '%s' '{"hookEventName":"PreToolUse","sessionId":"g1","toolName":"Bash","toolInput":{"command":"ls -la"}}' \
+  | env CLAUDE_PROJECT_DIR="$GROK_SANDBOX" CLAUDE_PLUGIN_ROOT="$PWD" GROK_SESSION_ID=g1 \
+    bash .grok/hooks/run.sh hook guard-dangerous.sh >/dev/null 2>&1 || GROK_RC=$?
+if [ "$GROK_RC" -eq 0 ]; then
+  pass "grok safe command allowed"
+else
+  fail "grok safe command should exit 0"
+fi
+rm -rf "$GROK_SANDBOX"
+
+# 12) Grok's documented schema is matcher/type/command/url/timeout — no async.
+if grep -q '"async"' .grok/hooks/cek-hooks.json; then
+  fail "grok config emits \"async\", which is not in Grok's documented schema"
+else
+  pass "grok config emits no undocumented async key"
+fi
+
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "Results: $PASS passed, $FAIL failed"
