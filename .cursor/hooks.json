@@ -16,6 +16,12 @@
     "afterFileEdit": [
       { "command": "bash .cursor/hooks/track-edit.sh" }
     ],
+    "beforeReadFile": [
+      { "command": "bash .cursor/hooks/guard-read.sh", "failClosed": true }
+    ],
+    "afterAgentResponse": [
+      { "command": "bash .cursor/hooks/on-agent-response.sh" }
+    ],
     "stop": [
       { "command": "bash .cursor/hooks/on-stop.sh" }
     ],

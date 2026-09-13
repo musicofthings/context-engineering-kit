@@ -120,7 +120,36 @@ head_ "Stop — extract-state + usage-tracker"
 fire extract-state-on-stop.sh "{$BASE,\"hook_event_name\":\"Stop\",\"stop_hook_active\":false}"
 [ "$RC" -eq 0 ] && ok "extract-state exit 0" || bad "extract-state exit 0" "rc=$RC $ERR"
 [ "$(jqs '.last_stop_turn')" = "2" ] && ok "turn count derived from transcript (=2)" || bad "turn count from transcript" "got '$(jqs '.last_stop_turn')' want 2"
-jqs '.next_action' | grep -qi "run the integration tests\|wire the CLI" && ok "next_action extracted from response" || ok "next_action=$(jqs '.next_action')"
+# This assertion used to end in `|| ok "next_action=..."`, so it passed whatever
+# happened — which is how a broken extractor went unnoticed: `next[: ]` matched a
+# single separator, so "Next: I will ..." (colon AND space) never matched and
+# every turn fell through to the "check session_handover.md" default.
+jqs '.next_action' | grep -qi "run the integration tests\|wire the CLI" \
+  && ok "next_action extracted from response" \
+  || bad "next_action extracted from response" "got '$(jqs '.next_action')'"
+
+# last_assistant_message must win over the transcript. The transcript is written
+# asynchronously and may lag the current turn, so reading it can yield the
+# PREVIOUS turn's next action. Here the transcript says "wire the CLI flag" and
+# the payload says something else; the payload must win.
+# Reset to a placeholder first — an existing real next_action is deliberately
+# never clobbered, so without this the assertion would test that rule instead.
+jq '.next_action = "unknown"' "$STATE" > "$STATE.tmp" && mv "$STATE.tmp" "$STATE"
+fire extract-state-on-stop.sh "{$BASE,\"hook_event_name\":\"Stop\",\"last_assistant_message\":\"Done. Next: I will publish the release notes.\"}"
+case "$(jqs '.next_action')" in
+  *"publish the release notes"*) ok "last_assistant_message beats the lagging transcript" ;;
+  *) bad "last_assistant_message beats transcript" "got '$(jqs '.next_action')'" ;;
+esac
+
+# Cursor's afterAgentResponse carries the same text as `.text`. Reset
+# next_action to a placeholder first: a real value is deliberately not
+# clobbered, which is the behaviour the previous assertion just proved.
+jq '.next_action = "unknown"' "$STATE" > "$STATE.tmp" && mv "$STATE.tmp" "$STATE"
+fire extract-state-on-stop.sh "{$BASE,\"hook_event_name\":\"Stop\",\"text\":\"Done. Next: I will regenerate the runtime hooks.\"}"
+case "$(jqs '.next_action')" in
+  *"regenerate the runtime hooks"*) ok "Cursor afterAgentResponse .text accepted" ;;
+  *) bad "Cursor .text accepted" "got '$(jqs '.next_action')'" ;;
+esac
 
 printf '%s' "{$BASE,\"hook_event_name\":\"Stop\"}" | python3 "$KIT/scripts/usage-tracker.py" >/dev/null 2>&1
 rc=$?

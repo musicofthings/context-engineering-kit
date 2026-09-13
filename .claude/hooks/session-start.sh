@@ -32,7 +32,13 @@ source "${CLAUDE_PLUGIN_ROOT:-$PROJECT_DIR}/scripts/resolve_state_dir.sh"
 # shellcheck source=../../scripts/find_python.sh
 source "${CLAUDE_PLUGIN_ROOT:-$PROJECT_DIR}/scripts/find_python.sh" 2>/dev/null || PYTHON=""
 # shellcheck source=../../scripts/cek_auto_save.sh
-source "${CLAUDE_PLUGIN_ROOT:-$PROJECT_DIR}/scripts/cek_auto_save.sh" 2>/dev/null || true
+_cas="${CLAUDE_PLUGIN_ROOT:-$PROJECT_DIR}/scripts/cek_auto_save.sh"
+# `source` is a special builtin — a missing file aborts under `set -e` despite
+# the `|| true`. Test first.
+if [ -f "$_cas" ]; then
+  source "$_cas" 2>/dev/null || true
+fi
+unset _cas
 if declare -f cek_auto_save_init >/dev/null 2>&1; then
   cek_auto_save_init "$MAIN_ROOT/config/usage_budget.json" \
     "${CLAUDE_PLUGIN_ROOT:-$PROJECT_DIR}/config/plugin_settings.json"
@@ -231,7 +237,7 @@ fi
 cat << INJECT
 
 ╔══════════════════════════════════════════════════════════╗
-║  context-engineering-kit v2.7.0 — Session Started         ║
+║  context-engineering-kit v3.0.0 — Session Started         ║
 ────────────────────────────────────────────────────────────
 $JQ_WARNING
 📅 Date/Time    : $TODAY

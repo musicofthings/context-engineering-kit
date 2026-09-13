@@ -1,6 +1,6 @@
 {
   "name": "context-engineering-kit",
-  "version": "2.7.0",
+  "version": "3.0.0",
   "description": "Automated context preservation for Claude Code, Cursor, Grok, and Codex across sessions, devices, worktrees, and subscriptions. Hooks execute real handovers at usage thresholds; multi-runtime adapters share one logic core.",
   "author": {
     "name": "musicofthings",

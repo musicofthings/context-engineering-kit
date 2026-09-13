@@ -6,7 +6,10 @@
 # file declares no hooks, so this adapter is the only Grok hook source.
 set -uo pipefail
 
-export CEK_ADAPTER_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Assign then export (SC2155): `export VAR="$(...)"` masks the command
+# substitution's exit status behind export's own.
+CEK_ADAPTER_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+export CEK_ADAPTER_DIR
 # shellcheck source=../../scripts/cek_runtime.sh
 source "$(cd "$CEK_ADAPTER_DIR/../.." && pwd)/scripts/cek_runtime.sh"
 export CEK_RUNTIME="grok"

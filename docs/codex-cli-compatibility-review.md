@@ -1,10 +1,45 @@
 # Codex CLI Compatibility Review and Implementation Handoff
 
-Status: implementation required
+Status: partially implemented — see the status block below
 Review date: 2026-07-31
 Kit version: 2.7.0
 Source revision: `f8e0259cd994b7b6969af247db526fc926bb8e2c`
 Codex CLI reviewed: 0.146.0
+
+> ## Status as of 2026-09-13
+>
+> Re-checked against `learn.chatgpt.com/docs/hooks` and `.../build-plugins`.
+> See `docs/sota-compatibility-review-2026-09.md` for the current pass.
+>
+> **Closed**
+>
+> | ID | How |
+> |----|-----|
+> | CEK-CODEX-001 | `.codex-plugin/plugin.json` added, naming `./hooks/codex-hooks.json`; `package_plugin.py` validates both manifests (partial — no end-to-end install test yet, see CEK-CODEX-012) |
+> | CEK-CODEX-002 | `.codex/hooks/run.sh` propagates exit `2`; other non-zero statuses fail open with a log |
+> | CEK-CODEX-003 | `PostToolUseFailure` / `StopFailure` / `Notification` are Grok-only; `generate_runtime_hooks.py` now *raises* on an unsupported event via `RUNTIME_EVENTS` |
+> | CEK-CODEX-006 | `AGENTS.md` is tracked under that exact name (partial — the runtime-neutral content split is still open) |
+>
+> **Corrected — this finding is now wrong**
+>
+> CEK-CODEX-011 states Codex "parses this key without executing command hooks
+> asynchronously." That is no longer true. The current docs describe a full
+> background-hook implementation: `"async": true`, up to eight concurrent per
+> session, output delivered at the next safe point in the conversation. Do not
+> strip `async` from the generator. One carve-out still holds — *"SessionEnd
+> hooks always run synchronously, even when `async` is `true`"* — and the
+> 3-second SessionEnd ceiling is real and now enforced by `RUNTIME_TIMEOUT_MAX`.
+>
+> **New since this review**
+>
+> - `Interrupt` is a Codex event (1s default, 3s max, `matcher` ignored). Unused.
+> - `additionalContextLimit` caps model-visible hook output per handler.
+> - Codex reads `$REPO_ROOT/.claude-plugin/marketplace.json` as a
+>   legacy-compatible marketplace, so this repo needs no second marketplace file.
+> - `Stop` and `SubagentStop` require JSON on stdout when exiting 0 — plain text
+>   is invalid for those events (fixed in `usage-tracker.py`).
+>
+> Everything not listed above is still open as written.
 
 ## Outcome
 

@@ -50,6 +50,70 @@ jobs:
           done
           echo "bash -n OK"
 
+      - name: ShellCheck
+        run: |
+          # Added after R-002: `|| true` in the Codex adapter silently disarmed
+          # the dangerous-command guard, and `bash -n` cannot see that class of
+          # bug. Excluded codes: SC1090/SC1091 (dynamic `source` paths are the
+          # adapter pattern here), SC2034 (vars consumed by sourcing callers),
+          # SC2088 (a literal "~" inside an assertion *message*).
+          sudo apt-get install -y -qq shellcheck
+          shellcheck --version
+          # shellcheck disable=SC2046
+          shellcheck -S warning -e SC1090,SC1091,SC2034,SC2088 $(git ls-files '*.sh')
+          echo "shellcheck OK"
+
+      - name: AGENTS.md is tracked under the exact uppercase name
+        run: |
+          # R-003: core.ignorecase on macOS/Windows made lowercase agents.md
+          # *look* like AGENTS.md locally while Linux clones got neither.
+          git ls-files --error-unmatch AGENTS.md >/dev/null \
+            || { echo "ERROR: AGENTS.md is not tracked under that exact name"; exit 1; }
+          if git ls-files | grep -qx 'agents.md'; then
+            echo "ERROR: lowercase agents.md is tracked — Codex needs AGENTS.md"
+            exit 1
+          fi
+          echo "AGENTS.md OK"
+
+      - name: Runtime manifests agree and keep their hooks apart
+        run: |
+          # R-013: Codex falls back to hooks/hooks.json (the Claude manifest)
+          # when .codex-plugin/plugin.json declares no `hooks` entry.
+          python - <<'CHK'
+          import json, sys
+          claude = json.load(open(".claude-plugin/plugin.json"))
+          codex  = json.load(open(".codex-plugin/plugin.json"))
+          market = json.load(open(".claude-plugin/marketplace.json"))
+          errs = []
+          if claude["version"] != codex["version"]:
+              errs.append(f"version mismatch: {claude['version']} vs {codex['version']}")
+          if market["plugins"][0]["version"] != claude["version"]:
+              errs.append("marketplace.json version does not match plugin.json")
+          h = codex.get("hooks")
+          entries = h if isinstance(h, list) else ([h] if h else [])
+          if not entries:
+              errs.append("codex manifest declares no hooks entry")
+          for e in entries:
+              if isinstance(e, str) and e.rstrip("/").endswith("hooks/hooks.json"):
+                  errs.append("codex manifest inherits hooks/hooks.json (Claude-only events)")
+          if errs:
+              print("\n".join("ERROR: " + e for e in errs)); sys.exit(1)
+          print("manifests OK at", claude["version"])
+          CHK
+
+      - name: Model IDs are current
+        run: |
+          # R-005: claude-opus-4-8 is previous-generation. Add new retirements
+          # here as they happen; this is a freshness gate, not a syntax check.
+          STALE='claude-opus-4-8|claude-opus-4-7|claude-opus-4-6|claude-sonnet-4-6|claude-haiku-4-5-[0-9]'
+          if git grep -nE "$STALE" -- '*.json' '*.sh' '*.md' \
+               ':!api_docs.md' ':!docs/sota-compatibility-review-2026-09.md' \
+               ':!docs/RELEASE_NOTES_*.md'; then
+            echo "ERROR: stale model IDs above — see docs/sota-compatibility-review-2026-09.md R-005"
+            exit 1
+          fi
+          echo "model IDs OK"
+
       - name: Lint Python (ruff)
         run: |
           # Pinned: an unpinned `pip install ruff` lets a new ruff release
@@ -79,3 +143,31 @@ jobs:
         run: |
           echo "CEK quality checks passed"
           echo "Commit: ${{ github.sha }}"
+
+  windows:
+    # The kit explicitly targets no-admin Windows (docs/windows-no-admin.md,
+    # scripts/schedule_morning_brief.ps1) but every gate ran on Ubuntu only.
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Compile-check Python
+        run: python -m compileall -q scripts
+
+      - name: generate_runtime_hooks --check
+        run: python scripts/generate_runtime_hooks.py --check
+
+      - name: Package builds and validates both manifests
+        run: python scripts/package_plugin.py --out dist-test.zip
+
+      - name: AGENTS.md resolves on a case-preserving checkout
+        shell: bash
+        run: |
+          test -f AGENTS.md || { echo "ERROR: AGENTS.md missing after checkout"; exit 1; }
+          echo "AGENTS.md OK"

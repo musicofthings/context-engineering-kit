@@ -322,6 +322,9 @@ That needs the CI work in R-020.
 
 ## P2 — stale documentation and unused capability
 
+> **R-015 through R-021 are fixed.** Fixing R-018 surfaced four defects that
+> were not in the original pass; they are recorded as R-022..R-025 below.
+
 ### R-014 The capability matrix contradicts the live specs *and* the repo's own review
 _Status: **fixed** alongside R-011._
 
@@ -332,6 +335,7 @@ and `Notification` as ✅ for Codex. `docs/codex-cli-compatibility-review.md`
 `cek_runtime_supports` returns 0 for events Codex will never send.
 
 ### R-015 The Codex review's `async` finding is now out of date
+_Status: **fixed** — `docs/codex-cli-compatibility-review.md` carries a status block correcting it and listing the closed IDs._
 
 CEK-CODEX-011 states Codex *"parses this key without executing command hooks
 asynchronously."* The current docs describe a full background-hook
@@ -341,6 +345,7 @@ always run synchronously, even when `async` is `true`."* Update that finding
 rather than removing `async` from the generator.
 
 ### R-016 Cursor `sessionStart` can inject context; the adapter throws it away
+_Status: **fixed** — the adapter returns `{"additional_context": …}` on stdout and mirrors the banner to stderr._
 
 `.cursor/hooks/on-session-start.sh` sends the whole kit banner to stderr with
 the comment *"Cursor's sessionStart does not inject hook stdout."* True for raw
@@ -355,6 +360,7 @@ Code users get. The `env` field would also carry `CEK_*` into every later hook
 in the session.
 
 ### R-017 Cursor `preCompact` already supplies the numbers the kit calls "unknown"
+_Status: **fixed** — `pre-compact.sh` resolves the percentage from `.context_usage_percent`, then `.context_percent`, then the kit's own `usage-forecast.json`, and only then gives up._
 
 Cursor's `preCompact` input carries `trigger`, `context_usage_percent`,
 `context_tokens`, `context_window_size`, `message_count`, `messages_to_compact`,
@@ -362,6 +368,7 @@ Cursor's `preCompact` input carries `trigger`, `context_usage_percent`,
 This is a free, exact context-percentage source on one of the four runtimes.
 
 ### R-018 Unused Cursor hooks worth adopting
+_Status: **fixed** for the two that serve existing kit goals; the rest stay listed as unused._
 
 | Hook | Why it fits this kit |
 |---|---|
@@ -377,6 +384,7 @@ installed plugin's `hooks/hooks.json` may still be picked up — worth an
 explicit test, same as the Grok case already documented.
 
 ### R-019 Version numbers do not match the shipped behaviour
+_Status: **fixed** — everything reads 3.0.0 and the README has a v3.0.0 section._
 
 `plugin.json`, `marketplace.json`, `CEK_VERSION`, the session banner, and the
 README all say **2.7.0**. `README.md:327`, `README.md:474`,
@@ -386,6 +394,7 @@ change (`a63b71e`, marked `feat!:`) was breaking for anyone opening the repo
 directly rather than installing the plugin, and shipped without a bump.
 
 ### R-020 CI gaps
+_Status: **fixed** — shellcheck, a Windows job, and four new semantic gates._
 
 `.github/workflows/cek-quality.yml` runs `ubuntu-latest` only. Missing:
 
@@ -400,6 +409,7 @@ directly rather than installing the plugin, and shipped without a bump.
 - a `SessionEnd` timeout bound per runtime (R-008, R-011)
 
 ### R-021 Other unused current-spec surface
+_Status: **fixed** for the `set -u` hazard; the unused surface is catalogued, not adopted._
 
 - Claude hook fields never used: `if` (conditional hooks), `once`,
   `statusMessage`, `watchPaths`, `additionalContextLimit` (Codex).
@@ -425,3 +435,49 @@ directly rather than installing the plugin, and shipped without a bump.
 6. **R-016, R-017, R-018** — Cursor is the weakest adapter and has the most
    free capability available.
 7. **R-019, R-020** — version bump and the CI gates that keep the above fixed.
+
+---
+
+## Found while fixing (not in the original pass)
+
+These four surfaced while implementing R-018. Each is fixed in the same commit.
+
+### R-022 `next_action` extraction could not match the most common phrasing
+_Status: **fixed**._
+
+`extract-state-on-stop.sh` guarded and extracted with `next[: ]` — a bracket
+expression matching exactly **one** separator character. "Next: I will run the
+tests" has a colon *and* a space, so it never matched, and every such turn fell
+through to the `check session_handover.md` default. The kit's headline feature
+was silently inert for its most natural input. Now `next[: ]+`.
+
+### R-023 A trailing newline made every payload look non-empty
+_Status: **fixed**._
+
+Reading the assistant text as `jq -r '…' | tr '\n' ' '` turns jq's trailing
+newline into a space, so an absent field yields `" "`, not `""`. Every
+`[ -z "$RESPONSE" ]` fallback below it was therefore dead — including the
+transcript fallback this review had just added. Trimmed before the test.
+
+### R-024 `source` of a missing file aborts despite `|| true`
+_Status: **fixed**._
+
+`source` is a POSIX special builtin: under `set -e` a missing file exits the
+shell outright and the trailing `|| true` does not catch it. Three hooks used
+that pattern (`native-event-log.sh`, `session-start.sh`, and the new
+`config-changed.sh`), so a wrong `CLAUDE_PLUGIN_ROOT` made them exit non-zero
+rather than degrade. On `native-event-log.sh` that matters: it sits on
+`PreModelSwitch`, which can block. Each now tests for the file first.
+
+This is the deeper cause of the `set -u` hazard filed as R-021 — the guard there
+never ran because the script had already exited.
+
+### R-025 The `next_action` assertion could not fail, and one placeholder was sticky
+_Status: **fixed**._
+
+The eval's assertion ended in `|| ok "next_action=$(…)"`, so it passed whatever
+happened — which is how R-022 survived. It now uses `bad`, and two assertions
+were added for source precedence. Separately, `read session_handover.md
+(auto-saved)` was missing from the list of placeholders a real extraction may
+overwrite, so a single threshold auto-save froze `next_action` for the rest of
+the session.

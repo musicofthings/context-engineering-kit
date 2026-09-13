@@ -89,24 +89,53 @@ source "${CLAUDE_PLUGIN_ROOT:-$PROJECT_DIR}/scripts/resolve_state_dir.sh"
 INPUT=$(cat)
 
 # Stop hook payload schema (Claude Code):
-#   { session_id, transcript_path, hook_event_name, stop_hook_active }
-# It does NOT include the assistant response text — that lives in the
-# transcript JSONL at transcript_path. Read the last assistant message there.
+#   { session_id, transcript_path, hook_event_name, stop_hook_active,
+#     last_assistant_message, ... }
+#
+# Prefer last_assistant_message over the transcript. The hooks reference is
+# explicit about why: "The transcript file is written asynchronously and may
+# lag the in-memory conversation, so it may not yet include the current turn's
+# most recent messages when a hook fires. Hooks that need the final assistant
+# text of the current turn should use `last_assistant_message` on Stop and
+# SubagentStop instead of reading the transcript." Grepping the transcript
+# could therefore extract the *previous* turn's next_action, silently.
+#
+# Field by runtime:
+#   .last_assistant_message  Claude Code Stop/SubagentStop, Codex Stop/SubagentStop
+#   .text                    Cursor afterAgentResponse
+#   transcript JSONL         fallback, and still the only source for turn count
 TRANSCRIPT_PATH=$(printf '%s' "$INPUT" | jq -r '.transcript_path // ""' 2>/dev/null || echo "")
 TURN_COUNT=$(printf '%s' "$INPUT" | jq -r '.turn_count // 0' 2>/dev/null || echo "0")
 # Coerce TURN_COUNT to a numeric value — argjson aborts on non-integer.
 case "$TURN_COUNT" in ''|*[!0-9]*) TURN_COUNT=0 ;; esac
 
-RESPONSE=""
+# NB two portability traps here:
+#   - `jq -r` ends its output with a newline, which `tr '\n' ' '` turns into a
+#     trailing space. An absent field therefore yields " ", not "", and every
+#     `[ -z "$RESPONSE" ]` fallback below would be skipped. Trim before testing.
+#   - `[ x = y ] && VAR=` as a standalone line aborts the script under `set -e`
+#     whenever the test is false. Use an if.
+RESPONSE=$(printf '%s' "$INPUT" \
+  | jq -r '(.last_assistant_message // .text // "") | tostring' 2>/dev/null \
+  | tr '\n' ' ' || echo "")
+RESPONSE=$(printf '%s' "$RESPONSE" \
+  | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' 2>/dev/null || printf '%s' "$RESPONSE")
+if [ "$RESPONSE" = "null" ]; then
+  RESPONSE=""
+fi
+
 if [ -n "$TRANSCRIPT_PATH" ] && [ -f "$TRANSCRIPT_PATH" ]; then
   # Grep-prefilter so jq doesn't slurp a multi-MB transcript when only the
   # last assistant turn matters. Each line is one JSON object.
   _ASSISTANT_LINES=$(grep -E '"type"\s*:\s*"assistant"' "$TRANSCRIPT_PATH" 2>/dev/null || true)
-  RESPONSE=$(printf '%s' "$_ASSISTANT_LINES" \
-    | tail -1 \
-    | jq -r '.message.content[]? | select(.type == "text") | .text' 2>/dev/null \
-    | tr '\n' ' ' \
-    || echo "")
+  # Only fall back to the transcript when the payload carried no response text.
+  if [ -z "$RESPONSE" ]; then
+    RESPONSE=$(printf '%s' "$_ASSISTANT_LINES" \
+      | tail -1 \
+      | jq -r '.message.content[]? | select(.type == "text") | .text' 2>/dev/null \
+      | tr '\n' ' ' \
+      || echo "")
+  fi
   # The Stop payload has no turn_count (see the schema note above), so the
   # value read from it was always 0 and last_stop_turn never moved. Derive it
   # from the transcript instead — that is the only real turn counter we have.
@@ -135,9 +164,13 @@ RESPONSE_ONE_LINE=$(printf '%s' "$RESPONSE" | tr '\n\r' '  ' | tr -s ' ')
 
 # Priority 1: explicit "next" statements
 # Use [^!?] (not [^.!?]) so filenames like find_python.sh are not cut at the dot.
-if echo "$RESPONSE_ONE_LINE" | grep -qiE "(next[: ](i'll|i will|step|we'll|we will|is|are|up)|now (i'll|i will|let's|i'm going to)|after this|going to |i'm going to |will now |let me )"; then
+#
+# `next[: ]+` — not `next[: ]`. A single-character class matched ONE separator,
+# so the most natural phrasing of all, "Next: I will ..." (colon *and* space),
+# never matched and fell through to the "check session_handover.md" default.
+if echo "$RESPONSE_ONE_LINE" | grep -qiE "(next[: ]+(i'll|i will|step|we'll|we will|is|are|up)|now (i'll|i will|let's|i'm going to)|after this|going to |i'm going to |will now |let me )"; then
   NEXT_ACTION=$(echo "$RESPONSE_ONE_LINE" \
-    | grep -iEo "(next[: ](i'll|i will|step|we'll|we will|is|are|up)[^!?]{5,80}|now (i'll|i will|let's|i'm going to)[^!?]{5,80}|after this[^!?]{5,60}|going to [^!?]{5,60}|i'm going to [^!?]{5,60}|will now [^!?]{5,60}|let me [^!?]{5,60})" \
+    | grep -iEo "(next[: ]+(i'll|i will|step|we'll|we will|is|are|up)[^!?]{5,80}|now (i'll|i will|let's|i'm going to)[^!?]{5,80}|after this[^!?]{5,60}|going to [^!?]{5,60}|i'm going to [^!?]{5,60}|will now [^!?]{5,60}|let me [^!?]{5,60})" \
     | head -1 \
     | sed 's/[.[:space:]]*$//' \
     || true)
@@ -209,12 +242,16 @@ fi
 # /handover is never clobbered by a noisy last-sentence match every turn.
 # state_write treats a missing/corrupt file as {}, so the // defaults below
 # also serve as the "no state file yet" bootstrap path.
+# Placeholders a real extraction is allowed to overwrite. "read
+# session_handover.md (auto-saved)" comes from cek_auto_save.sh and belongs
+# here: it is a placeholder like the others, and leaving it out meant one
+# threshold auto-save froze next_action for the rest of the session.
 state_write \
   '.last_stop_turn = $turn
    | .last_activity = $ts
    | .state_source = (.state_source // "stop-hook-heuristic")
    | .compact_count = (.compact_count // 0)
-   | (if ($next_action != "" and ((.next_action // "") == "" or (.next_action // "") == "unknown" or (.next_action // "") == "none" or (.next_action // "") == "read session_handover.md" or (.next_action // "") == "check session_handover.md")) then .next_action = $next_action else . end)
+   | (if ($next_action != "" and ((.next_action // "") == "" or (.next_action // "") == "unknown" or (.next_action // "") == "none" or (.next_action // "") == "read session_handover.md" or (.next_action // "") == "check session_handover.md" or (.next_action // "") == "read session_handover.md (auto-saved)")) then .next_action = $next_action else . end)
    | (if ($active_task_hint != "" and ((.active_task // "") == "" or (.active_task // "") == "unknown" or (.active_task // "") == "initial setup")) then .active_task = $active_task_hint else . end)
    | (if ($phase_hint != "" and ((.phase // "") == "" or (.phase // "") == "unknown")) then .phase = $phase_hint else . end)
    | .next_action = (.next_action // "check session_handover.md")

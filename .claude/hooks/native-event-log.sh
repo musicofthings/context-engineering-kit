@@ -11,14 +11,29 @@ set -euo pipefail
 INPUT=$(cat 2>/dev/null || true)
 PROJECT_DIR="${CLAUDE_PROJECT_DIR:-$(pwd)}"
 
-# shellcheck source=../../scripts/resolve_state_dir.sh
-source "${CLAUDE_PLUGIN_ROOT:-$PROJECT_DIR}/scripts/resolve_state_dir.sh" 2>/dev/null || true
+# `source` is a POSIX special builtin: under `set -e` a missing file aborts the
+# shell outright, and the trailing `|| true` does NOT catch it. Test first.
+_rsd="${CLAUDE_PLUGIN_ROOT:-$PROJECT_DIR}/scripts/resolve_state_dir.sh"
+if [ -f "$_rsd" ]; then
+  # shellcheck source=../../scripts/resolve_state_dir.sh
+  source "$_rsd" 2>/dev/null || true
+fi
+unset _rsd
 
 TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 EVENT_NAME=$(printf '%s' "$INPUT" | jq -r '.hook_event_name // .event // "NativeEvent"' 2>/dev/null || echo "NativeEvent")
 TOOL_NAME=$(printf '%s' "$INPUT" | jq -r '(.tool_name // .tool // .name // "") // ""' 2>/dev/null || echo "")
 PATH_VALUE=$(printf '%s' "$INPUT" | jq -r '(.file_path // .path // .cwd // "") // ""' 2>/dev/null || echo "")
 MESSAGE_VALUE=$(printf '%s' "$INPUT" | jq -r '(.message // .reason // .error // .summary // "") // ""' 2>/dev/null || echo "")
+
+# `set -u` + an unset STATE_DIR is a fatal expansion error that `|| true`
+# cannot catch, so the script would exit non-zero whenever resolve_state_dir.sh
+# failed to source (it is guarded with `|| true` above). Harmless on a logging
+# event; not harmless on one that reads the exit status. Default it instead.
+STATE_DIR="${STATE_DIR:-}"
+if [ -z "$STATE_DIR" ]; then
+  exit 0
+fi
 
 mkdir -p "$STATE_DIR" 2>/dev/null || true
 jq -nc \

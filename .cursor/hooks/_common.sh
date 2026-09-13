@@ -4,7 +4,10 @@
 # Cursor adapter bootstrap (Phase C). Delegates to shared scripts/cek_runtime.sh
 # so Cursor / Codex / Grok all set CLAUDE_PROJECT_DIR the same way.
 
-export CEK_ADAPTER_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Assign then export (SC2155): `export VAR="$(...)"` masks the command
+# substitution's exit status behind export's own.
+CEK_ADAPTER_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+export CEK_ADAPTER_DIR
 # shellcheck source=../../scripts/cek_runtime.sh
 source "$(cd "$CEK_ADAPTER_DIR/../.." && pwd)/scripts/cek_runtime.sh"
 export CEK_RUNTIME="cursor"

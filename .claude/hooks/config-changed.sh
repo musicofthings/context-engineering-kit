@@ -25,8 +25,14 @@ set -uo pipefail
 INPUT=$(cat 2>/dev/null || true)
 PROJECT_DIR="${CLAUDE_PROJECT_DIR:-$(pwd)}"
 
-# shellcheck source=../../scripts/resolve_state_dir.sh
-source "${CLAUDE_PLUGIN_ROOT:-$PROJECT_DIR}/scripts/resolve_state_dir.sh" 2>/dev/null || true
+# `source` is a POSIX special builtin: under `set -e` a missing file aborts the
+# shell outright, and the trailing `|| true` does NOT catch it. Test first.
+_rsd="${CLAUDE_PLUGIN_ROOT:-$PROJECT_DIR}/scripts/resolve_state_dir.sh"
+if [ -f "$_rsd" ]; then
+  # shellcheck source=../../scripts/resolve_state_dir.sh
+  source "$_rsd" 2>/dev/null || true
+fi
+unset _rsd
 
 FILE_PATH=$(printf '%s' "$INPUT" | jq -r '.file_path // ""' 2>/dev/null || echo "")
 [ -n "$FILE_PATH" ] || FILE_PATH="(unknown)"

@@ -38,7 +38,26 @@ log "PreCompact triggered at $TIMESTAMP"
 # ── Read compaction context from stdin ──────────────────────────────────────
 INPUT=$(cat)
 TRIGGER=$(echo "$INPUT" | jq -r '.trigger // "auto"' 2>/dev/null || echo "auto")
-CONTEXT_PCT=$(echo "$INPUT" | jq -r '.context_percent // "unknown"' 2>/dev/null || echo "unknown")
+
+# Context percentage, best source first. This used to read `.context_percent`
+# only — a field Claude Code's PreCompact payload does not carry — so every
+# snapshot commit was stamped `ctx=unknown%`.
+#   .context_usage_percent  Cursor preCompact (also sends context_tokens and
+#                           context_window_size; this is an exact number)
+#   .context_percent        legacy/no known emitter, kept for compatibility
+#   usage-forecast.json     the kit's own estimate, maintained by usage-tracker
+CONTEXT_PCT=$(echo "$INPUT" | jq -r '
+  (.context_usage_percent // .context_percent // empty) | tostring
+' 2>/dev/null || echo "")
+if [ -z "$CONTEXT_PCT" ] || [ "$CONTEXT_PCT" = "null" ]; then
+  CONTEXT_PCT=$(jq -r '.ctx_pct // empty' "$STATE_DIR/usage-forecast.json" 2>/dev/null || echo "")
+fi
+if [ -z "$CONTEXT_PCT" ] || [ "$CONTEXT_PCT" = "null" ]; then
+  CONTEXT_PCT="unknown"
+else
+  # Normalise 84.7 -> 84 so the value reads the same in commits and handovers.
+  CONTEXT_PCT="${CONTEXT_PCT%%.*}"
+fi
 
 log "Trigger: $TRIGGER | Context: $CONTEXT_PCT%"
 

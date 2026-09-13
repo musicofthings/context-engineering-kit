@@ -6,7 +6,7 @@ Thin adapters set `CLAUDE_PROJECT_DIR` / `CEK_RUNTIME` and dispatch into that co
 | Runtime | Config entrypoint | Adapter | Notes |
 |---------|-------------------|---------|--------|
 | **Claude Code** | `hooks/hooks.json` (plugin) + `.claude/settings.json` (project) | direct | Full event set; injects SessionStart / UserPromptSubmit stdout into context |
-| **Cursor** | `.cursor/hooks.json` | `.cursor/hooks/*.sh` → `cek_runtime.sh` | camelCase events; inject text → stderr |
+| **Cursor** | `.cursor/hooks.json` | `.cursor/hooks/*.sh` → `cek_runtime.sh` | camelCase events; `sessionStart` injects via JSON `additional_context`, everything else → stderr |
 | **Codex** | `.codex/hooks.json` (project) + `.codex-plugin/plugin.json` → `hooks/codex-hooks.json` (plugin) | `.codex/hooks/run.sh` | Portable relative commands only. The plugin manifest **must** name its hooks file — Codex otherwise defaults to `hooks/hooks.json`, the Claude manifest |
 | **Grok Build** | `.grok/hooks/cek-hooks.json` **and** may also load `.claude/settings.json` | `.grok/hooks/run.sh` | Skips unknown event names; PermissionDenied ≠ PermissionRequest |
 
@@ -54,7 +54,7 @@ additions to it are provisional.
 | StopFailure | ✅ | ❌ | ❌ | ✅ | `stop-failure.sh` |
 | SubagentStart | ✅ | ✅ | ✅ | ✅ | `subagent-lifecycle.sh` |
 | SubagentStop | ✅ | ✅ | ✅ | ✅ | `subagent-lifecycle.sh` |
-| PreCompact | ✅ | ✅ | ✅ | ✅ | `pre-compact.sh` |
+| PreCompact | ✅ | ✅ | ✅ | ✅ | `pre-compact.sh` (Cursor also supplies the real context %) |
 | PostCompact | ✅ | ❌* | ✅ | ✅ | `post-compact.sh` (*Cursor re-injects via SessionStart compact) |
 | Notification | ✅ | ❌ | ❌ | ✅ | `notify.sh` |
 | PreModelSwitch | ✅ | ❌ | ❌ | ❌ | `native-event-log.sh` |
@@ -72,6 +72,26 @@ additions to it are provisional.
 for runtime no-ops. It answers "does this runtime emit this event", **not** "does
 the kit wire it" — `WorktreeCreate` is supported by Claude Code and still absent
 from `hooks/hooks.json` on purpose.
+
+### Cursor-native hooks the kit uses
+
+Three Cursor hooks have no Claude Code counterpart, so they are not rows in the
+table above:
+
+| Cursor hook | Adapter | Why |
+|---|---|---|
+| `afterAgentResponse` | `on-agent-response.sh` | Carries `text`, the final assistant message. Cursor's `stop` payload is only `{status, loop_count}` and its transcript is not in the Claude JSONL shape, so `next_action` extraction was effectively dead on Cursor without this |
+| `beforeReadFile` | `guard-read.sh` (`failClosed: true`) | Enforces the `.env` rule in `.claude/rules/security.md`. Claude Code gets this from `deny: Read(./.env)` in settings.json; Cursor has no equivalent config, so the rule was documentation only |
+| `preCompact` | `on-precompact.sh` | Supplies `context_usage_percent`, `context_tokens` and `context_window_size`. `pre-compact.sh` prefers that over its own estimate — snapshots used to be stamped `ctx=unknown%` on every runtime |
+
+Cursor's `sessionStart` also accepts a JSON response with `additional_context`,
+which is added to the conversation's initial system context. The adapter returns
+the kit banner that way, so Cursor sessions start with the same handover state
+Claude Code sessions get. Raw stdout is *not* injected — the JSON shape is
+required.
+
+Still unused on Cursor: `preToolUse` / `postToolUse` (generic tool hooks),
+`beforeMCPExecution`, `afterShellExecution`, `workspaceOpen`, and the Tab hooks.
 
 ### Why `WorktreeCreate` is not wired
 
@@ -116,7 +136,10 @@ Adapters must export before calling `.claude/hooks/*`:
 
 **Claude Code** — open the project (settings auto-load) or install the plugin.
 
-**Cursor** — open the project; `.cursor/hooks.json` is picked up automatically.
+**Cursor** — open the project in a **trusted** workspace; `.cursor/hooks.json` is
+picked up automatically and reloads on save. Cloud agents run these project
+hooks too, except `sessionStart` / `sessionEnd` / the MCP hooks, which Cursor
+defers there.
 
 **Codex** — two supported modes:
 
