@@ -30,6 +30,16 @@ Codex CLI reviewed: 0.146.0
 > hooks always run synchronously, even when `async` is `true`"* — and the
 > 3-second SessionEnd ceiling is real and now enforced by `RUNTIME_TIMEOUT_MAX`.
 >
+> **Correction — invocation syntax**
+>
+> This review writes Codex skill invocation as `$context-engineering-kit:<skill>`
+> throughout (CEK-CODEX-007 and the acceptance checklist). That namespaced form
+> is **not documented**. `learn.chatgpt.com/docs/build-skills` gives only two:
+> *"In Codex CLI or the IDE extension, run `/skills` or type `$` to mention a
+> skill."* Whether a plugin namespaces its bundled skills is unstated. Use the
+> bare `$<skill>` or the `/skills` picker; treat every `$plugin:skill` spelling
+> below as an assumption this review made, not a documented interface.
+>
 > **New since this review**
 >
 > - `Interrupt` is a Codex event (1s default, 3s max, `matcher` ignored). Unused.

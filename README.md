@@ -114,7 +114,7 @@ Choose the path that matches your agent runtime:
 
 | | Claude Cowork | Claude Code Desktop | Claude Code CLI | Cursor | Grok Build | Codex |
 |--|--------------|---------------------|-----------------|--------|------------|-------|
-| **How** | Upload zip | Upload zip | Clone + `setup.sh` | Clone (`.cursor/`) | Clone; trust the project | Clone (`.codex/`) |
+| **How** | Upload zip | Upload zip | Clone + `setup.sh` | Clone (`.cursor/`) | Clone; `/hooks-trust` | Clone (`.codex/`) |
 | **Skills** | `/context-engineering-kit:*` | `/context-engineering-kit:*` | `/handover` etc. | Chat / scripts | Skills if mirrored | Scripts |
 | **Hooks** | Skills only | ✅ Full | ✅ Full | ✅ Adapters | ✅ `.grok/hooks` (+ optional Claude settings) | ✅ `.codex/hooks` |
 | **Best for** | Chat context | Always-on desktop | Terminal project | Cursor agents | Grok TUI | Codex CLI |
@@ -364,19 +364,23 @@ Capability matrix (Claude / Cursor / Codex / Grok): [`docs/runtime-capability-ma
 
 ## Option E — Grok Build
 
-Grok discovers project hooks under `.grok/hooks/` when the folder is trusted.
+Personal hooks live in `~/.grok/hooks/*.json`; project hooks in
+`<project>/.grok/hooks/*.json`. Project hooks require trust before they run.
 
 ```bash
 git clone https://github.com/musicofthings/context-engineering-kit.git my-project
 cd my-project
-# In Grok: open the project and trust it, then confirm Grok's hooks UI
-# lists the cek-hooks.json entries. Hooks load from .grok/hooks/*.json.
+# In Grok: grant trust the first time you open the repo —
+#   /hooks-trust        (or launch with --trust)
+# Then inspect what loaded in the /hooks tab of the extensions modal.
 ```
 
 - Entry: `.grok/hooks/cek-hooks.json` → `.grok/hooks/run.sh` → `.claude/hooks/*`
-- Grok may also load `.claude/settings.json`, which declares **no hooks** since v3.0.0 — `.grok/hooks/cek-hooks.json` is the only Grok hook source (usage sentinels still guard threshold saves)
+- The adapter **normalises Grok's camelCase payload** (`hookEventName`, `toolName`, `toolInput`) into the snake_case names the shared core reads — without it the guard cannot see the command it inspects
+- `PreToolUse` is Grok's **only** blocking event: exit 2 denies, reason on stderr. Everything else is passive and fails open
+- Grok also reads `.claude/settings.json` **and** `.cursor/hooks.json`. Neither fires here — the first declares no hooks since v3.0.0, the second uses Cursor-only event names — so `cek-hooks.json` is the only set that runs
+- Trust decisions are stored in `~/.grok/trusted_folders.toml`
 - Uses `PermissionDenied` (not `PermissionRequest`); see capability matrix
-- Optional: disable Claude hook scan in `~/.grok/config.toml` with `[compat.claude] hooks = false` if you want a single source
 
 ---
 
@@ -818,7 +822,7 @@ Resuming on another device
 | Windows (Git Bash) | `bash.exe setup.sh`; use `claude.cmd` not `claude` |
 | Windows (no `python3`) | `scripts/find_python.sh` auto-detects `python` and `py.exe` |
 | Cursor IDE | Project hooks in `.cursor/` — no plugin upload; open repo in Cursor |
-| Grok Build | `.grok/hooks/cek-hooks.json`; trust the project so its hooks load |
+| Grok Build | `.grok/hooks/cek-hooks.json`; grant trust with `/hooks-trust` (or `--trust`) |
 | Codex | `.codex/hooks.json` relative paths; cwd = project root |
 | CI/CD | `cek-quality.yml` runs evals + `generate_runtime_hooks --check` |
 

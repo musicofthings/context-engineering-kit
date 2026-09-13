@@ -107,7 +107,7 @@ Previously filed as CEK-CODEX-006.
 makes the direct rename a no-op), with references updated in `CLAUDE.md:26`,
 `.claude/settings.json` (`Write`/`Edit` rules) and
 `.claude/hooks/auto-approve-permissions.sh` (`APPROVED_PATHS`). `AGENTS.md` now
-carries the Codex invocation syntax (`$context-engineering-kit:<skill>` / `/skills`),
+carries the Codex invocation syntax (`$<skill>` / `/skills`),
 the hook-trust requirement, and the 3-second `SessionEnd` cap.
 
 **Still open:** the deeper half of CEK-CODEX-006 — splitting durable,
@@ -584,10 +584,33 @@ mechanics* table and the invocation section. `init-cek` creates `AGENTS.md`,
 and detects a lowercase `agents.md` so it renames rather than adding a second
 file.
 
-Removed while here: `/hooks-trust`, an unverified Grok command the README, the
-matrix and `AGENTS.md` all asserted. It is not in the documentation; the install
-notes now describe trusting the project without naming a command that may not
-exist.
+### R-031 A correct command was removed as "unverified", and an invented one kept
+_Status: **fixed**._
+
+R-029 stripped `/hooks-trust` from the README, the capability matrix and
+`AGENTS.md` on the grounds that it did not appear in Grok's documentation. That
+was wrong. It is documented:
+
+> Project hooks require trust before they run: the first time you open a repo
+> with hooks, grant it with `/hooks-trust` or by launching with `--trust`.
+
+The first fetch of that page simply had not surfaced the trust section, and
+"absent from what I read" got treated as "absent from the docs". Restored, along
+with two details the same section gives: trust is stored in
+`~/.grok/trusted_folders.toml`, and loaded hooks are inspectable in the `/hooks`
+tab of the extensions modal — which is what the vague "Grok's hooks UI" wording
+was reaching for.
+
+Meanwhile the claim that *was* invented survived the same sweep: the README told
+users they could disable Grok's Claude-compat hook scan with
+`[compat.claude] hooks = false` in `~/.grok/config.toml`. No such setting is
+documented. Removed, and the matrix now says explicitly that no documented
+setting exists, so it does not get re-added from memory.
+
+The lesson is in the asymmetry: a sweep that trusts one incomplete read deleted
+a real command and left a fabricated one in place. Verifying a command exists
+and verifying one does *not* exist need different evidence, and the second needs
+the section that would have contained it.
 
 ### R-030 CI never exercised a Codex install
 _Status: **fixed**._

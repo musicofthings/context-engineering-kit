@@ -142,6 +142,34 @@ double-fires. Atomic usage sentinels (Phase A) additionally guarantee the
 
 ---
 
+## Commands this kit names, and where each is documented
+
+Every command referenced in the README, `AGENTS.md`, this file or a `SKILL.md`,
+with its source. A previous sweep deleted a real command (`/hooks-trust`)
+because one incomplete read had not surfaced it, while leaving an invented one
+in place — so the evidence lives here rather than in anyone's memory.
+
+| Command | Runtime | Documented at |
+|---|---|---|
+| `/clear` `/compact` `/rewind` `/fast` `/model` `/resume` `/hooks` `/config` `/permissions` | Claude Code | `code.claude.com/docs/en/commands` |
+| `/handover` `/token-status` `/compact-smart` `/context-health` `/model-switch` `/session-sync` `/usage-forecast` `/morning-brief` `/init-cek` | Claude Code | **this repo** — `skills/<name>/SKILL.md` defines each |
+| `/context-engineering-kit:<skill>` | Claude Code | plugin-scoped form for the same skills |
+| `/skills`, `$<skill>` | Codex | `learn.chatgpt.com/docs/build-skills` |
+| `/hooks` | Codex | `learn.chatgpt.com/docs/hooks` |
+| `/hooks-trust`, `--trust` | Grok | `docs.x.ai/build/features/hooks` |
+| `/hooks` tab (extensions modal) | Grok | same |
+
+**Asserted before and now removed as undocumented:**
+
+| Claim | Why it went |
+|---|---|
+| `[compat.claude] hooks = false` in `~/.grok/config.toml` | No such setting appears in Grok's hooks documentation. Grok reads `.claude/settings.json` and `.cursor/hooks.json`; nothing documents turning that off |
+| `$context-engineering-kit:<skill>` on Codex | Codex documents `/skills` and typing `$` to mention a skill. Whether a plugin namespaces its bundled skills is unstated — use the bare name |
+
+Cursor has no slash-command surface for skills; state the task in prose.
+
+---
+
 ## Environment contract
 
 Adapters must export before calling `.claude/hooks/*`:
@@ -178,9 +206,13 @@ Either way, run `/hooks` once to review and trust the hooks: installing or
 enabling a plugin does not trust its hooks, and Codex records trust against each
 hook's hash, so a changed hook needs re-approval.
 
-**Grok** — open the project; hooks load from `.grok/hooks/*.json` once the
-project is trusted, and Grok's hooks UI lists what it found. Note that Grok also
-reads `.claude/settings.json` **and** `.cursor/hooks.json` (documented), so this
-repo ships three files Grok may load; `.claude/settings.json` declares no hooks
-since v3.0.0, and the Cursor file targets Cursor-only event names, so
-`cek-hooks.json` remains the only set that fires.
+**Grok** — project hooks require trust before they run: grant it with
+`/hooks-trust` the first time you open the repo, or launch with `--trust`. The
+decision is stored in `~/.grok/trusted_folders.toml`. Inspect what loaded in the
+`/hooks` tab of the extensions modal. Note Grok also reads
+`.claude/settings.json` **and** `.cursor/hooks.json` (both documented), so this
+repo ships three files it may load; `.claude/settings.json` declares no hooks
+since v3.0.0 and the Cursor file uses Cursor-only event names, so
+`cek-hooks.json` is the only set that fires. There is **no documented setting**
+to disable that compatibility scan — earlier versions of this README suggested
+one, which was invented.

@@ -59,7 +59,7 @@ New session start
 - Commit updated files with `chore(context):` prefix
 
 **Trigger:** the pre-compact hook on any runtime, or an explicit handover request
-(`/handover` on Claude Code, `$context-engineering-kit:handover` on Codex).
+(`/handover` on Claude Code, `$handover` or the `/skills` picker on Codex).
 
 **Output:** Updated files + confirmation message with files changed.
 
@@ -136,9 +136,9 @@ Append them to CLAUDE.md in the correct sections with today's date.
 | Runtime | Skill invocation | Notes |
 |---------|------------------|-------|
 | Claude Code | `/context-health`, `/handover`, `/token-status` | Plugin-scoped form also works: `/context-engineering-kit:handover` |
-| Codex | `$context-engineering-kit:context-health`, or the `/skills` picker | Codex has no `/model`; recommend a model and reasoning setting, don't claim to switch it |
+| Codex | `$context-health`, or run `/skills` to pick | Documented forms are `/skills` and typing `$` to mention a skill. Whether a plugin namespaces its skills (`$plugin:skill`) is **not documented** — use the bare name. Codex has no `/model`: recommend a model and reasoning setting, don't claim to switch it |
 | Cursor | Skills are not slash commands — state the task in prose | |
-| Grok | Prose; skills are not slash commands | Hooks load from `.grok/hooks/*.json` in a trusted project; review them in Grok's own hooks UI before they run |
+| Grok | Prose; skills are not slash commands | Project hooks need trust first: `/hooks-trust`, or launch with `--trust`. Inspect what loaded in the `/hooks` tab of the extensions modal |
 
 Codex-specific caveats:
 
