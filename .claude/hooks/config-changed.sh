@@ -41,8 +41,8 @@ TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
 if [ -n "${STATE_DIR:-}" ] && [ -d "$STATE_DIR" ]; then
   AUDIT="$(dirname "$STATE_DIR")/config-audit.log"
-  jq -nc --arg ts "$TIMESTAMP" --arg file "$FILE_PATH" --arg event "FileChanged" \
-    '{"ts":$ts,"file":$file,"event":$event}' >> "$AUDIT" 2>/dev/null || true
+  state_append "$AUDIT" "$(jq -nc --arg ts "$TIMESTAMP" --arg file "$FILE_PATH" \
+    --arg event "FileChanged" '{"ts":$ts,"file":$file,"event":$event}' 2>/dev/null)" || true
 fi
 
 echo "[cek] config changed: $BASENAME — thresholds re-read on next hook run" >&2

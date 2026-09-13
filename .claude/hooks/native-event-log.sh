@@ -26,12 +26,17 @@ TOOL_NAME=$(printf '%s' "$INPUT" | jq -r '(.tool_name // .tool // .name // "") /
 PATH_VALUE=$(printf '%s' "$INPUT" | jq -r '(.file_path // .path // .cwd // "") // ""' 2>/dev/null || echo "")
 MESSAGE_VALUE=$(printf '%s' "$INPUT" | jq -r '(.message // .reason // .error // .summary // "") // ""' 2>/dev/null || echo "")
 
-# `set -u` + an unset STATE_DIR is a fatal expansion error that `|| true`
-# cannot catch, so the script would exit non-zero whenever resolve_state_dir.sh
-# failed to source (it is guarded with `|| true` above). Harmless on a logging
-# event; not harmless on one that reads the exit status. Default it instead.
+# Two reasons to stop before writing anything:
+#   - `set -u` + an unset STATE_DIR is a fatal expansion error that `|| true`
+#     cannot catch, so the script would exit non-zero whenever
+#     resolve_state_dir.sh failed to source.
+#   - Containment: this hook appends to native-events.jsonl directly, which used
+#     to bypass CEK_STATE_OK entirely and deposit state in $HOME/.claude.
 STATE_DIR="${STATE_DIR:-}"
 if [ -z "$STATE_DIR" ]; then
+  exit 0
+fi
+if declare -f cek_state_ok >/dev/null 2>&1 && ! cek_state_ok; then
   exit 0
 fi
 

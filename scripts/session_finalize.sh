@@ -99,6 +99,14 @@ HISTORY_FILE="$COMMIT_DIR/.claude/session/history.jsonl"
 HANDOVER_FILE="$COMMIT_DIR/session_handover.md"
 
 # ── Append to history (atomic where flock available, best-effort otherwise) ──
+# Containment first. This append is what actually leaked into
+# $HOME/.claude/session/history.jsonl: it never consulted CEK_STATE_OK, so a
+# session started outside a project still wrote here.
+if declare -f cek_state_ok >/dev/null 2>&1 && ! cek_state_ok; then
+  log "state writes refused for this location — skipping history + commit"
+  exit 0
+fi
+
 if [ -f "$STATE_FILE" ]; then
   ENTRY=$(jq -c --arg ts "$TIMESTAMP" '. + {session_ended: $ts}' "$STATE_FILE" 2>/dev/null || true)
   if [ -n "$ENTRY" ]; then

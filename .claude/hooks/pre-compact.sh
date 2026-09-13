@@ -194,14 +194,14 @@ log "Committing session snapshot to git (cwd=$MAIN_ROOT)..."
 ) || true
 
 # ── Append to audit log ──────────────────────────────────────────────────────
-jq -nc \
+state_append "$AUDIT_LOG" "$(jq -nc \
   --arg ts      "$TIMESTAMP" \
   --arg trigger "$TRIGGER" \
   --arg ctx     "$CONTEXT_PCT" \
   --arg branch  "$GIT_BRANCH" \
   --argjson count "$COMPACT_COUNT" \
   '{timestamp: $ts, trigger: $trigger, context_pct: $ctx, branch: $branch, compact_count: $count}' \
-  >> "$AUDIT_LOG" 2>/dev/null || true
+  2>/dev/null)" || true
 
 # ── Emit context injection text for Claude ───────────────────────────────────
 # Stdout is injected into Claude's context window after compaction

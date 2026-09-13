@@ -265,6 +265,51 @@ NONGIT=$(mktemp -d "${TMPDIR:-/tmp}/cek-nongit.XXXXXX")
 [ -d "$NONGIT/.claude" ] && bad "no state dir in non-git dir" "created .claude/" || ok "no state dir created in non-git dir"
 [ -d "$HOME/.claude/session" ] && bad "~/.claude stays clean" "kit state present" || ok "~/.claude/session stays clean"
 
+# R-026: containment held only inside state_write(). Every direct writer —
+# history.jsonl, native-events.jsonl, the audit logs — and the whole Python path
+# went around it, so a session started in $HOME still deposited state in Claude
+# Code's own config dir. Use a $HOME that IS a git repo, so these assertions
+# exercise the $HOME branch rather than stopping at the git check.
+FAKEHOME=$(mktemp -d "${TMPDIR:-/tmp}/cek-fakehome.XXXXXX")
+git -C "$FAKEHOME" init -q .
+git -C "$FAKEHOME" config user.email eval@test
+git -C "$FAKEHOME" config user.name eval
+printf '# x\n' > "$FAKEHOME/README.md"
+git -C "$FAKEHOME" add -A >/dev/null 2>&1
+git -C "$FAKEHOME" commit -qm init >/dev/null 2>&1
+
+GUARD=$(export HOME="$FAKEHOME" CLAUDE_PROJECT_DIR="$FAKEHOME" CLAUDE_PLUGIN_ROOT="$KIT"
+        source "$KIT/scripts/resolve_state_dir.sh" 2>/dev/null
+        cek_state_ok && echo true || echo false)
+[ "$GUARD" = "false" ] && ok "cek_state_ok false for \$HOME (symlink-safe compare)" \
+  || bad "cek_state_ok false for \$HOME" "got $GUARD"
+
+for h in native-event-log.sh config-changed.sh; do
+  printf '%s' '{"hook_event_name":"PreModelSwitch","file_path":"/x/usage_budget.json"}' \
+    | env HOME="$FAKEHOME" CLAUDE_PROJECT_DIR="$FAKEHOME" CLAUDE_PLUGIN_ROOT="$KIT" \
+      bash "$KIT/.claude/hooks/$h" >/dev/null 2>&1
+done
+(export HOME="$FAKEHOME" CLAUDE_PROJECT_DIR="$FAKEHOME" CLAUDE_PLUGIN_ROOT="$KIT" CEK_SESSION_END_SYNC=1
+ bash "$KIT/scripts/session_finalize.sh") >/dev/null 2>&1
+
+cat > "$FAKEHOME/.pycheck.py" <<'PYEOF'
+import sys
+from pathlib import Path
+sys.path.insert(0, sys.argv[1] + "/scripts")
+import cek_paths as cp
+sf = Path(sys.argv[2]) / ".claude" / "session" / "state.json"
+wrote = cp.state_update(sf, lambda st: dict(st, leaked=True))
+print("REFUSED" if wrote is False and not sf.exists() else "LEAKED")
+PYEOF
+PYGUARD=$(HOME="$FAKEHOME" python3 "$FAKEHOME/.pycheck.py" "$KIT" "$FAKEHOME" 2>/dev/null)
+[ "$PYGUARD" = "REFUSED" ] && ok "python state_update honours containment" \
+  || bad "python state_update honours containment" "got '$PYGUARD'"
+
+LEAKED=$(find "$FAKEHOME/.claude" -type f 2>/dev/null | wc -l | tr -d ' ')
+[ "$LEAKED" = "0" ] && ok "no direct writer leaks under \$HOME/.claude" \
+  || bad "no direct writer leaks" "$LEAKED file(s): $(find "$FAKEHOME/.claude" -type f | tr '\n' ' ')"
+rm -rf "$FAKEHOME"
+
 echo
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "Results: $pass passed, $fail failed"

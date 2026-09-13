@@ -481,3 +481,46 @@ were added for source precedence. Separately, `read session_handover.md
 (auto-saved)` was missing from the list of placeholders a real extraction may
 overwrite, so a single threshold auto-save froze `next_action` for the rest of
 the session.
+
+### R-026 Containment guarded only one writer out of eight
+_Status: **fixed**._
+
+Found by cleaning up, not by reading code: `~/.claude/session/` reappeared with a
+`state.json` and a `history.jsonl` written during this session, carrying
+`session_cwd: /Users/<user>` and a different session id. A Claude Code session
+had started in `$HOME`, and kit state landed inside Claude Code's own config
+directory — exactly what `resolve_state_dir.sh`'s containment guard exists to
+prevent, and the guard was present and correct.
+
+It only covered `state_write()`. Everything else went around it:
+
+| Writer | What leaked |
+|---|---|
+| `session_finalize.sh` | `history.jsonl` — a plain `printf >>`, never consulted `CEK_STATE_OK` |
+| `native-event-log.sh` | `native-events.jsonl` |
+| `config-changed.sh` | `config-audit.log` |
+| `pre-compact.sh` | `compact-audit.log` |
+| `session-start.sh` | `docs-refresh.log` |
+| `auto_init_project.sh` | `state.json` — computes its own path, had only the git check |
+| `cek_paths.py` | **no guard at all** — the Python half of the same contract |
+
+That last one explains the `state.json`; the direct append explains the
+`history.jsonl`.
+
+**Fixed:** `cek_state_ok()` and a guarded `state_append()` in
+`resolve_state_dir.sh`, with every direct writer routed through one or gated on
+the other. `cek_paths.py` gains `state_rejection_reason()` /
+`state_writes_allowed()` mirroring the shell rules, and `state_update()` refuses
+rather than writing. `auto_init_project.sh` gets the `$HOME` and `~/.claude`
+rules it was missing.
+
+**And a second bug underneath it.** Both guards compared paths as strings, but
+`git rev-parse --show-toplevel` always returns a *physical* path while `$HOME`
+is whatever the environment says. Where `$HOME` or a parent is a symlink —
+`/var` → `/private/var` on macOS is the everyday case — the compare silently
+failed to match and the guard waved the write through. Both sides are now
+resolved before comparison. The regression test uses a `$HOME` that is itself a
+git repo, so it exercises the `$HOME` branch rather than stopping at the git
+check; without the normalisation fix, five of its seven assertions fail.
+
+Covered by three new assertions in `eval_hooks_smoke.sh` (67 checks, was 64).

@@ -40,11 +40,25 @@ if [ -f "$STATE_FILE" ] || [ -f "$HANDOVER_FILE" ]; then
   exit 0   # already initialised — nothing to do
 fi
 
-# ── Skip non-git directories (optional safety guard) ─────────────────────────
+# ── Containment: never bootstrap outside a real project checkout ─────────────
+# This script computes STATE_FILE from PROJECT_DIR itself rather than going
+# through resolve_state_dir.sh, so it needs its own copy of the same rules.
+# The git check was already here; $HOME and Claude Code's own config dir were
+# not, and a session started in $HOME would happily bootstrap there.
 if ! git -C "$PROJECT_DIR" rev-parse --git-dir &>/dev/null 2>&1; then
   log "Not a git repo — skipping auto-init for $PROJECT_DIR"
   exit 0
 fi
+if [ "$PROJECT_DIR" = "$HOME" ]; then
+  log "Refusing to auto-init \$HOME itself"
+  exit 0
+fi
+case "$PROJECT_DIR" in
+  "$HOME"/.claude|"$HOME"/.claude/*)
+    log "Refusing to auto-init inside Claude Code's config dir"
+    exit 0
+    ;;
+esac
 
 log "New project detected: $PROJECT_DIR"
 log "Bootstrapping context-kit..."

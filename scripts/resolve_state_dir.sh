@@ -104,16 +104,29 @@ STATE_FILE="$STATE_DIR/state.json"
 # directory. auto_init_project.sh already refused non-git dirs; this helper
 # did not, and it is the one every hook goes through.
 #
-# CEK_STATE_OK=false makes state_write() no-op instead of writing.
+# CEK_STATE_OK=false makes every kit write a no-op. Ask via cek_state_ok(), and
+# route appends through state_append() — checking CEK_STATE_OK only inside
+# state_write() was the original hole: history.jsonl, native-events.jsonl and
+# the audit logs are plain `>>` appends that never consulted it, so a session
+# started in $HOME still deposited state in Claude Code's own config dir.
 CEK_STATE_OK=true
 _rsd_reject=""
+# Compare physical paths. _rsd_base comes from `git rev-parse --show-toplevel`,
+# which always resolves symlinks, while $HOME is whatever the environment says.
+# On any system where $HOME (or a parent) is a symlink — /var -> /private/var on
+# macOS being the common one — a plain string compare silently fails to match
+# and the guard waves the write through.
+_rsd_phys() { ( cd "$1" 2>/dev/null && pwd -P ) || printf '%s' "$1"; }
+_rsd_base_p=$(_rsd_phys "$_rsd_base")
+_rsd_home_p=$(_rsd_phys "$HOME")
+
 if ! git -C "$_rsd_base" rev-parse --git-dir >/dev/null 2>&1; then
   _rsd_reject="not a git repository"
-elif [ "$_rsd_base" = "$HOME" ]; then
+elif [ "$_rsd_base_p" = "$_rsd_home_p" ]; then
   _rsd_reject="\$HOME itself"
 else
-  case "$_rsd_base" in
-    "$HOME"/.claude|"$HOME"/.claude/*) _rsd_reject="inside Claude Code's config dir" ;;
+  case "$_rsd_base_p" in
+    "$_rsd_home_p"/.claude|"$_rsd_home_p"/.claude/*) _rsd_reject="inside Claude Code's config dir" ;;
   esac
 fi
 
@@ -127,8 +140,8 @@ if [ -n "$_rsd_reject" ]; then
   # This directory is machine-local and must never be created outside a real
   # project checkout, so if we are rejecting $HOME/.claude we clear the stale
   # session state instead of leaving it behind for future hooks.
-  case "$_rsd_base" in
-    "$HOME"|"$HOME"/.claude|"$HOME"/.claude/*)
+  case "$_rsd_base_p" in
+    "$_rsd_home_p"|"$_rsd_home_p"/.claude|"$_rsd_home_p"/.claude/*)
       rm -rf "${STATE_DIR:-$HOME/.claude/session}" 2>/dev/null || true
       ;;
   esac
@@ -230,6 +243,26 @@ _state_release() {
 # Returns 0 on success, 1 on any failure (lock not acquired, mktemp failed,
 # jq filter empty). Callers should propagate the return value — do NOT mask
 # with `|| true` if you care whether the write landed.
+# True when kit state may be written at all. Every writer — shell or Python —
+# must gate on this, not just state_write().
+cek_state_ok() {
+  [ "${CEK_STATE_OK:-true}" = "true" ]
+}
+
+# Guarded append. Use instead of `printf ... >> "$STATE_DIR/foo.jsonl"`.
+#   state_append <file> <line>
+# No-ops (returning 1) when containment rejected this location, so a caller
+# that ignores the status still cannot write outside a project.
+state_append() {
+  local file="${1-}" line="${2-}"
+  cek_state_ok || return 1
+  [ -n "$file" ] || return 1
+  case "$file" in
+    */*) mkdir -p "$(dirname "$file")" 2>/dev/null || return 1 ;;
+  esac
+  printf '%s\n' "$line" >> "$file" 2>/dev/null || return 1
+}
+
 state_write() {
   local filter="$1"; shift
   local tmp base

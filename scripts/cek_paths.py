@@ -24,6 +24,7 @@ from __future__ import annotations
 import json
 import os
 import subprocess
+import sys
 import tempfile
 import time
 from contextlib import contextmanager
@@ -54,6 +55,42 @@ def _scope(project_dir: Path, plugin_root: Path) -> str:
             scope = "auto"
     scope = {"repo": "main", "shared": "main", "worktree": "local"}.get(scope, scope)
     return scope if scope in ("auto", "main", "local") else "auto"
+
+
+def state_rejection_reason(base: Path) -> str:
+    """Mirror the containment guard in resolve_state_dir.sh.
+
+    Returns "" when kit state may live under `base`, otherwise why not. The
+    shell helper has refused these locations since 2026-08-30; this module —
+    the Python half of the same contract — had no guard at all, so anything
+    going through state_update()/atomic_write_json() could still deposit state
+    in $HOME or inside Claude Code's own config directory.
+    """
+    # Resolve both sides: git reports physical paths, $HOME may be logical
+    # (/var -> /private/var on macOS), and an unresolved compare silently misses.
+    def _phys(p: Path) -> Path:
+        try:
+            return p.resolve()
+        except Exception:
+            return p
+
+    base = _phys(Path(base))
+    home = _phys(Path(os.path.expanduser("~")))
+    if not _run(["git", "-C", str(base), "rev-parse", "--git-dir"]):
+        return "not a git repository"
+    if base == home:
+        return "$HOME itself"
+    claude_home = home / ".claude"
+    if base == claude_home or claude_home in base.parents:
+        return "inside Claude Code's config dir"
+    return ""
+
+
+def state_writes_allowed(project_dir: Path | None = None) -> bool:
+    """True when kit state may be written for this project directory."""
+    state_dir = resolve_state_dir(project_dir)
+    # state_dir is <base>/.claude/session — step back to <base>.
+    return not state_rejection_reason(state_dir.parent.parent)
 
 
 def resolve_state_dir(project_dir: Path | None = None) -> Path:
@@ -179,7 +216,16 @@ def state_update(state_file: Path, mutate) -> bool:
 
     The Python equivalent of state_write() in resolve_state_dir.sh — a corrupt
     or missing file is treated as {} so the mutation always has a base object.
+
+    Refuses, like the shell version, when containment rejects the location.
     """
+    reason = state_rejection_reason(Path(state_file).parent.parent.parent)
+    if reason:
+        print(
+            f"[cek_paths] skipping state for {state_file} ({reason})",
+            file=sys.stderr,
+        )
+        return False
     with state_lock(state_file) as locked:
         st = load_json(state_file)
         try:

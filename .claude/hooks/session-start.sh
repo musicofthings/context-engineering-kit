@@ -201,7 +201,8 @@ if [ -f "$DOCS_CFG" ] && [ -f "$DOCS_FETCHER" ]; then
   DOCS_FILE="$PROJECT_DIR/api_docs.md"
   if [ ! -f "$DOCS_FILE" ] || [ -n "$(find "$DOCS_FILE" -mmin +"$(( DOCS_TTL * 60 ))" 2>/dev/null)" ]; then
     # $PYTHON resolved once at top of this script via find_python.sh
-    if [ -n "${PYTHON:-}" ] && command -v "$PYTHON" >/dev/null 2>&1; then
+    if [ -n "${PYTHON:-}" ] && command -v "$PYTHON" >/dev/null 2>&1 \
+         && { ! declare -f cek_state_ok >/dev/null 2>&1 || cek_state_ok; }; then
       ( CLAUDE_PROJECT_DIR="$PROJECT_DIR" \
         CLAUDE_PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$PROJECT_DIR}" \
         nohup "$PYTHON" "$DOCS_FETCHER" >> "$STATE_DIR/docs-refresh.log" 2>&1 & ) 2>/dev/null
