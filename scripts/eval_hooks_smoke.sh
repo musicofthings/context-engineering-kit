@@ -170,12 +170,20 @@ fire stop-failure.sh "{$BASE,\"error\":{\"type\":\"rate_limit\"},\"hook_event_na
 # ── Subagent lifecycle ───────────────────────────────────────────────────────
 head_ "SubagentStart / SubagentStop"
 before=$(jqs '.subagents_running'); [ -n "$before" ] || before=0
+# NB the ${braces} around variables that touch the → below. macOS ships bash 3.2
+# as /bin/bash and never patches it, and under a UTF-8 locale that bash reads the
+# arrow's leading byte as part of the identifier, so an unbraced reference placed
+# directly before one becomes the variable `before\xe2` and `set -u` kills the
+# run. (The CI gate greps for that shape, so this note cannot spell it out.)
+# Reported from a stock Mac with
+# LANG=en_IN.UTF-8; it does not reproduce under LC_CTYPE=C, which is why CI and a
+# C-locale shell both stayed green. See docs/bugs/.
 CLAUDE_HOOK_EVENT=SubagentStart fire subagent-lifecycle.sh "{$BASE,\"agent_id\":\"ag-1\",\"agent_type\":\"Explore\"}"
 after=$(jqs '.subagents_running')
-[ "$after" = "$((before+1))" ] && ok "SubagentStart increments ($before→$after)" || bad "SubagentStart increments" "$before→$after"
+[ "$after" = "$((before+1))" ] && ok "SubagentStart increments (${before}→$after)" || bad "SubagentStart increments" "${before}→$after"
 CLAUDE_HOOK_EVENT=SubagentStop fire subagent-lifecycle.sh "{$BASE,\"agent_id\":\"ag-1\",\"agent_type\":\"Explore\"}"
 final=$(jqs '.subagents_running')
-[ "$final" = "$before" ] && ok "SubagentStop decrements back ($after→$final)" || bad "SubagentStop decrements" "$after→$final"
+[ "$final" = "$before" ] && ok "SubagentStop decrements back (${after}→$final)" || bad "SubagentStop decrements" "${after}→$final"
 [ "$(jqs '.active_subagent_ids|length')" = "0" ] && ok "active id list emptied" || bad "active id list" "$(jqs '.active_subagent_ids')"
 
 # ── Compaction ───────────────────────────────────────────────────────────────
@@ -185,7 +193,7 @@ fire pre-compact.sh "{$BASE,\"trigger\":\"auto\",\"context_percent\":\"88\",\"ho
 [ "$RC" -eq 0 ] && ok "pre-compact exit 0" || bad "pre-compact exit 0" "rc=$RC"
 echo "$OUT" | grep -q "COMPACTION CONTEXT PRESERVED" && ok "compaction context injected" || bad "compaction context injected" ""
 cafter=$(jqs '.compact_count')
-[ "$cafter" -gt "${cbefore:-0}" ] && ok "compact_count incremented ($cbefore→$cafter)" || bad "compact_count incremented" "$cbefore→$cafter"
+[ "$cafter" -gt "${cbefore:-0}" ] && ok "compact_count incremented (${cbefore}→$cafter)" || bad "compact_count incremented" "${cbefore}→$cafter"
 grep -q "Active Task" "$SANDBOX/session_handover.md" 2>/dev/null && ok "full handover regenerated (not stub)" || bad "full handover" "stub or missing"
 fire post-compact.sh "{$BASE,\"hook_event_name\":\"PostCompact\"}"
 [ "$RC" -eq 0 ] && ok "post-compact exit 0" || bad "post-compact exit 0" "rc=$RC $ERR"

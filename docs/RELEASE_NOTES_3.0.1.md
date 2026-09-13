@@ -70,6 +70,31 @@ Full suite: `eval_phase_c` 28/28, `eval_usage_lifecycle` 29/29,
 
 ---
 
+## Also in this release: the eval suite crashed on stock macOS
+
+Filed by another session working in this repo, confirmed here before fixing.
+
+`eval_hooks_smoke.sh` died 57 checks in with `before?: unbound variable` on a
+stock Mac. Three lines wrote an unbraced variable reference directly against a
+`→`. macOS ships bash 3.2 as `/bin/bash` and never patches it; under a UTF-8
+locale that bash absorbs the arrow's leading byte into the identifier, and
+`set -u` kills the run.
+
+The locale is the load-bearing half, not just the bash version — it does not
+reproduce under `LC_CTYPE=C`, which is why Ubuntu CI and a C-locale shell on the
+same bash 3.2 both stayed green while real Macs failed.
+
+Fixed by bracing the six interpolations, with two gates so it cannot return: a
+`git grep` in CI for any `$var` immediately followed by a non-ASCII byte, and a
+new `macos-latest` job that runs all three eval suites under `/bin/bash` with
+`LC_ALL=en_US.UTF-8` — the configuration that actually failed. Details in
+`docs/bugs/eval-hooks-smoke-bash32-unbound-var.md`.
+
+This was test infrastructure only. No hook was affected, and every check passes
+once the suite can finish.
+
+---
+
 ## Who should upgrade
 
 Anyone running v3.0.0 across more than one repository, and anyone who has ever

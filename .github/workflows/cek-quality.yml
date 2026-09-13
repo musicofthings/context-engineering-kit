@@ -114,6 +114,19 @@ jobs:
           fi
           echo "model IDs OK"
 
+      - name: No bare $var adjacent to a non-ASCII character
+        run: |
+          # macOS ships bash 3.2 as /bin/bash and never patches it. Under a
+          # UTF-8 locale that bash reads the leading byte of a multibyte char as
+          # part of an identifier, so "$before→$after" becomes the variable
+          # `before\xe2` and `set -u` kills the run. Ubuntu's bash 5 is fine,
+          # which is why this stayed green here while failing on a stock Mac.
+          if git grep -nP '\$[A-Za-z_][A-Za-z0-9_]*[^\x00-\x7F]' -- '*.sh'; then
+            echo "ERROR: brace these — \${var} — so bash 3.2 cannot absorb the next character"
+            exit 1
+          fi
+          echo "no unbraced \$var before a non-ASCII char"
+
       - name: Lint Python (ruff)
         run: |
           # Pinned: an unpinned `pip install ruff` lets a new ruff release
@@ -171,3 +184,36 @@ jobs:
         run: |
           test -f AGENTS.md || { echo "ERROR: AGENTS.md missing after checkout"; exit 1; }
           echo "AGENTS.md OK"
+
+  macos:
+    # The kit's users are heavily macOS, where /bin/bash is 3.2 (frozen
+    # pre-GPLv3) and the default locale is UTF-8. That combination crashed
+    # eval_hooks_smoke.sh while both Ubuntu CI and a C-locale shell stayed
+    # green. Run the evals in exactly that configuration.
+    runs-on: macos-latest
+    env:
+      LANG: en_US.UTF-8
+      LC_ALL: en_US.UTF-8
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install jq
+        run: brew install jq || true
+
+      - name: Show shell version
+        run: /bin/bash --version | head -1
+
+      - name: Hook + trigger smoke evals (stock /bin/bash)
+        run: /bin/bash scripts/eval_hooks_smoke.sh
+
+      - name: Phase C evals
+        run: /bin/bash scripts/eval_phase_c.sh
+
+      - name: Usage lifecycle evals
+        run: /bin/bash scripts/eval_usage_lifecycle.sh

@@ -4,6 +4,29 @@
 delivery via cross-session message; that channel's approval expired unanswered,
 so filing here instead).
 
+> ## Resolved 2026-09-13 — confirmed and fixed in v3.0.1
+>
+> Reproduced independently before fixing. It does **not** reproduce under
+> `LC_CTYPE=C`, which is why both Ubuntu CI and a C-locale shell on the same
+> bash 3.2 stayed green — the locale, not just the bash version, is load-bearing:
+>
+> ```
+> $ /bin/bash -c 'set -u; before=1; echo "$before→"'          # LC_CTYPE=C
+> (1→)
+> $ LC_ALL=en_US.UTF-8 /bin/bash -c 'set -u; before=1; echo "$before→"'
+> /bin/bash: before?: unbound variable
+> ```
+>
+> Fixed by bracing all six interpolations. Two gates added so it cannot return:
+> a `git grep` in CI for any `$var` immediately followed by a non-ASCII byte,
+> and a `macos-latest` job that runs the eval suites under `/bin/bash` with
+> `LC_ALL=en_US.UTF-8` — the exact configuration that failed.
+>
+> Verified: 67/67 under bash 3.2 + UTF-8, still 67/67 under `LC_CTYPE=C`.
+>
+> Thanks to whoever filed this. The report was accurate and the root cause
+> analysis was correct.
+
 **Severity:** Test-infra only — not a plugin defect. The actual hooks all pass
 once this is worked around.
 
