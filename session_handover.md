@@ -1,5 +1,5 @@
 # Session Handover
-_Generated: 2026-08-31T16:35:32Z_
+_Generated: 2026-09-13T04:54:56Z_
 _Branch: main_
 _Trigger: session-end | Context at compact: unknown%_
 _Compact count this project: 0_
@@ -22,7 +22,7 @@ Upgrade CEK to current Claude Code compatibility (v3.0.0) — audit complete, pl
 
 ## 🔄 In Progress (Exact Resume Point)
 **Branch:** `main`
-**Last commit:** `addf15a chore(context): save session state — Upgrade CEK to current Claude Code compatibility (v3.0.0) — audit complete, plan awaiting approval [2026-08-30T17:47:03Z]`
+**Last commit:** `b668a66 chore(context): save session state — Upgrade CEK to current Claude Code compatibility (v3.0.0) — audit complete, plan awaiting approval [2026-08-31T16:35:31Z]`
 **Next immediate action:** Answer the 2 open questions in session_handover.md, then start Phase 0 (remove duplicate hooks block)
 
 ---
@@ -63,7 +63,11 @@ Upgrade CEK to current Claude Code compatibility (v3.0.0) — audit complete, pl
 
 ---
 
+---
+
 ## 🏗 Architecture Decisions Made
+| Decision | Rationale | Date |
+|----------|-----------|------|
 | Decision | Rationale | Date |
 |----------|-----------|------|
 | Decision | Rationale | Date |
@@ -86,17 +90,19 @@ Upgrade CEK to current Claude Code compatibility (v3.0.0) — audit complete, pl
 
 ---
 
+---
+
 ## 🔧 Commands to Resume
 
 **This exact conversation** (SDK/CLI transcript resume):
 ```bash
 # Same machine AND same directory it started in:
-claude --resume 88dd051b-1977-405a-b066-5584b9e2dc80
+claude --resume 04fac5c5-2fb1-486b-9759-bddd9d6a6b87
 ```
-- Session ID    : `88dd051b-1977-405a-b066-5584b9e2dc80`
-- Transcript    : `/Users/theranosis_dx/.claude/projects/-Users-theranosis-dx-projects-context-engineering-kit/88dd051b-1977-405a-b066-5584b9e2dc80.jsonl`
+- Session ID    : `04fac5c5-2fb1-486b-9759-bddd9d6a6b87`
+- Transcript    : `/Users/theranosis_dx/.claude/projects/-Users-theranosis-dx-projects-context-engineering-kit/04fac5c5-2fb1-486b-9759-bddd9d6a6b87.jsonl`
 - Bound to cwd  : `/Users/theranosis_dx/projects/context-engineering-kit`
-- Stored at     : `~/.claude/projects/-Users-theranosis-dx-projects-context-engineering-kit/88dd051b-1977-405a-b066-5584b9e2dc80.jsonl`
+- Stored at     : `~/.claude/projects/-Users-theranosis-dx-projects-context-engineering-kit/04fac5c5-2fb1-486b-9759-bddd9d6a6b87.jsonl`
 
 > ⚠️ Transcript resume is **cwd-bound**. It only works from the same directory
 > on the same machine. If this session started in a git **worktree**, that
@@ -136,24 +142,24 @@ bash scripts/session_sync.sh --load
 | `.cursor/hooks/_common.sh` | modified |
 | `.cursor/hooks/guard-shell.sh` | modified |
 | `.cursor/hooks/on-precompact.sh` | modified |
-| _(+29 more files not shown)_ | — |
+| _(+30 more files not shown)_ | — |
 
 ---
 
 ## 🌿 Git Context
 ```
 Branch  : main
-Commit  : addf15a chore(context): save session state — Upgrade CEK to current Claude Code compatibility (v3.0.0) — audit complete, plan awaiting approval [2026-08-30T17:47:03Z]
-Status  : clean
+Commit  : b668a66 chore(context): save session state — Upgrade CEK to current Claude Code compatibility (v3.0.0) — audit complete, plan awaiting approval [2026-08-31T16:35:31Z]
+Status  : M api_docs.md
 ```
 
 Recent commits:
 ```
+b668a66 chore(context): save session state — Upgrade CEK to current Claude Code compatibility (v3.0.0) — audit complete, plan awaiting approval [2026-08-31T16:35:31Z]
 addf15a chore(context): save session state — Upgrade CEK to current Claude Code compatibility (v3.0.0) — audit complete, plan awaiting approval [2026-08-30T17:47:03Z]
 9627af2 chore(context): save session state — Upgrade CEK to current Claude Code compatibility (v3.0.0) — audit complete, plan awaiting approval [2026-08-30T17:47:03Z]
 41b7c20 fix: close the five unreported findings; add hook smoke evals to CI
 2261f5d fix(ci): pin ruff and its rule set
-6409fe6 fix: stop kit state dirs dirtying host repos
 ```
 
 ---
@@ -165,6 +171,8 @@ addf15a chore(context): save session state — Upgrade CEK to current Claude Cod
 - **Do not trust WebFetch for Claude Code hook field names** — it truncates and the summariser fabricates. Use the extracted PDF text.
 - Verify subagent findings against the source before acting; two agents contradicted each other on `FileChanged` and one was wrong
 - `state.json` is gitignored by design — do not re-add it to any `git add` list
+
+---
 
 ---
 
