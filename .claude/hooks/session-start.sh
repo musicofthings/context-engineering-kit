@@ -46,7 +46,7 @@ mkdir -p "$SENTINEL_DIR"
 TODAY=$(date -u +"%A %B %d %Y, %H:%M UTC")
 GIT_BRANCH=$(git -C "$PROJECT_DIR" rev-parse --abbrev-ref HEAD 2>/dev/null || echo "unknown")
 GIT_COMMIT=$(git -C "$PROJECT_DIR" log --oneline -1 2>/dev/null || echo "none")
-GIT_DIRTY=$(git -C "$PROJECT_DIR" status --short 2>/dev/null | wc -l | tr -d ' ')
+GIT_DIRTY=$( { git -C "$PROJECT_DIR" status --short 2>/dev/null || true; } | wc -l | tr -d ' ')
 
 # ── Load budget/window config (also reused by the display block below) ────────
 SUB_TYPE="pro"

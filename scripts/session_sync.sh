@@ -148,7 +148,7 @@ do_status() {
   log "Git branch    : $GIT_BRANCH"
   log "Commits ahead : $GIT_AHEAD"
 
-  UNCOMMITTED=$(git status --porcelain session_handover.md CLAUDE.md 2>/dev/null | wc -l | tr -d ' ')
+  UNCOMMITTED=$( { git status --porcelain session_handover.md CLAUDE.md 2>/dev/null || true; } | wc -l | tr -d ' ')
   if [ "$UNCOMMITTED" -gt 0 ]; then
     log "Uncommitted   : ⚠️  $UNCOMMITTED context files have local changes"
     log "  → Run: bash scripts/session_sync.sh --save"
