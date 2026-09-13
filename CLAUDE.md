@@ -23,7 +23,7 @@ so every new session picks up exactly where the last one left off.
 context-engineering-kit/
 ├── CLAUDE.md                        ← this file (auto-updated by hooks)
 ├── session_handover.md              ← live task state (auto-updated at 70% context)
-├── agents.md                        ← subagent role definitions
+├── AGENTS.md                        ← subagent role definitions (AGENTS.md standard; Codex reads it)
 ├── .claude/
 │   ├── settings.json                ← hooks wired here
 │   ├── hooks/                       ← shell scripts run by hooks

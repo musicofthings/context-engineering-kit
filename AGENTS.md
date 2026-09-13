@@ -2,7 +2,15 @@
 _Part of context-engineering-kit_
 
 This file defines the roles and responsibilities of subagents used in this project.
-Reference these in `.claude/agents/` files or when orchestrating multi-agent tasks.
+Reference these in `agents/` files or when orchestrating multi-agent tasks.
+
+> **Filename matters.** This is the `AGENTS.md` standard, which Codex discovers by
+> exact name. It was previously committed as lowercase `agents.md`, which resolves
+> on case-insensitive filesystems (macOS, Windows) but not on Linux or in CI, so
+> Codex found no instruction file there. Keep the name uppercase.
+
+Slash commands below (`/handover`, `/token-status`, `/compact-smart`) are Claude
+Code syntax. See **Invoking subagents** at the end for the Codex equivalents.
 
 ---
 
@@ -98,7 +106,9 @@ SESSION-SCRIBE → reads:  conversation history
               → writes: CLAUDE.md (decisions, lessons)
 ```
 
-## Invoking subagents in Claude Code
+## Invoking subagents
+
+The agent prompts are runtime-neutral; only the invocation syntax differs.
 
 ```
 # Dispatch context updater
@@ -110,3 +120,18 @@ append any new architecture decisions, then confirm files updated.
 Task: extract all lessons learned and architecture decisions from this conversation.
 Append them to CLAUDE.md in the correct sections with today's date.
 ```
+
+| Runtime | Skill invocation | Notes |
+|---------|------------------|-------|
+| Claude Code | `/context-health`, `/handover`, `/token-status` | Plugin-scoped form also works: `/context-engineering-kit:handover` |
+| Codex | `$context-engineering-kit:context-health`, or the `/skills` picker | Codex has no `/model`; recommend a model and reasoning setting, don't claim to switch it |
+| Cursor | Skills are not slash commands — state the task in prose | |
+| Grok | `/hooks-trust` once, then prose | |
+
+Codex-specific caveats:
+
+- Project hooks load only when the `.codex/` layer is trusted. Run `/hooks` once
+  to review and trust them; Codex records trust against each hook's hash, so a
+  changed hook needs re-approval.
+- `SessionEnd` hooks are capped at 3 seconds, so end-of-session work has to be
+  fast or move earlier in the lifecycle.

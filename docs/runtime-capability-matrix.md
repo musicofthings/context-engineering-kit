@@ -49,14 +49,30 @@ python scripts/generate_runtime_hooks.py --check   # CI / pre-commit
 | PostModelSwitch | ✅ | ❌ | ❌ | ❌ | `native-event-log.sh` |
 | CwdChanged | ✅ | ❌ | ❌ | ❌ | `native-event-log.sh` |
 | DirectoryAdded | ✅ | ❌ | ❌ | ❌ | `native-event-log.sh` |
-| WorktreeCreate | ✅ | ❌ | ❌ | ❌ | `native-event-log.sh` |
+| WorktreeCreate | ✅ | ❌ | ❌ | ❌ | **deliberately not wired** — see below |
 | WorktreeRemove | ✅ | ❌ | ❌ | ❌ | `native-event-log.sh` |
 | ConfigChange | ✅ | ❌ | ❌ | ❌ | `native-event-log.sh` |
 | InstructionsLoaded | ✅ | ❌ | ❌ | ❌ | `instructions-loaded.sh` (Claude only) |
 | FileChanged | ✅ | ❌ | ❌ | ❌ | config audit echo (Claude only) |
 | SessionEnd | ✅ | ✅ | ✅ | ✅ | `session-end.sh` |
 
-`cek_runtime_supports <Event>` in `scripts/cek_runtime.sh` encodes the same table for runtime no-ops.
+`cek_runtime_supports <Event>` in `scripts/cek_runtime.sh` encodes the same table
+for runtime no-ops. It answers "does this runtime emit this event", **not** "does
+the kit wire it" — `WorktreeCreate` is supported by Claude Code and still absent
+from `hooks/hooks.json` on purpose.
+
+### Why `WorktreeCreate` is not wired
+
+Configuring a `WorktreeCreate` hook **replaces** Claude Code's default
+`git worktree` behaviour: the hook itself has to create the working copy and
+print its path as the last non-empty line of stdout, and `.worktreeinclude` stops
+being processed. A logging-only handler prints no path, which breaks
+`claude --worktree`, subagents with `isolation: "worktree"`, and background
+sessions for every project the plugin is installed in.
+
+The kit has no reason to replace git here, so the event stays unwired. Do not
+add it back for observability — `WorktreeRemove` is the safe half of the pair
+(Claude Code discards its output) and is already wired.
 
 ---
 

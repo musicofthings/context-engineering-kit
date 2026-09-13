@@ -106,7 +106,7 @@ if [[ "$TOOL_NAME" == "Write" || "$TOOL_NAME" == "Edit" || "$TOOL_NAME" == "Mult
   APPROVED_PATHS=(
     "session_handover.md"
     "CLAUDE.md"
-    "agents.md"
+    "AGENTS.md"
     "api_docs.md"
     ".claude/session/state.json"
     ".claude/session/history.jsonl"
