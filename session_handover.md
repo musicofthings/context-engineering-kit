@@ -1,5 +1,5 @@
 # Session Handover
-_Generated: 2026-09-13T18:30:19Z_
+_Generated: 2026-09-14T14:52:05Z_
 _Branch: main_
 _Trigger: session-end | Context at compact: unknown%_
 _Compact count this project: 0_
@@ -22,7 +22,7 @@ Upgrade CEK to current Claude Code compatibility (v3.0.0) — audit complete, pl
 
 ## 🔄 In Progress (Exact Resume Point)
 **Branch:** `main`
-**Last commit:** `8d58226 docs: fix every command claim against the runtimes' own docs (R-031)`
+**Last commit:** `147001f chore(context): save session state — Upgrade CEK to current Claude Code compatibility (v3.0.0) — audit complete, plan awaiting approval [2026-09-13T18:30:19Z]`
 **Next immediate action:** Answer the 2 open questions in session_handover.md, then start Phase 0 (remove duplicate hooks block)
 
 ---
@@ -67,7 +67,11 @@ Upgrade CEK to current Claude Code compatibility (v3.0.0) — audit complete, pl
 
 ---
 
+---
+
 ## 🏗 Architecture Decisions Made
+| Decision | Rationale | Date |
+|----------|-----------|------|
 | Decision | Rationale | Date |
 |----------|-----------|------|
 | Decision | Rationale | Date |
@@ -98,17 +102,19 @@ Upgrade CEK to current Claude Code compatibility (v3.0.0) — audit complete, pl
 
 ---
 
+---
+
 ## 🔧 Commands to Resume
 
 **This exact conversation** (SDK/CLI transcript resume):
 ```bash
 # Same machine AND same directory it started in:
-claude --resume 4e5d9f07-548f-435b-8ad3-c430a8ea2480
+claude --resume 1310f18e-eb2c-4ab5-9357-1d2ce7ef0597
 ```
-- Session ID    : `4e5d9f07-548f-435b-8ad3-c430a8ea2480`
-- Transcript    : `/Users/theranosis_dx/.claude/projects/-Users-theranosis-dx-projects-context-engineering-kit/4e5d9f07-548f-435b-8ad3-c430a8ea2480.jsonl`
+- Session ID    : `1310f18e-eb2c-4ab5-9357-1d2ce7ef0597`
+- Transcript    : `/Users/theranosis_dx/.claude/projects/-Users-theranosis-dx-projects-context-engineering-kit/1310f18e-eb2c-4ab5-9357-1d2ce7ef0597.jsonl`
 - Bound to cwd  : `/Users/theranosis_dx/projects/context-engineering-kit`
-- Stored at     : `~/.claude/projects/-Users-theranosis-dx-projects-context-engineering-kit/4e5d9f07-548f-435b-8ad3-c430a8ea2480.jsonl`
+- Stored at     : `~/.claude/projects/-Users-theranosis-dx-projects-context-engineering-kit/1310f18e-eb2c-4ab5-9357-1d2ce7ef0597.jsonl`
 
 > ⚠️ Transcript resume is **cwd-bound**. It only works from the same directory
 > on the same machine. If this session started in a git **worktree**, that
@@ -155,17 +161,17 @@ bash scripts/session_sync.sh --load
 ## 🌿 Git Context
 ```
 Branch  : main
-Commit  : 8d58226 docs: fix every command claim against the runtimes' own docs (R-031)
+Commit  : 147001f chore(context): save session state — Upgrade CEK to current Claude Code compatibility (v3.0.0) — audit complete, plan awaiting approval [2026-09-13T18:30:19Z]
 Status  : ?? session_handover.md.lock
 ```
 
 Recent commits:
 ```
+147001f chore(context): save session state — Upgrade CEK to current Claude Code compatibility (v3.0.0) — audit complete, plan awaiting approval [2026-09-13T18:30:19Z]
 8d58226 docs: fix every command claim against the runtimes' own docs (R-031)
 4df6be3 feat: close the known gaps — Grok verified, install tested (R-027..R-030)
 19a162b fix: eval suite crashed on stock macOS bash 3.2 under a UTF-8 locale
 8356481 chore(release): v3.0.1
-196bd62 fix: containment guarded one writer out of eight (R-026)
 ```
 
 ---
@@ -177,6 +183,8 @@ Recent commits:
 - **Do not trust WebFetch for Claude Code hook field names** — it truncates and the summariser fabricates. Use the extracted PDF text.
 - Verify subagent findings against the source before acting; two agents contradicted each other on `FileChanged` and one was wrong
 - `state.json` is gitignored by design — do not re-add it to any `git add` list
+
+---
 
 ---
 
