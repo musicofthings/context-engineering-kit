@@ -25,11 +25,32 @@ match the generator, so `.codex/hooks.json` shipped `PostToolUseFailure`,
 `RUNTIME_TIMEOUT_MAX` does the same for per-runtime timeout ceilings (Codex caps
 `SessionEnd` and `Interrupt` at 3s).
 
-Both verified 2026-09-13 — Codex against `learn.chatgpt.com/docs/hooks`, Grok
-against `docs.x.ai/build/features/hooks`. Grok's documented event set matches the
-column below exactly. Two things the spec settled that inference had got wrong:
-its payload is **camelCase** (`hookEventName`, `toolName`, `toolInput`), not the
+**Re-verified 2026-09-17** — Codex against `learn.chatgpt.com/docs/hooks`, Grok
+against `docs.x.ai/build/features/hooks` (page dated 2026-07-02). Both event sets
+match the columns below **exactly**; no drift since the 2026-09-13 check. Grok's
+payload is **camelCase** (`hookEventName`, `toolName`, `toolInput`), not the
 Claude snake_case the shared core reads, and `async` is not in its schema.
+
+The re-verification did surface three things this document had wrong or missing:
+
+1. **Grok runs `.cursor/hooks.json` too** — a live double-fire. See the
+   correction under the install checklist below.
+2. **Codex spills large hook output.** Model-visible hook output over roughly
+   2,500 tokens is written to `<temp_dir>/hook_outputs/<session_id>/<uuid>.txt`
+   and replaced with a head-and-tail preview. The per-handler
+   `additionalContextLimit` field tunes that threshold. The kit's SessionStart
+   banner is the handler that gets near the line.
+3. **Grok's default hook timeout is 5 seconds**, not 30. Only the `SessionEnd`
+   entry sets an explicit timeout, so every other Grok hook — including the
+   `session-start` chain — runs against a 5s budget. `session-end.sh` already
+   detaches its work; the session-start chain has not been profiled against
+   that ceiling.
+
+Why Gemini CLI is not in this table: Google shut it off on **2026-06-18** with no
+grace period, replaced by Antigravity CLI (`agy`). This kit never shipped a
+Gemini adapter, and Antigravity support is planned, not built — see
+`PLAN_v4_universal_runtime.md` Phase 3 for its five-event surface and the
+session/compaction gaps that follow from it.
 
 ---
 
@@ -210,9 +231,32 @@ hook's hash, so a changed hook needs re-approval.
 `/hooks-trust` the first time you open the repo, or launch with `--trust`. The
 decision is stored in `~/.grok/trusted_folders.toml`. Inspect what loaded in the
 `/hooks` tab of the extensions modal. Note Grok also reads
-`.claude/settings.json` **and** `.cursor/hooks.json` (both documented), so this
-repo ships three files it may load; `.claude/settings.json` declares no hooks
-since v3.0.0 and the Cursor file uses Cursor-only event names, so
-`cek-hooks.json` is the only set that fires. There is **no documented setting**
-to disable that compatibility scan — earlier versions of this README suggested
-one, which was invented.
+`.claude/settings.json` **and** `.cursor/hooks.json`, so this repo ships three
+files it may load. `.claude/settings.json` declares no hooks since v3.0.0. The
+Cursor file **does** fire — see the correction below. There is **no documented
+setting** to disable that compatibility scan — earlier versions of this README
+suggested one, which was invented.
+
+### Correction (2026-09-17): the Cursor file fires on Grok
+
+This document previously claimed `.cursor/hooks.json` "uses Cursor-only event
+names, so `cek-hooks.json` is the only set that fires." That is backwards.
+`docs.x.ai/build/features/hooks`, verbatim:
+
+> Claude Code (`.claude/settings.json`) and Cursor (`.cursor/hooks.json`) hook
+> files are read as well, **including Cursor's camelCase event names**.
+
+`.cursor/hooks.json` declares `sessionStart`, `sessionEnd`, `beforeSubmitPrompt`,
+`beforeShellExecution`, `afterFileEdit`, `beforeReadFile`, `afterAgentResponse`,
+`stop`, `postToolUseFailure`, `subagentStart`, `subagentStop` and `preCompact` —
+all names Grok reads. So a Grok session in a repo carrying this kit was running
+`cek-hooks.json` **and** all eleven Cursor adapters: two session-start chains,
+two stop chains (`usage-tracker.py` twice per turn), two pre-compact snapshot
+commits. The same double-fire class v3.0.0 removed from `.claude/settings.json`,
+re-entering through a different door.
+
+Fixed in `.cursor/hooks/_common.sh`: Grok exports `GROK_HOOK_EVENT` /
+`GROK_HOOK_NAME` / `GROK_SESSION_ID` / `GROK_WORKSPACE_ROOT` into every hook
+process and Cursor never sets them, so the bootstrap every adapter sources
+exits early when it sees them. `eval_phase_c.sh` asserts both halves: all
+adapters defer under `GROK_*`, and all still run without it.

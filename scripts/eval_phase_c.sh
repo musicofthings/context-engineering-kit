@@ -171,6 +171,39 @@ else
   pass "grok config emits no undocumented async key"
 fi
 
+# 13) Grok reads .cursor/hooks.json too — "including Cursor's camelCase event
+# names" (docs.x.ai/build/features/hooks, verified 2026-09-17). The repo used to
+# claim the opposite, so a Grok session ran cek-hooks.json AND all eleven Cursor
+# adapters: two session-start chains, two stop chains, two snapshot commits.
+# Every Cursor adapter must defer when GROK_* is in the environment.
+DF_SANDBOX=$(mktemp -d "${TMPDIR:-/tmp}/cek-df.XXXXXX")
+git -C "$DF_SANDBOX" init -q
+DF_MISS=""
+for f in .cursor/hooks/*.sh; do
+  b=$(basename "$f")
+  [ "$b" = "_common.sh" ] && continue
+  out=$(printf '%s' '{"hookEventName":"sessionStart","session_id":"g1"}' \
+        | env GROK_SESSION_ID=g1 CLAUDE_PROJECT_DIR="$DF_SANDBOX" \
+          CLAUDE_PLUGIN_ROOT="$PWD" bash "$f" SubagentStart 2>&1)
+  case "$out" in *"deferring to .grok"*) ;; *) DF_MISS="$DF_MISS $b" ;; esac
+done
+if [ -z "$DF_MISS" ]; then
+  pass "cursor adapters defer to cek-hooks.json under a Grok session"
+else
+  fail "cursor adapters double-fire on Grok:$DF_MISS"
+fi
+
+# ...and still run normally when Grok is not the runtime.
+printf '%s' '{"hookEventName":"sessionStart","session_id":"c1"}' \
+  | env CLAUDE_PROJECT_DIR="$DF_SANDBOX" CLAUDE_PLUGIN_ROOT="$PWD" \
+    bash .cursor/hooks/on-session-start.sh >/dev/null 2>&1
+if [ -d "$DF_SANDBOX/.claude/session" ]; then
+  pass "cursor adapters still run under Cursor"
+else
+  fail "cursor adapters no longer run under Cursor (guard too broad)"
+fi
+rm -rf "$DF_SANDBOX"
+
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "Results: $PASS passed, $FAIL failed"

@@ -7,11 +7,20 @@ Hooks, skills, and scripts that keep your context alive through compaction, devi
 Works in **Claude Cowork**, **Claude Code Desktop**, **Claude Code CLI**, **Cursor IDE**, **Grok Build**, and **Codex**.
 
 🌐 **[Landing page & full docs →](https://musicofthings.github.io/context-engineering-kit/)**  
-📦 **[Download plugin zip (v3.1.1) →](https://github.com/musicofthings/context-engineering-kit/releases/latest)** — for Cowork or Desktop Plugin upload  
+📦 **[Download plugin zip (v3.1.2) →](https://github.com/musicofthings/context-engineering-kit/releases/latest)** — for Cowork or Desktop Plugin upload  
 📐 **[Runtime capability matrix →](docs/runtime-capability-matrix.md)**  
-📝 **[Release notes (v3.1.1) →](docs/RELEASE_NOTES_3.1.1.md)** — handover no longer accretes, containment closed · [v3.1.0](docs/RELEASE_NOTES_3.1.0.md) · [v3.0.1](docs/RELEASE_NOTES_3.0.1.md) · [v3.0.0](docs/RELEASE_NOTES_3.0.0.md)
+📝 **[Release notes (v3.1.2) →](docs/RELEASE_NOTES_3.1.2.md)** — Grok/Cursor double-fire fixed, Antigravity documented · [v3.1.1](docs/RELEASE_NOTES_3.1.1.md) · [v3.1.0](docs/RELEASE_NOTES_3.1.0.md) · [v3.0.1](docs/RELEASE_NOTES_3.0.1.md) · [v3.0.0](docs/RELEASE_NOTES_3.0.0.md)
 
 ---
+
+## What's new in v3.1.2
+
+Re-verified Codex and Grok against their current docs. Neither event set has
+drifted — but Grok also reads `.cursor/hooks.json`, "including Cursor's
+camelCase event names", which this repo claimed it did not. Every Grok session
+was running the kit twice. Fixed, with evals. Also documents Antigravity CLI
+compatibility and its limits (**Option G** below), and Codex's hook-output
+spilling. See [`docs/RELEASE_NOTES_3.1.2.md`](docs/RELEASE_NOTES_3.1.2.md).
 
 ## What's new in v3.1.1
 
@@ -144,7 +153,7 @@ The easiest path. One zip works in both **Claude Cowork** and **Claude Code Desk
 **Either** download the prebuilt zip from the [latest GitHub release](https://github.com/musicofthings/context-engineering-kit/releases/latest):
 
 ```
-context-engineering-kit-3.1.1.zip
+context-engineering-kit-3.1.2.zip
 ```
 
 **Or** build it from source (requires Python 3):
@@ -153,7 +162,7 @@ context-engineering-kit-3.1.1.zip
 git clone https://github.com/musicofthings/context-engineering-kit.git
 cd context-engineering-kit
 python scripts/package_plugin.py
-# → writes context-engineering-kit-3.1.1.zip in the project root
+# → writes context-engineering-kit-3.1.2.zip in the project root
 ```
 
 The packaging script reads the version from `.claude-plugin/plugin.json` and excludes git history, runtime session state, audit logs, and caches automatically.
@@ -161,7 +170,7 @@ The packaging script reads the version from `.claude-plugin/plugin.json` and exc
 ### Step 2a — Upload to Claude Cowork
 
 1. Open Cowork → **Settings** → **Plugins** (or **Skills** → **Add plugin**)
-2. Click **Upload plugin** → select `context-engineering-kit-3.1.1.zip`
+2. Click **Upload plugin** → select `context-engineering-kit-3.1.2.zip`
 3. Confirm install — the eight skills appear as `/context-engineering-kit:*` commands
 4. Type `/context-engineering-kit:handover` in any conversation to use it
 
@@ -170,7 +179,7 @@ The packaging script reads the version from `.claude-plugin/plugin.json` and exc
 ### Step 2b — Upload to Claude Code Desktop
 
 1. Open **Claude Code Desktop** → click **Customize** (bottom-left gear) → **Upload Plugin**
-2. Select `context-engineering-kit-3.1.1.zip` and restart Claude Code
+2. Select `context-engineering-kit-3.1.2.zip` and restart Claude Code
 3. Verify in any project:
    ```
    /context-engineering-kit:context-health
@@ -388,7 +397,7 @@ cd my-project
 - Entry: `.grok/hooks/cek-hooks.json` → `.grok/hooks/run.sh` → `.claude/hooks/*`
 - The adapter **normalises Grok's camelCase payload** (`hookEventName`, `toolName`, `toolInput`) into the snake_case names the shared core reads — without it the guard cannot see the command it inspects
 - `PreToolUse` is Grok's **only** blocking event: exit 2 denies, reason on stderr. Everything else is passive and fails open
-- Grok also reads `.claude/settings.json` **and** `.cursor/hooks.json`. Neither fires here — the first declares no hooks since v3.0.0, the second uses Cursor-only event names — so `cek-hooks.json` is the only set that runs
+- Grok also reads `.claude/settings.json` **and** `.cursor/hooks.json`. The first declares no hooks since v3.0.0. The second **does** fire on Grok — its docs read the Cursor file "including Cursor's camelCase event names" — so since v3.1.2 every Cursor adapter exits early when it sees `GROK_*` in the environment, leaving `cek-hooks.json` as the only set that runs. Earlier versions of this README claimed the Cursor file could not fire on Grok; it could, and it did
 - Trust decisions are stored in `~/.grok/trusted_folders.toml`
 - Uses `PermissionDenied` (not `PermissionRequest`); see capability matrix
 
@@ -405,7 +414,90 @@ cd my-project
 - Entry: `.codex/hooks.json` → `.codex/hooks/run.sh` → `.claude/hooks/*`
 - **Portable only** — regenerate with `python scripts/generate_runtime_hooks.py` (never commit absolute machine paths)
 - Verify: `python scripts/generate_runtime_hooks.py --check` and `bash scripts/check_sync.sh`
+- Codex spills any hook output over ~2,500 tokens to disk and shows the model a preview instead. The SessionStart banner is close to that line — set `additionalContextLimit` on the handler if you extend it
 
+---
+
+## Option G — Antigravity CLI (`agy`) — **not yet supported**
+
+Google sunset **Gemini CLI on 2026-06-18** with no grace period and replaced it
+with Antigravity CLI. If you came here looking for Gemini CLI support: that
+runtime no longer exists, and this kit never shipped an adapter for it.
+
+Antigravity support is **planned but not implemented** —
+[`docs/PLAN_v4_universal_runtime.md`](docs/PLAN_v4_universal_runtime.md) Phase 3.
+Nothing in this repo loads under `agy` today. The rest of this section is what
+an adapter can and cannot deliver, so you can judge whether it is worth waiting
+for.
+
+### What Antigravity can do
+
+Five lifecycle events, verified against `antigravity.google/docs/hooks` on
+2026-09-17:
+
+| Event | Matcher target | Kit use |
+|---|---|---|
+| `PreToolUse` | tool name | `guard-dangerous.sh` |
+| `PostToolUse` | tool name | `track-changes.sh` |
+| `PreInvocation` | — | session-start synthesis, usage sentinel |
+| `PostInvocation` | — | injection point for threshold notices |
+| `Stop` | — | end-of-turn state write |
+
+Config lives in `.agents/hooks.json` (workspace) or `~/.gemini/config/hooks.json`
+(global), and plugin bundles under `.agents/plugins/<name>/`. The bundle format
+takes `plugin.json`, `hooks.json`, `skills/`, `agents/`, `rules/` and
+`mcp_config.json` — so the kit's nine skills would ship in the same artifact as
+its hooks, which no other runtime allows.
+
+`PreInvocation` and `PostInvocation` return `injectSteps`, a list of
+`{ephemeralMessage | userMessage | toolCall}` pushed into the conversation
+trajectory. That is a cleaner injection surface than Claude Code's stdout
+capture, and it is how the session banner would reach the model.
+
+### Limitations — read these before planning around it
+
+**There are no session events and no compaction event.** Antigravity has no
+`SessionStart`, no `SessionEnd`, no `PreCompact`/`PostCompact`, and no subagent
+events. This kit is built on session boundaries, so the consequences are
+concrete:
+
+| Kit behaviour | On Antigravity |
+|---|---|
+| Handover written before compaction | ❌ **Impossible via hooks** — no compaction event exists |
+| Session-start banner with last session's state | ⚠️ Approximated via `PreInvocation` where `invocationNum == 0` |
+| SessionEnd handover + git commit | ⚠️ Approximated via `Stop` where `fullyIdle == true` |
+| Subagent tracking / mid-flight grace | ❌ No subagent events |
+| 85% / 92% usage auto-save | ⚠️ Moves to `PreInvocation`; no `UserPromptSubmit` exists |
+| Dangerous-command guard | ✅ `PreToolUse`, via JSON `{"decision":"deny"}` |
+| File-change tracking | ✅ `PostToolUse` |
+
+The compaction gap is the significant one. Writing `session_handover.md` before
+the context window is compacted is the single most valuable thing this kit does,
+and on Antigravity it cannot be triggered by a hook. The fallback is the planned
+MCP server (Phase 4), which Antigravity can call — but the model has to choose
+to call it, so there is no *guaranteed* save.
+
+**Payload translation is heavier than any runtime shipped so far.** Antigravity
+sends camelCase with a nested tool call whose arguments are PascalCase, and its
+own tool names:
+
+```json
+{ "toolCall": { "name": "run_command",
+                "args": { "CommandLine": "npm test", "Cwd": "/workspace" } },
+  "conversationId": "...", "workspacePaths": ["..."], "stepIdx": 19 }
+```
+
+So an adapter needs the Grok-style case normaliser **plus** a tool-name alias
+map — `run_command`→`Bash`, `write_to_file`/`replace_file_content`→`Write`/`Edit`,
+`view_file`→`Read`. Decisions are JSON on stdout rather than exit code 2, and
+`Stop` inverts the usual sense: `{"decision": "continue"}` means *do not stop*.
+Antigravity also omits the event name from the payload, so it has to be passed
+as an argv — which is already how the Codex and Grok adapters are shaped.
+
+**Antigravity is closed source.** Gemini CLI was open source with 100k+ GitHub
+stars; its replacement is a closed-source Go binary. That does not block a hook
+adapter, but if you are here for open-source runtime support, opencode (Phase 2)
+is the one to watch.
 
 ---
 
@@ -842,7 +934,7 @@ Resuming on another device
 bash scripts/check_sync.sh
 bash scripts/eval_phase_c.sh
 bash scripts/eval_usage_lifecycle.sh
-python scripts/package_plugin.py    # → context-engineering-kit-3.1.1.zip
+python scripts/package_plugin.py    # → context-engineering-kit-3.1.2.zip
 ```
 
 ---
@@ -905,4 +997,4 @@ Then in Claude Code: `/my-skill`
 
 ---
 
-*context-engineering-kit v3.1.1 — Multi-runtime context preservation for Claude Code, Cursor, Grok, and Codex.*
+*context-engineering-kit v3.1.2 — Multi-runtime context preservation for Claude Code, Cursor, Grok, and Codex.*
