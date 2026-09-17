@@ -1,66 +1,65 @@
 # Session Handover
-_Generated: 2026-09-17T15:24:33Z_
+_Generated: 2026-09-17T17:53:44Z_
 _Branch: main_
-_Trigger: stability | Context at compact: unknown%_
+_Trigger: stable | Context at compact: unknown%_
 _Compact count this project: 0_
 
 ---
 
 ## 🎯 Active Task
 **What we're building/fixing:**
-v4.0 universal runtime support — Phase 0 (core fixes) shipped as v3.1.1
+v4.0 universal runtime support — Phase 1 (single runtime registry) shipped as v3.2.0
 
-**Phase:** Phase 0 complete; Phase 1 (single generated runtime registry) not started
-**Next action:** Decide scope in docs/PLAN_v4_universal_runtime.md (4 open questions), then start Phase 1: move the event table into config/runtime_events.json and generate Cursor's config from it
+**Phase:** Phases 0-1 complete; Phase 2 (opencode adapter) not started
+**Next action:** Confirm scope (plan's 4 open decisions), then Phase 2: .opencode/plugins/cek.ts shim mapping opencode's 25+ events onto the bash core, incl. experimental.session.compacting
 
 ---
 
 ## ✅ Completed This Session
-- [x] Git sync — pushed `8d58226..b9104c0` to origin/main
-- [x] Full-repo code review — 6 findings, 3 reproduced (see docs/PLAN_v4_universal_runtime.md Part 1)
-- [x] Verified runtime surfaces against vendor docs: Warp has NO hooks (warpdotdev/warp#6857 still open), opencode needs a JS shim
-- [x] **Corrected**: Gemini CLI was sunset 2026-06-18; the live runtime is Antigravity CLI (`agy`), re-derived from antigravity.google/docs/hooks. Plan Phase 2/3 reordered — opencode first, Antigravity after.
-- [x] Wrote docs/PLAN_v4_universal_runtime.md (committed b6d2eb4)
-- [x] Phase 0 shipped as v3.1.1 — handover accretion, lock placement, containment on 4 shell writers + state_lock(), StopFailure fields, PermissionDenied wiring, imperative inject text, Cursor preCompact user_message
-- [x] Evals 130 → 135; every new assertion negative-controlled
+- [x] Git sync — pushed to origin/main
+- [x] Full-repo code review — 6 findings, 3 reproduced (docs/PLAN_v4_universal_runtime.md Part 1)
+- [x] Verified runtime surfaces against vendor docs; **corrected**: Gemini CLI was sunset 2026-06-18, live runtime is Antigravity CLI
+- [x] **Phase 0** shipped as v3.1.1 — handover accretion, lock placement, containment, StopFailure fields, PermissionDenied wiring
+- [x] Re-verified Codex + Grok (no event drift) → found + fixed a live Grok/Cursor double-fire, shipped as v3.1.2
+- [x] README Option G — Antigravity compatibility and limitations
+- [x] **Phase 1** shipped as v3.2.0 — one runtime registry (config/runtime_events.json); generator, cek_runtime_supports() and the matrix table all read it; .cursor/hooks.json now generated
+- [x] Evals 130 → 144; every new assertion negative-controlled
 
 ---
 
 ## 🔄 In Progress (Exact Resume Point)
 **Branch:** `main`
-**Last commit:** `6ef0d89 fix: Phase 0 — close the core bugs before new runtimes inherit them (v3.1.1)`
-**Next immediate action:** Decide scope in docs/PLAN_v4_universal_runtime.md (4 open questions), then start Phase 1: move the event table into config/runtime_events.json and generate Cursor's config from it
+**Last commit:** `090fb4c fix: Grok ran the Cursor hooks too — double-fire (v3.1.2)`
+**Next immediate action:** Confirm scope (plan's 4 open decisions), then Phase 2: .opencode/plugins/cek.ts shim mapping opencode's 25+ events onto the bash core, incl. experimental.session.compacting
 
 ---
 
 ## 📋 Remaining Work
-**Phase 0 is done and shipped as v3.1.1.** Full plan:
+**Phases 0 and 1 are done** (v3.1.1, v3.1.2, v3.2.0). Full plan:
 [`docs/PLAN_v4_universal_runtime.md`](docs/PLAN_v4_universal_runtime.md).
 
-1. **Four open decisions blocking Phase 1** (in the plan's "Decisions to make" section):
-   - Scope: all six phases, or the recommended subset — Phases 1, 2, 4 (registry, opencode, MCP floor)?
+1. **Four open decisions** (plan's "Decisions to make" section):
+   - Scope: all remaining phases, or the recommended subset — Phases 2 and 4 (opencode, MCP floor)?
    - opencode: JS shim over the bash core (recommended), or a native TS path?
    - Warp: is "read-only, no auto-save" acceptable to advertise, or drop it until it has hooks?
    - Rename `.claude/` (the shared core's home) to `core/`? Breaking; decide at v4.0.0 or not at all.
 
-2. **Phase 1 — one generated runtime registry** (the enabling refactor)
-   - Move the event table to `config/runtime_events.json`: per runtime, supported events,
-     event-name aliases, timeout ceilings, async support, payload casing, injection mechanism
-   - `generate_runtime_hooks.py` emits ALL adapter configs from it, **including Cursor**
-   - `cek_runtime_supports()` reads it instead of carrying a second copy
-   - `docs/runtime-capability-matrix.md` becomes generated output
-   - Today the same table lives in three hand-synced places:
-     `generate_runtime_hooks.py:162`, `cek_runtime.sh:62`, the matrix doc
+2. **Phase 2 — opencode** (next up)
+   - `.opencode/plugins/cek.ts` thin shim, no logic; serialise each event to Claude-shaped snake_case JSON and pipe to the bash core via the injected `$` (Bun shell)
+   - Map `session.created`→session-start, `session.idle`→stop, `experimental.session.compacting`→pre-compact, `session.compacted`→post-compact, `tool.execute.before`→guard-dangerous (throw to block), `file.edited`→track-changes, `permission.asked`/`.replied`→permission handlers
+   - `experimental.session.compacting` can push the live handover into the compaction prompt — the one place the kit beats Claude Code. Do NOT override `output.prompt` by default
+   - Publish as npm `opencode-context-engineering-kit`; keep the local-directory path working
+   - Adding the runtime: registry entry + adapter + `runtimes` list in EVENTS (see RELEASE_NOTES_3.2.0.md)
 
-3. **Phase 2 — opencode** (JS/TS plugin; `experimental.session.compacting` can inject the handover into the compaction prompt — the one place the kit beats Claude Code)
-4. **Phase 3 — Antigravity CLI** (`agy`) — NOT Gemini CLI, which Google shut off 2026-06-18 with no grace period. Only 5 events (PreToolUse/PostToolUse/PreInvocation/PostInvocation/Stop): no session, compaction or subagent events. camelCase payload with nested `toolCall.name`/`.args` and PascalCase arg keys, Antigravity-specific tool names, JSON decisions instead of exit 2, and the event name is not in the payload. Closed source. Partial parity, not the cheap win the first draft claimed.
-5. **Phase 4 — `cek-mcp`** (universal floor; unlocks Warp, Cline, Continue, Goose, Zed)
-6. **Phase 5 — Warp** (AGENTS.md generator + MCP, with honest capability disclosure)
-7. **Phase 6 — v4.0.0** (per-runtime evals, generated matrix, per-runtime bundles)
+3. **Phase 3 — Antigravity CLI** (`agy`) — 5 events only, no session or compaction events; partial parity. README Option G documents the gaps
+4. **Phase 4 — `cek-mcp`** (universal floor; unlocks Warp, Cline, Continue, Goose, Zed — and is the ONLY handover path on Antigravity)
+5. **Phase 5 — Warp** (AGENTS.md + MCP, honest capability disclosure)
+6. **Phase 6 — v4.0.0** (per-runtime evals, generated matrix, per-runtime bundles)
 
-**Carried over, not Phase 0 scope:**
+**Carried over, not yet scoped:**
 - `PreCompact` stamps `ctx=unknown%` into snapshot commits on Claude Code (`context_percent` is not a field on that event; Cursor supplies the real number)
-- Your installed plugin copy is v3.0.0 at `~/.claude/plugins/marketplaces/local-desktop-app-uploads/` — re-upload the zip
+- Grok's default hook timeout is 5s, not 30 — the session-start chain has never been profiled against that ceiling
+- Installed plugin copy at `~/.claude/plugins/marketplaces/local-desktop-app-uploads/` is v3.0.0 — re-upload the zip
 
 ---
 
@@ -114,41 +113,54 @@ bash scripts/session_sync.sh --load
 ## 📁 Files Modified This Session
 | File | Status |
 |------|--------|
-| `.claude/hooks/auto-approve-permissions.sh` | modified |
+| `.claude-plugin/marketplace.json` | modified |
+| `.claude-plugin/plugin.json` | modified |
 | `.claude/hooks/config-changed.sh` | modified |
 | `.claude/hooks/extract-state-on-stop.sh` | modified |
 | `.claude/hooks/native-event-log.sh` | modified |
 | `.claude/hooks/permission-denied.sh` | modified |
 | `.claude/hooks/post-tool-failure.sh` | modified |
 | `.claude/hooks/session-end.sh` | modified |
+| `.claude/hooks/session-start.sh` | modified |
 | `.claude/hooks/stop-failure.sh` | modified |
 | `.claude/hooks/usage-sentinel.sh` | modified |
+| `.claude/settings.json` | modified |
 | `.codex-plugin/plugin.json` | modified |
 | `.codex/hooks/run.sh` | modified |
-| `.cursor/hooks/guard-read.sh` | modified |
-| `.cursor/hooks/on-agent-response.sh` | modified |
-| `.cursor/hooks/on-precompact.sh` | modified |
-| `.cursor/hooks/on-session-start.sh` | modified |
-| _(+36 more files not shown)_ | — |
+| `.cursor/hooks.json` | modified |
+| _(+43 more files not shown)_ | — |
 
 ---
 
 ## 🌿 Git Context
 ```
 Branch  : main
-Commit  : 6ef0d89 fix: Phase 0 — close the core bugs before new runtimes inherit them (v3.1.1)
-Status  : M api_docs.md
+Commit  : 090fb4c fix: Grok ran the Cursor hooks too — double-fire (v3.1.2)
+Status  : M .claude-plugin/marketplace.json
+ M .claude-plugin/plugin.json
+ M .claude/hooks/session-start.sh
+ M .claude/settings.json
+ M .codex-plugin/plugin.json
+ M .cursor/hooks.json
+ M README.md
+ M api_docs.md
  M docs/PLAN_v4_universal_runtime.md
+ M docs/runtime-capability-matrix.md
+ M scripts/cek_runtime.sh
+ M scripts/eval_phase_c.sh
+ M scripts/generate_runtime_hooks.py
  M session_handover.md
+?? config/runtime_events.json
+?? docs/RELEASE_NOTES_3.2.0.md
 ```
 
 Recent commits:
 ```
+090fb4c fix: Grok ran the Cursor hooks too — double-fire (v3.1.2)
+7d32c21 docs: correct the plan — Gemini CLI is dead, Antigravity CLI replaced it
 6ef0d89 fix: Phase 0 — close the core bugs before new runtimes inherit them (v3.1.1)
 b6d2eb4 docs: v4.0 plan — universal runtime support
 b9104c0 chore(context): save session state — Upgrade CEK to current Claude Code compatibility (v3.0.0) — audit complete, plan awaiting approval [2026-09-14T14:52:05Z]
-147001f chore(context): save session state — Upgrade CEK to current Claude Code compatibility (v3.0.0) — audit complete, plan awaiting approval [2026-09-13T18:30:19Z]
-8d58226 docs: fix every command claim against the runtimes' own docs (R-031)
 ```
 
 ---

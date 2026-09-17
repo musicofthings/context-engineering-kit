@@ -10,20 +10,45 @@ Thin adapters set `CLAUDE_PROJECT_DIR` / `CEK_RUNTIME` and dispatch into that co
 | **Codex** | `.codex/hooks.json` (project) + `.codex-plugin/plugin.json` → `hooks/codex-hooks.json` (plugin) | `.codex/hooks/run.sh` | Portable relative commands only. The plugin manifest **must** name its hooks file — Codex otherwise defaults to `hooks/hooks.json`, the Claude manifest |
 | **Grok Build** | `.grok/hooks/cek-hooks.json`; Grok also reads `.claude/settings.json` and `.cursor/hooks.json` | `.grok/hooks/run.sh` | **camelCase payload** — the adapter normalises it to the core's snake_case. `PreToolUse` is the only blocking event (exit 2 denies); everything else fails open. No `async` in its schema |
 
-Regenerate Codex/Grok JSON after editing the event table:
+## One registry, generated everywhere
+
+Since v3.2.0 there is exactly one copy of the runtime facts:
+**`config/runtime_events.json`**. It records, per runtime, the events emitted
+and what that runtime calls them, plus payload casing, async support, timeout
+defaults and ceilings, the config file to generate — and a `source` URL with a
+`verified` date.
+
+Three things read it, and nothing else carries a second copy:
+
+| Consumer | Uses it for |
+|---|---|
+| `scripts/generate_runtime_hooks.py` | emits `.codex/hooks.json`, `hooks/codex-hooks.json`, `.grok/hooks/cek-hooks.json`, `.cursor/hooks.json`, and the table below |
+| `cek_runtime_supports()` in `scripts/cek_runtime.sh` | runtime no-ops at hook time |
+| this document | the generated block below |
 
 ```bash
 python scripts/generate_runtime_hooks.py
 python scripts/generate_runtime_hooks.py --check   # CI / pre-commit
 ```
 
-`RUNTIME_EVENTS` in that script is the authoritative per-runtime allow-list, and
-generation now **fails** if the event table names an event a runtime does not
-implement. `--check` alone never caught that: it only proves the generated files
+Generation **fails** if the wiring table names an event a runtime does not
+emit. `--check` alone never caught that: it only proves the generated files
 match the generator, so `.codex/hooks.json` shipped `PostToolUseFailure`,
-`StopFailure` and `Notification` — none of which Codex has — while staying green.
-`RUNTIME_TIMEOUT_MAX` does the same for per-runtime timeout ceilings (Codex caps
-`SessionEnd` and `Interrupt` at 3s).
+`StopFailure` and `Notification` — none of which Codex has — while staying
+green. Timeout ceilings are enforced the same way (Codex caps `SessionEnd` and
+`Interrupt` at 3s).
+
+**Cursor is now inside that boundary.** `.cursor/hooks.json` was hand-written
+until v3.2.0 and Cursor appeared in no allow-list, so the guard that caught the
+Codex mistake could never fire for it. One caveat the generator encodes: Cursor's
+`matcher` is not a tool-name filter — on `beforeShellExecution` it matches the
+command *text* — so canonical matchers are never emitted for Cursor.
+
+`hooks/hooks.json`, the Claude manifest, is deliberately **not** generated:
+Claude Code is the reference runtime, its manifest carries events no other
+runtime has, and its per-event `async` choices are policy rather than
+capability. It is validated against the registry instead, so an event that
+Claude Code does not emit cannot sit in it unnoticed.
 
 **Re-verified 2026-09-17** — Codex against `learn.chatgpt.com/docs/hooks`, Grok
 against `docs.x.ai/build/features/hooks` (page dated 2026-07-02). Both event sets
@@ -56,46 +81,68 @@ session/compaction gaps that follow from it.
 
 ## Event support
 
-| Event | Claude | Cursor | Codex | Grok | Kit hook / chain |
-|-------|:------:|:------:|:-----:|:----:|------------------|
-| Setup | ✅ | ❌ | ❌ | ❌ | `native-event-log.sh` |
-| SessionStart | ✅ | ✅ | ✅ | ✅ | `session-start` chain (+ morning-brief) |
-| SessionStart `compact` | ✅ | — | ✅ | ✅ | `compact-restore.sh` |
-| SessionStart `startup\|resume` | ✅ | — | ✅ | ✅ | `session-title.sh` |
-| UserPromptSubmit | ✅ | ✅ (`beforeSubmitPrompt`) | ✅ | ✅ | `usage-sentinel.sh` (Phase A auto-save) |
-| UserPromptExpansion | ✅ | ❌ | ❌ | ❌ | `native-event-log.sh` |
-| PreToolUse (Bash) | ✅ | ✅ | ✅ | ✅ | `guard-dangerous.sh` |
+<!-- BEGIN GENERATED: event-support -->
+<!-- regenerate: python scripts/generate_runtime_hooks.py -->
+
+| Event | Claude Code | Cursor | Codex | Grok Build | Kit hook / chain |
+|-------|:------:|:------:|:------:|:------:|------------------|
+| Setup | ✅ | ❌ | ❌ | ❌ | `native-event-log.sh` (Claude only) |
+| SessionStart | ✅ | ✅ | ✅ | ✅ | `session-start` chain + `compact-restore.sh` + `session-title.sh` |
+| SessionEnd | ✅ | ✅ | ✅ | ✅ | `session-end.sh` |
+| UserPromptSubmit | ✅ | ✅ | ✅ | ✅ | `usage-sentinel.sh` |
+| UserPromptExpansion | ✅ | ❌ | ❌ | ❌ | `native-event-log.sh` (Claude only) |
+| PreToolUse | ✅ | ✅ | ✅ | ✅ | `guard-dangerous.sh` |
+| PostToolUse | ✅ | ✅ | ✅ | ✅ | `track-changes.sh` |
+| PostToolUseFailure | ✅ | ✅ | ❌ | ✅ | `post-tool-failure.sh` |
+| PostToolBatch | ✅ | ❌ | ❌ | ❌ | `native-event-log.sh` (Claude only) |
 | PermissionRequest | ✅ | ❌ | ✅ | ❌ | `auto-approve-permissions.sh` |
 | PermissionDenied | ✅ | ❌ | ❌ | ✅ | `permission-denied.sh` |
-| PostToolUse (Edit/Write) | ✅ | ✅ | ✅ | ✅ | `track-changes.sh` |
-| PostToolUseFailure | ✅ | ✅ | ❌ | ✅ | `post-tool-failure.sh` |
-| PostToolBatch | ✅ | ❌ | ❌ | ❌ | `native-event-log.sh` |
-| TaskCreated | ✅ | ❌ | ❌ | ❌ | `native-event-log.sh` |
-| TaskCompleted | ✅ | ❌ | ❌ | ❌ | `native-event-log.sh` |
-| TeammateIdle | ✅ | ❌ | ❌ | ❌ | `native-event-log.sh` |
-| Stop | ✅ | ✅ | ✅ | ✅ | `stop` chain: extract-state → usage-tracker → stop |
+| Stop | ✅ | ✅ | ✅ | ✅ | `stop` chain |
 | StopFailure | ✅ | ❌ | ❌ | ✅ | `stop-failure.sh` |
-| SubagentStart | ✅ | ✅ | ✅ | ✅ | `subagent-lifecycle.sh` |
-| SubagentStop | ✅ | ✅ | ✅ | ✅ | `subagent-lifecycle.sh` |
-| PreCompact | ✅ | ✅ | ✅ | ✅ | `pre-compact.sh` (Cursor also supplies the real context %) |
-| PostCompact | ✅ | ❌* | ✅ | ✅ | `post-compact.sh` (*Cursor re-injects via SessionStart compact) |
 | Notification | ✅ | ❌ | ❌ | ✅ | `notify.sh` |
-| PreModelSwitch | ✅ | ❌ | ❌ | ❌ | `native-event-log.sh` |
-| PostModelSwitch | ✅ | ❌ | ❌ | ❌ | `native-event-log.sh` |
-| CwdChanged | ✅ | ❌ | ❌ | ❌ | `native-event-log.sh` |
-| DirectoryAdded | ✅ | ❌ | ❌ | ❌ | `native-event-log.sh` |
-| WorktreeCreate | ✅ | ❌ | ❌ | ❌ | **deliberately not wired** — see below |
-| WorktreeRemove | ✅ | ❌ | ❌ | ❌ | `native-event-log.sh` |
-| ConfigChange | ✅ | ❌ | ❌ | ❌ | `native-event-log.sh` |
+| TaskCreated | ✅ | ❌ | ❌ | ❌ | `native-event-log.sh` (Claude only) |
+| TaskCompleted | ✅ | ❌ | ❌ | ❌ | `native-event-log.sh` (Claude only) |
+| TeammateIdle | ✅ | ❌ | ❌ | ❌ | `native-event-log.sh` (Claude only) |
+| SubagentStart | ✅ | ✅ | ✅ | ✅ | `subagent-start` chain |
+| SubagentStop | ✅ | ✅ | ✅ | ✅ | `subagent-stop` chain |
+| PreCompact | ✅ | ✅ | ✅ | ✅ | `pre-compact.sh` |
+| PostCompact | ✅ | ❌ | ✅ | ✅ | `post-compact.sh` |
+| PreModelSwitch | ✅ | ❌ | ❌ | ❌ | `native-event-log.sh` (Claude only) |
+| PostModelSwitch | ✅ | ❌ | ❌ | ❌ | `native-event-log.sh` (Claude only) |
 | InstructionsLoaded | ✅ | ❌ | ❌ | ❌ | `instructions-loaded.sh` (Claude only) |
+| ConfigChange | ✅ | ❌ | ❌ | ❌ | `native-event-log.sh` (Claude only) |
+| CwdChanged | ✅ | ❌ | ❌ | ❌ | `native-event-log.sh` (Claude only) |
+| DirectoryAdded | ✅ | ❌ | ❌ | ❌ | `native-event-log.sh` (Claude only) |
+| WorktreeCreate | ✅ | ❌ | ❌ | ❌ | **deliberately not wired** — see below |
+| WorktreeRemove | ✅ | ❌ | ❌ | ❌ | `native-event-log.sh` (Claude only) |
 | FileChanged | ✅ | ❌ | ❌ | ❌ | `config-changed.sh` (Claude only) |
-| SessionEnd | ✅ | ✅ | ✅ | ✅ | `session-end.sh` → detaches `scripts/session_finalize.sh`; commits only on a real exit, not `clear`/`resume` |
-| Interrupt | ❌ | ❌ | ✅ | ❌ | `native-event-log.sh` (Codex-only; 3s ceiling) |
+| Interrupt | ❌ | ❌ | ✅ | ❌ | `native-event-log.sh` |
 
-`cek_runtime_supports <Event>` in `scripts/cek_runtime.sh` encodes the same table
-for runtime no-ops. It answers "does this runtime emit this event", **not** "does
-the kit wire it" — `WorktreeCreate` is supported by Claude Code and still absent
-from `hooks/hooks.json` on purpose.
+Cursor-native events with no canonical equivalent, wired anyway:
+
+| Cursor event | Adapter |
+|---|---|
+| `afterAgentResponse` | `on-agent-response.sh` |
+| `beforeReadFile` | `guard-read.sh` |
+
+| Runtime | Source | Verified |
+|---|---|---|
+| Claude Code | https://code.claude.com/docs/en/hooks | 2026-09-17 |
+| Cursor | https://cursor.com/docs/hooks | 2026-09-17 |
+| Codex | https://learn.chatgpt.com/docs/hooks | 2026-09-17 |
+| Grok Build | https://docs.x.ai/build/features/hooks | 2026-09-17 |
+
+<!-- END GENERATED: event-support -->
+
+
+`cek_runtime_supports <Event>` in `scripts/cek_runtime.sh` answers from the same
+registry — it used to carry its own copy as four nested `case` statements. It
+answers "does this runtime emit this event", **not** "does the kit wire it":
+`WorktreeCreate` is supported by Claude Code and still absent from
+`hooks/hooks.json` on purpose. It reads the registry with `jq`, falls back to
+Python, and **fails open** if neither is available — a capability hint that
+wrongly answers "no" silently disables real handlers, while a wrong "yes" costs
+one no-op hook run.
 
 ### Grok speaks camelCase
 

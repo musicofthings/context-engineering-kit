@@ -57,58 +57,94 @@ cek_runtime_detect() {
 
 cek_runtime_detect
 
-# ── Capability matrix (mirrors docs/runtime-capability-matrix.md) ─────────────
+# ── Capability lookup ────────────────────────────────────────────────────────
+# Reads config/runtime_events.json, the single registry that also drives
+# scripts/generate_runtime_hooks.py and the table in
+# docs/runtime-capability-matrix.md.
+#
+# This function used to carry its own copy of that table as four nested `case`
+# statements. Three copies of the same facts existed — here, in the generator,
+# and in the matrix doc — and only the generator's copy validated anything, so
+# Cursor (absent from it) could never be checked at all. Whichever copy someone
+# updated, the other two silently disagreed.
+#
+# Answers "does this runtime EMIT this event", not "does the kit wire it".
+# WorktreeCreate is supported by Claude Code and deliberately unwired.
+#
+# Lazy: most hooks never ask, so the registry is parsed on first call only.
+
+CEK_SUPPORTED_EVENTS=""
+_CEK_EVENTS_LOADED_FOR=""
+
+_cek_load_supported_events() {
+  # The cache is keyed on the runtime, not a bare "loaded" flag. The `case`
+  # statement this replaced re-read $CEK_RUNTIME on every call, so a caller that
+  # flips it — the Phase C evals do exactly that, and so would anything probing
+  # more than one runtime — kept getting correct answers. A runtime-blind memo
+  # silently answered every later query from the first runtime's event list.
+  #
+  # Replays the cached OUTCOME, not an unconditional success: returning 0 after
+  # a failed load would leave CEK_SUPPORTED_EVENTS empty while telling the
+  # caller the registry was read, flipping the fail-open guard below into
+  # fail-closed for every call after the first.
+  if [ "$_CEK_EVENTS_LOADED_FOR" = "${CEK_RUNTIME:-}" ] && [ -n "$_CEK_EVENTS_LOADED_FOR" ]; then
+    [ -n "$CEK_SUPPORTED_EVENTS" ]
+    return $?
+  fi
+  _CEK_EVENTS_LOADED_FOR="${CEK_RUNTIME:-}"
+  CEK_SUPPORTED_EVENTS=""
+
+  local reg=""
+  for candidate in \
+    "${CLAUDE_PLUGIN_ROOT:-}/config/runtime_events.json" \
+    "${CEK_ROOT:-}/config/runtime_events.json" \
+    "${CLAUDE_PROJECT_DIR:-}/config/runtime_events.json"; do
+    case "$candidate" in /config/*) continue ;; esac
+    if [ -f "$candidate" ]; then reg="$candidate"; break; fi
+  done
+  [ -n "$reg" ] || return 1
+
+  if command -v jq >/dev/null 2>&1; then
+    CEK_SUPPORTED_EVENTS=$(jq -r --arg rt "$CEK_RUNTIME" \
+      '.runtimes[$rt].events // {} | keys | join(" ")' "$reg" 2>/dev/null || echo "")
+  fi
+  if [ -z "$CEK_SUPPORTED_EVENTS" ]; then
+    local py=""
+    for c in python3 python py; do
+      command -v "$c" >/dev/null 2>&1 && { py="$c"; break; }
+    done
+    if [ -n "$py" ]; then
+      CEK_SUPPORTED_EVENTS=$("$py" -c "
+import json,sys
+try:
+    r=json.load(open(sys.argv[1]))['runtimes'].get(sys.argv[2],{})
+    print(' '.join(r.get('events',{}).keys()))
+except Exception:
+    print('')
+" "$reg" "$CEK_RUNTIME" 2>/dev/null || echo "")
+    fi
+  fi
+  [ -n "$CEK_SUPPORTED_EVENTS" ]
+}
+
 # Return 0 if the event is supported on CEK_RUNTIME.
 cek_runtime_supports() {
   local evt="$1"
+
+  # Unknown runtime, or a registry we could not read (no jq AND no python, or
+  # the file is missing because only the adapters were copied somewhere).
+  # Fail OPEN in both cases: this is a capability hint used to skip work, and
+  # wrongly answering "no" silently disables real handlers. Wrongly answering
+  # "yes" costs one no-op hook run.
   case "$CEK_RUNTIME" in
-    claude)
-      case "$evt" in
-        Setup|SessionStart|SessionEnd|UserPromptSubmit|UserPromptExpansion|PreToolUse|\
-        PostToolUse|PostToolUseFailure|PostToolBatch|PermissionRequest|PermissionDenied|\
-        Stop|StopFailure|Notification|TaskCreated|TaskCompleted|TeammateIdle|\
-        SubagentStart|SubagentStop|PreCompact|PostCompact|PreModelSwitch|PostModelSwitch|\
-        InstructionsLoaded|ConfigChange|CwdChanged|DirectoryAdded|WorktreeCreate|\
-        WorktreeRemove|FileChanged) return 0 ;;
-        *) return 1 ;;
-      esac
-      ;;
-    cursor)
-      case "$evt" in
-        SessionStart|SessionEnd|UserPromptSubmit|PreToolUse|PostToolUse|PostToolUseFailure|\
-        Stop|SubagentStart|SubagentStop|PreCompact) return 0 ;;
-        # Cursor has no PermissionRequest / Session inject parity for all events
-        PermissionRequest|StopFailure|Notification|PostCompact|InstructionsLoaded|FileChanged) return 1 ;;
-        *) return 1 ;;
-      esac
-      ;;
-    grok)
-      case "$evt" in
-        SessionStart|SessionEnd|UserPromptSubmit|PreToolUse|PostToolUse|PostToolUseFailure|\
-        Stop|StopFailure|Notification|SubagentStart|SubagentStop|PreCompact|PostCompact|\
-        PermissionDenied) return 0 ;;
-        # Grok uses PermissionDenied, not PermissionRequest; no InstructionsLoaded/FileChanged
-        PermissionRequest|InstructionsLoaded|FileChanged) return 1 ;;
-        *) return 1 ;;
-      esac
-      ;;
-    codex)
-      # Verified against learn.chatgpt.com/docs/hooks on 2026-09-13. Codex has
-      # no PostToolUseFailure, StopFailure or Notification — they were listed
-      # here (and generated into .codex/hooks.json) for months. Detect a failed
-      # shell command by parsing tool_response inside PostToolUse instead.
-      case "$evt" in
-        SessionStart|SessionEnd|UserPromptSubmit|PreToolUse|PostToolUse|\
-        PermissionRequest|Stop|SubagentStart|SubagentStop|PreCompact|PostCompact|\
-        Interrupt) return 0 ;;
-        PostToolUseFailure|StopFailure|Notification|InstructionsLoaded|FileChanged) return 1 ;;
-        *) return 1 ;;
-      esac
-      ;;
-    *)
-      # unknown — allow all (best-effort)
-      return 0
-      ;;
+    claude|cursor|codex|grok) ;;
+    *) return 0 ;;
+  esac
+  _cek_load_supported_events || return 0
+
+  case " $CEK_SUPPORTED_EVENTS " in
+    *" $evt "*) return 0 ;;
+    *) return 1 ;;
   esac
 }
 

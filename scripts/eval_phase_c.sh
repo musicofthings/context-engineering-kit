@@ -204,6 +204,120 @@ else
 fi
 rm -rf "$DF_SANDBOX"
 
+# ── Phase 1: one registry ────────────────────────────────────────────────────
+# config/runtime_events.json replaced three hand-synced copies of the same
+# table. These assert the registry is the source, not a fourth copy.
+
+REG=config/runtime_events.json
+
+# 14) Registry exists, parses, and every runtime carries a source + verified
+# date. The Gemini CLI mistake was a capability claim with no date and no URL.
+REG_META=$("$PYTHON" - <<'PYEOF'
+import json
+bad = []
+r = json.load(open("config/runtime_events.json"))["runtimes"]
+for name, rt in r.items():
+    for key in ("source", "verified", "events", "payload_case"):
+        if not rt.get(key):
+            bad.append(f"{name}.{key}")
+print(" ".join(bad))
+PYEOF
+) || REG_META="load-failed"
+if [ -z "$REG_META" ]; then
+  pass "registry: every runtime has source + verified + events + payload_case"
+else
+  fail "registry incomplete: $REG_META"
+fi
+
+# 15) cek_runtime_supports() answers from the registry, not a second copy.
+# Deleting an event from the registry must change the answer.
+SUP_BEFORE=$(CEK_RUNTIME=codex CLAUDE_PLUGIN_ROOT="$ROOT" bash -c \
+  "source '$ROOT/scripts/cek_runtime.sh' >/dev/null 2>&1; cek_runtime_supports Interrupt && echo yes || echo no")
+cp "$REG" "$REG.evalbak"
+"$PYTHON" - <<'PYEOF'
+import json
+p = "config/runtime_events.json"
+d = json.load(open(p))
+d["runtimes"]["codex"]["events"].pop("Interrupt", None)
+json.dump(d, open(p, "w"), indent=2)
+PYEOF
+SUP_AFTER=$(CEK_RUNTIME=codex CLAUDE_PLUGIN_ROOT="$ROOT" bash -c \
+  "source '$ROOT/scripts/cek_runtime.sh' >/dev/null 2>&1; cek_runtime_supports Interrupt && echo yes || echo no")
+# The generator must also refuse to emit an event the registry no longer lists.
+GEN_RC=0
+"$PYTHON" scripts/generate_runtime_hooks.py --check >/dev/null 2>&1 || GEN_RC=$?
+mv "$REG.evalbak" "$REG"
+
+if [ "$SUP_BEFORE" = "yes" ] && [ "$SUP_AFTER" = "no" ]; then
+  pass "cek_runtime_supports reads the registry (not a second copy)"
+else
+  fail "cek_runtime_supports ignores the registry" "before=$SUP_BEFORE after=$SUP_AFTER"
+fi
+if [ "$GEN_RC" -ne 0 ]; then
+  pass "generator refuses an event the registry does not list"
+else
+  fail "generator emitted an event absent from the registry"
+fi
+
+# 16) Cursor is inside the validation boundary — it was hand-maintained and in
+# no allow-list until v3.2.0, so the guard that caught the Codex mistake could
+# never fire for it.
+if "$PYTHON" -c "
+import json,sys
+reg = json.load(open('config/runtime_events.json'))['runtimes']
+sys.exit(0 if reg.get('cursor',{}).get('generated_config') == '.cursor/hooks.json' else 1)"; then
+  pass "cursor is a generated target in the registry"
+else
+  fail "cursor is not registered as a generated target"
+fi
+
+# 17) Cursor's matcher matches command TEXT on beforeShellExecution, not a tool
+# name. Emitting the canonical "Bash" matcher would narrow the guard to commands
+# containing the literal word "bash".
+if "$PYTHON" -c "
+import json,sys
+h = json.load(open('.cursor/hooks.json'))['hooks']
+bad = [e for e,v in h.items() for b in v if 'matcher' in b]
+sys.exit(1 if bad else 0)"; then
+  pass "cursor config emits no matchers"
+else
+  fail "cursor config emits a matcher (matches command text, not tool name)"
+fi
+
+# 18) The Claude manifest is hand-maintained, so it is the one config that can
+# drift silently. Every event it wires must be one Claude Code emits.
+if "$PYTHON" -c "
+import json,sys
+reg = set(json.load(open('config/runtime_events.json'))['runtimes']['claude']['events'])
+man = set(json.load(open('hooks/hooks.json'))['hooks'])
+sys.exit(1 if man - reg else 0)"; then
+  pass "hooks/hooks.json wires only events in the registry"
+else
+  fail "hooks/hooks.json wires an event absent from the claude registry"
+fi
+
+# 19) The registry lookup is cached per RUNTIME, not once per process. The
+# `case` statement it replaced re-read $CEK_RUNTIME every call; a runtime-blind
+# memo answers every later query from whichever runtime asked first. Caught by
+# check 7 above when it flipped CEK_RUNTIME mid-shell — asserted directly here
+# so the cause is named rather than inferred from a confusing failure.
+SWITCH=$(bash -c "source '$ROOT/scripts/cek_runtime.sh' >/dev/null 2>&1
+  export CEK_RUNTIME=grok;   cek_runtime_supports PermissionRequest && printf 'g:yes ' || printf 'g:no '
+  export CEK_RUNTIME=claude; cek_runtime_supports PermissionRequest && printf 'c:yes ' || printf 'c:no '
+  export CEK_RUNTIME=grok;   cek_runtime_supports PermissionRequest && printf 'g:yes'  || printf 'g:no'")
+if [ "$SWITCH" = "g:no c:yes g:no" ]; then
+  pass "capability cache is keyed on runtime, not process"
+else
+  fail "capability cache ignores a runtime switch: got '$SWITCH'"
+fi
+
+# 20) The matrix table is generated, not hand-written.
+if grep -q "BEGIN GENERATED: event-support" docs/runtime-capability-matrix.md; then
+  pass "capability matrix table is generated"
+else
+  fail "capability matrix table is no longer generated"
+fi
+
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "Results: $PASS passed, $FAIL failed"

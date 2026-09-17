@@ -1,8 +1,8 @@
 # v4.0 — Universal runtime support
 
-**Status:** Phase 0 shipped (v3.1.1); Phases 1–6 awaiting scope decision
+**Status:** Phases 0–1 shipped (v3.1.1, v3.2.0); Phases 2–6 awaiting scope decision
 **Date:** 2026-09-17 (revised same day — see the Antigravity correction in Part 2)
-**Baseline:** v3.1.1 @ `6ef0d89` (pushed to `origin/main`)
+**Baseline:** v3.2.0 (pushed to `origin/main`)
 **Supersedes:** the open items in `session_handover.md` (Phases 0–3 of the v3.0.0
 Claude-compatibility audit landed in `cb68658..8d58226`; that handover is stale).
 
@@ -300,7 +300,13 @@ which only surfaced once the handover lock moved under `.claude/session/`.
 - F6 `StopFailure` field names, imperative inject text, Cursor `user_message`
 - Ship as **v3.1.1**. No behaviour change for existing users beyond the fixes.
 
-**Phase 1 — one registry, generated everywhere** *(the enabling refactor)*
+**Phase 1 — one registry, generated everywhere** — ✅ **shipped as v3.2.0**, see
+[`RELEASE_NOTES_3.2.0.md`](RELEASE_NOTES_3.2.0.md). Evals 137 → 144, all eight
+new assertions negative-controlled. Codex and Grok configs regenerated
+byte-identical; Cursor's is semantically identical. One regression found and
+fixed during the work: the registry cache was keyed on "loaded yet" rather than
+on which runtime, so it answered later queries from whichever runtime asked
+first — caught by an existing eval.
 - Move the event table out of Python into `config/runtime_events.json`: per
   runtime, the supported events, event-name aliases, timeout ceilings, async
   support, payload casing, and the injection mechanism.

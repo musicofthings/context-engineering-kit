@@ -2,40 +2,66 @@
   "version": 1,
   "hooks": {
     "sessionStart": [
-      { "command": "bash .cursor/hooks/on-session-start.sh" }
+      {
+        "command": "bash .cursor/hooks/on-session-start.sh"
+      }
     ],
     "sessionEnd": [
-      { "command": "bash .cursor/hooks/on-session-end.sh" }
+      {
+        "command": "bash .cursor/hooks/on-session-end.sh"
+      }
     ],
     "beforeSubmitPrompt": [
-      { "command": "bash .cursor/hooks/on-prompt.sh" }
+      {
+        "command": "bash .cursor/hooks/on-prompt.sh"
+      }
     ],
     "beforeShellExecution": [
-      { "command": "bash .cursor/hooks/guard-shell.sh", "failClosed": false }
+      {
+        "command": "bash .cursor/hooks/guard-shell.sh",
+        "failClosed": false
+      }
     ],
     "afterFileEdit": [
-      { "command": "bash .cursor/hooks/track-edit.sh" }
-    ],
-    "beforeReadFile": [
-      { "command": "bash .cursor/hooks/guard-read.sh", "failClosed": true }
-    ],
-    "afterAgentResponse": [
-      { "command": "bash .cursor/hooks/on-agent-response.sh" }
-    ],
-    "stop": [
-      { "command": "bash .cursor/hooks/on-stop.sh" }
+      {
+        "command": "bash .cursor/hooks/track-edit.sh"
+      }
     ],
     "postToolUseFailure": [
-      { "command": "bash .cursor/hooks/on-tool-failure.sh" }
-    ],
-    "subagentStart": [
-      { "command": "bash .cursor/hooks/on-subagent.sh SubagentStart" }
-    ],
-    "subagentStop": [
-      { "command": "bash .cursor/hooks/on-subagent.sh SubagentStop" }
+      {
+        "command": "bash .cursor/hooks/on-tool-failure.sh"
+      }
     ],
     "preCompact": [
-      { "command": "bash .cursor/hooks/on-precompact.sh" }
+      {
+        "command": "bash .cursor/hooks/on-precompact.sh"
+      }
+    ],
+    "stop": [
+      {
+        "command": "bash .cursor/hooks/on-stop.sh"
+      }
+    ],
+    "subagentStart": [
+      {
+        "command": "bash .cursor/hooks/on-subagent.sh SubagentStart"
+      }
+    ],
+    "subagentStop": [
+      {
+        "command": "bash .cursor/hooks/on-subagent.sh SubagentStop"
+      }
+    ],
+    "afterAgentResponse": [
+      {
+        "command": "bash .cursor/hooks/on-agent-response.sh"
+      }
+    ],
+    "beforeReadFile": [
+      {
+        "command": "bash .cursor/hooks/guard-read.sh",
+        "failClosed": true
+      }
     ]
   }
 }

@@ -7,11 +7,22 @@ Hooks, skills, and scripts that keep your context alive through compaction, devi
 Works in **Claude Cowork**, **Claude Code Desktop**, **Claude Code CLI**, **Cursor IDE**, **Grok Build**, and **Codex**.
 
 🌐 **[Landing page & full docs →](https://musicofthings.github.io/context-engineering-kit/)**  
-📦 **[Download plugin zip (v3.1.2) →](https://github.com/musicofthings/context-engineering-kit/releases/latest)** — for Cowork or Desktop Plugin upload  
+📦 **[Download plugin zip (v3.2.0) →](https://github.com/musicofthings/context-engineering-kit/releases/latest)** — for Cowork or Desktop Plugin upload  
 📐 **[Runtime capability matrix →](docs/runtime-capability-matrix.md)**  
-📝 **[Release notes (v3.1.2) →](docs/RELEASE_NOTES_3.1.2.md)** — Grok/Cursor double-fire fixed, Antigravity documented · [v3.1.1](docs/RELEASE_NOTES_3.1.1.md) · [v3.1.0](docs/RELEASE_NOTES_3.1.0.md) · [v3.0.1](docs/RELEASE_NOTES_3.0.1.md) · [v3.0.0](docs/RELEASE_NOTES_3.0.0.md)
+📝 **[Release notes (v3.2.0) →](docs/RELEASE_NOTES_3.2.0.md)** — one runtime registry, Cursor now generated · [v3.1.2](docs/RELEASE_NOTES_3.1.2.md) · [v3.1.1](docs/RELEASE_NOTES_3.1.1.md) · [v3.1.0](docs/RELEASE_NOTES_3.1.0.md) · [v3.0.1](docs/RELEASE_NOTES_3.0.1.md) · [v3.0.0](docs/RELEASE_NOTES_3.0.0.md)
 
 ---
+
+## What's new in v3.2.0
+
+Phase 1 of the [v4.0 plan](docs/PLAN_v4_universal_runtime.md). The per-runtime
+event table existed in three hand-synced copies and only one of them validated
+anything — and Cursor was absent from that one. There is now a single registry,
+[`config/runtime_events.json`](config/runtime_events.json), carrying a `source`
+URL and `verified` date per runtime. The generator, `cek_runtime_supports()` and
+the capability matrix all read it, and `.cursor/hooks.json` is generated rather
+than hand-written. Codex and Grok configs came out byte-identical.
+See [`docs/RELEASE_NOTES_3.2.0.md`](docs/RELEASE_NOTES_3.2.0.md).
 
 ## What's new in v3.1.2
 
@@ -153,7 +164,7 @@ The easiest path. One zip works in both **Claude Cowork** and **Claude Code Desk
 **Either** download the prebuilt zip from the [latest GitHub release](https://github.com/musicofthings/context-engineering-kit/releases/latest):
 
 ```
-context-engineering-kit-3.1.2.zip
+context-engineering-kit-3.2.0.zip
 ```
 
 **Or** build it from source (requires Python 3):
@@ -162,7 +173,7 @@ context-engineering-kit-3.1.2.zip
 git clone https://github.com/musicofthings/context-engineering-kit.git
 cd context-engineering-kit
 python scripts/package_plugin.py
-# → writes context-engineering-kit-3.1.2.zip in the project root
+# → writes context-engineering-kit-3.2.0.zip in the project root
 ```
 
 The packaging script reads the version from `.claude-plugin/plugin.json` and excludes git history, runtime session state, audit logs, and caches automatically.
@@ -170,7 +181,7 @@ The packaging script reads the version from `.claude-plugin/plugin.json` and exc
 ### Step 2a — Upload to Claude Cowork
 
 1. Open Cowork → **Settings** → **Plugins** (or **Skills** → **Add plugin**)
-2. Click **Upload plugin** → select `context-engineering-kit-3.1.2.zip`
+2. Click **Upload plugin** → select `context-engineering-kit-3.2.0.zip`
 3. Confirm install — the eight skills appear as `/context-engineering-kit:*` commands
 4. Type `/context-engineering-kit:handover` in any conversation to use it
 
@@ -179,7 +190,7 @@ The packaging script reads the version from `.claude-plugin/plugin.json` and exc
 ### Step 2b — Upload to Claude Code Desktop
 
 1. Open **Claude Code Desktop** → click **Customize** (bottom-left gear) → **Upload Plugin**
-2. Select `context-engineering-kit-3.1.2.zip` and restart Claude Code
+2. Select `context-engineering-kit-3.2.0.zip` and restart Claude Code
 3. Verify in any project:
    ```
    /context-engineering-kit:context-health
@@ -934,7 +945,7 @@ Resuming on another device
 bash scripts/check_sync.sh
 bash scripts/eval_phase_c.sh
 bash scripts/eval_usage_lifecycle.sh
-python scripts/package_plugin.py    # → context-engineering-kit-3.1.2.zip
+python scripts/package_plugin.py    # → context-engineering-kit-3.2.0.zip
 ```
 
 ---
@@ -997,4 +1008,4 @@ Then in Claude Code: `/my-skill`
 
 ---
 
-*context-engineering-kit v3.1.2 — Multi-runtime context preservation for Claude Code, Cursor, Grok, and Codex.*
+*context-engineering-kit v3.2.0 — Multi-runtime context preservation for Claude Code, Cursor, Grok, and Codex.*

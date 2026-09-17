@@ -1,0 +1,165 @@
+{
+  "_doc": "Single source of truth for what each runtime CAN do. Runtime facts only — which events it emits, what it calls them, how it is configured. Kit policy (which hook handles which event) lives in EVENTS in scripts/generate_runtime_hooks.py.",
+
+  "_why": [
+    "This table used to exist three times: RUNTIME_EVENTS in generate_runtime_hooks.py (codex, grok only), cek_runtime_supports() in scripts/cek_runtime.sh (all four), and the event table in docs/runtime-capability-matrix.md (all four). Three copies cannot disagree safely, and Cursor was absent from the one that actually validates anything — so the guard that caught .codex/hooks.json shipping three events Codex does not have could never fire for Cursor.",
+    "Every runtime carries `source` and `verified`. That is not decoration: the v4 plan's first draft was built on a January 2026 blog post about Gemini CLI, a product Google had shut off three months earlier. A capability claim with no date and no URL is a claim nobody can re-check."
+  ],
+
+  "schema_version": 1,
+
+  "_events_format": "`events` maps CANONICAL event name -> the name THIS runtime uses. They are equal where the runtime follows Claude Code's naming. A canonical name absent from the map means the runtime does not emit that event. `native_extra` lists events with no canonical equivalent that the kit deliberately uses anyway.",
+
+  "runtimes": {
+    "claude": {
+      "display_name": "Claude Code",
+      "source": "https://code.claude.com/docs/en/hooks",
+      "verified": "2026-09-17",
+      "payload_case": "snake",
+      "supports_async": true,
+      "generated_config": null,
+      "_generated_config_note": "hooks/hooks.json is hand-maintained: Claude Code is the reference runtime and the manifest carries events no other runtime has, plus per-event async choices that are policy rather than capability.",
+      "inject": "stdout on SessionStart / UserPromptSubmit / UserPromptExpansion / PostModelSwitch, or hookSpecificOutput.additionalContext",
+      "timeout_default_sec": 60,
+      "timeout_max_sec": {},
+      "_timeout_note": "SessionEnd shares a 1.5s budget that a plugin's own `timeout` cannot raise. Not a per-hook ceiling, so it is not expressible here — session-end.sh detaches instead.",
+      "events": {
+        "Setup": "Setup",
+        "SessionStart": "SessionStart",
+        "SessionEnd": "SessionEnd",
+        "UserPromptSubmit": "UserPromptSubmit",
+        "UserPromptExpansion": "UserPromptExpansion",
+        "PreToolUse": "PreToolUse",
+        "PostToolUse": "PostToolUse",
+        "PostToolUseFailure": "PostToolUseFailure",
+        "PostToolBatch": "PostToolBatch",
+        "PermissionRequest": "PermissionRequest",
+        "PermissionDenied": "PermissionDenied",
+        "Stop": "Stop",
+        "StopFailure": "StopFailure",
+        "Notification": "Notification",
+        "TaskCreated": "TaskCreated",
+        "TaskCompleted": "TaskCompleted",
+        "TeammateIdle": "TeammateIdle",
+        "SubagentStart": "SubagentStart",
+        "SubagentStop": "SubagentStop",
+        "PreCompact": "PreCompact",
+        "PostCompact": "PostCompact",
+        "PreModelSwitch": "PreModelSwitch",
+        "PostModelSwitch": "PostModelSwitch",
+        "InstructionsLoaded": "InstructionsLoaded",
+        "ConfigChange": "ConfigChange",
+        "CwdChanged": "CwdChanged",
+        "DirectoryAdded": "DirectoryAdded",
+        "WorktreeCreate": "WorktreeCreate",
+        "WorktreeRemove": "WorktreeRemove",
+        "FileChanged": "FileChanged"
+      },
+      "native_extra": []
+    },
+
+    "cursor": {
+      "display_name": "Cursor",
+      "source": "https://cursor.com/docs/hooks",
+      "verified": "2026-09-17",
+      "payload_case": "snake",
+      "supports_async": false,
+      "generated_config": ".cursor/hooks.json",
+      "config_format": "cursor",
+      "command_prefix": "bash .cursor/hooks/",
+      "inject": "sessionStart.additional_context, postToolUse.additional_context, preCompact.user_message",
+      "timeout_default_sec": null,
+      "timeout_max_sec": {},
+      "_note": "Cursor emits literal preToolUse / postToolUse as well, but the kit uses beforeShellExecution / afterFileEdit for the same coverage — see the 'deliberately unused' list in the capability matrix. The canonical mapping below reflects the events the kit actually binds.",
+      "events": {
+        "SessionStart": "sessionStart",
+        "SessionEnd": "sessionEnd",
+        "UserPromptSubmit": "beforeSubmitPrompt",
+        "PreToolUse": "beforeShellExecution",
+        "PostToolUse": "afterFileEdit",
+        "PostToolUseFailure": "postToolUseFailure",
+        "Stop": "stop",
+        "SubagentStart": "subagentStart",
+        "SubagentStop": "subagentStop",
+        "PreCompact": "preCompact"
+      },
+      "native_extra": [
+        "afterAgentResponse",
+        "beforeReadFile"
+      ]
+    },
+
+    "codex": {
+      "display_name": "Codex",
+      "source": "https://learn.chatgpt.com/docs/hooks",
+      "verified": "2026-09-17",
+      "payload_case": "snake",
+      "supports_async": true,
+      "generated_config": ".codex/hooks.json",
+      "plugin_config": "hooks/codex-hooks.json",
+      "config_format": "claude",
+      "command_prefix": "bash .codex/hooks/run.sh ",
+      "plugin_command_prefix": "bash \"${CLAUDE_PLUGIN_ROOT}/.codex/hooks/run.sh\" ",
+      "inject": "stdout or hookSpecificOutput.additionalContext on SessionStart / UserPromptSubmit / SubagentStart",
+      "timeout_default_sec": 600,
+      "timeout_max_sec": {
+        "SessionEnd": 3,
+        "Interrupt": 3
+      },
+      "_output_limit_note": "Model-visible hook output over ~2500 tokens is spilled to <temp_dir>/hook_outputs/<session_id>/<uuid>.txt and replaced with a preview. Tune per handler with additionalContextLimit.",
+      "events": {
+        "SessionStart": "SessionStart",
+        "SessionEnd": "SessionEnd",
+        "UserPromptSubmit": "UserPromptSubmit",
+        "PreToolUse": "PreToolUse",
+        "PermissionRequest": "PermissionRequest",
+        "PostToolUse": "PostToolUse",
+        "PreCompact": "PreCompact",
+        "PostCompact": "PostCompact",
+        "SubagentStart": "SubagentStart",
+        "SubagentStop": "SubagentStop",
+        "Stop": "Stop",
+        "Interrupt": "Interrupt"
+      },
+      "native_extra": []
+    },
+
+    "grok": {
+      "display_name": "Grok Build",
+      "source": "https://docs.x.ai/build/features/hooks",
+      "verified": "2026-09-17",
+      "payload_case": "camel",
+      "supports_async": false,
+      "generated_config": ".grok/hooks/cek-hooks.json",
+      "config_format": "claude",
+      "command_prefix": "bash .grok/hooks/run.sh ",
+      "inject": "none — stdout is ignored on every event except PreToolUse's decision JSON",
+      "timeout_default_sec": 5,
+      "timeout_max_sec": {},
+      "_timeout_note": "Default is 5s, not 30. Only the SessionEnd entry sets an explicit timeout, so every other Grok hook runs against 5s. The session-start chain has not been profiled against that ceiling.",
+      "_blocking_note": "PreToolUse is the ONLY blocking event; exit 2 denies. Everything else fails open.",
+      "_also_reads": [
+        ".claude/settings.json",
+        ".cursor/hooks.json"
+      ],
+      "_also_reads_note": "Grok reads BOTH, including Cursor's camelCase event names. .claude/settings.json declares no hooks since v3.0.0; .cursor/hooks/_common.sh exits early when GROK_* is in the environment. Without that guard every Grok session ran the kit twice.",
+      "events": {
+        "SessionStart": "SessionStart",
+        "SessionEnd": "SessionEnd",
+        "UserPromptSubmit": "UserPromptSubmit",
+        "PreToolUse": "PreToolUse",
+        "PostToolUse": "PostToolUse",
+        "PostToolUseFailure": "PostToolUseFailure",
+        "PermissionDenied": "PermissionDenied",
+        "PreCompact": "PreCompact",
+        "PostCompact": "PostCompact",
+        "SubagentStart": "SubagentStart",
+        "SubagentStop": "SubagentStop",
+        "Stop": "Stop",
+        "StopFailure": "StopFailure",
+        "Notification": "Notification"
+      },
+      "native_extra": []
+    }
+  }
+}
