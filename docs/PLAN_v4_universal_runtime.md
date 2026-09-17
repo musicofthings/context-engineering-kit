@@ -1,8 +1,8 @@
 # v4.0 — Universal runtime support
 
-**Status:** Phases 0–2 shipped (v3.1.1, v3.1.2, v3.2.0, v3.3.0); Phases 3–6 awaiting scope decision
+**Status:** Phases 0–2 and 4 shipped (v3.1.1, v3.1.2, v3.2.0, v3.3.0, v3.4.0); Phases 3, 5, 6 open
 **Date:** 2026-09-17 (revised same day — see the Antigravity correction in Part 2)
-**Baseline:** v3.3.0 (pushed to `origin/main`)
+**Baseline:** v3.4.0 (pushed to `origin/main`)
 **Supersedes:** the open items in `session_handover.md` (Phases 0–3 of the v3.0.0
 Claude-compatibility audit landed in `cb68658..8d58226`; that handover is stale).
 
@@ -177,7 +177,7 @@ Verified against each vendor's own documentation, 2026-09-17.
 | **Grok** | `.grok/hooks/*.json` | 14 events | `SessionStart` | shipped |
 | **Antigravity CLI** (`agy`) | `.agents/hooks.json` + plugin bundles | **5 only**: `PreToolUse`, `PostToolUse`, `PreInvocation`, `PostInvocation`, `Stop` | `injectSteps` on Pre/PostInvocation | **new — partial parity** |
 | **opencode** | JS/TS plugin, `.opencode/plugins/` or npm | 25+ events | `experimental.session.compacting` → `output.context.push()`, `tui.prompt.append` | ✅ shipped v3.3.0 |
-| **Warp** | `AGENTS.md` rules + MCP | **none** | rules file only | **new — read-side only** |
+| **Warp** | `AGENTS.md` rules + MCP | **none** | rules file only | ⚠️ reachable via `cek-mcp` since v3.4.0; still no auto-save |
 
 Three things this changes about the plan:
 
@@ -368,7 +368,13 @@ whose events genuinely differ, rather than one that merely renames Claude's.
   the fallback, and the README must say so.
 - Ship as **v3.4.0**
 
-**Phase 4 — `cek-mcp`, the universal floor**
+**Phase 4 — `cek-mcp`, the universal floor** — ✅ **shipped as v3.4.0**, see
+[`RELEASE_NOTES_3.4.0.md`](RELEASE_NOTES_3.4.0.md) and
+[`mcp-setup.md`](mcp-setup.md). Evals 155 → 183, verified independently with the
+official MCP inspector. Taken ahead of Phase 3, so the version numbering below
+shifts. One eval was found passing for the wrong reason during the negative
+controls — the containment assertion was satisfied by a second layer inside
+`cek_paths` and proved nothing about the guard it named.
 - stdio MCP server wrapping the existing Python/shell logic. Tools:
   `handover_read`, `handover_write`, `state_get`, `usage_status`,
   `session_sync`, `context_health`.

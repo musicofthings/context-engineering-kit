@@ -7,11 +7,23 @@ Hooks, skills, and scripts that keep your context alive through compaction, devi
 Works in **Claude Cowork**, **Claude Code Desktop**, **Claude Code CLI**, **Cursor IDE**, **Grok Build**, and **Codex**.
 
 🌐 **[Landing page & full docs →](https://musicofthings.github.io/context-engineering-kit/)**  
-📦 **[Download plugin zip (v3.3.0) →](https://github.com/musicofthings/context-engineering-kit/releases/latest)** — for Cowork or Desktop Plugin upload  
+📦 **[Download plugin zip (v3.4.0) →](https://github.com/musicofthings/context-engineering-kit/releases/latest)** — for Cowork or Desktop Plugin upload  
 📐 **[Runtime capability matrix →](docs/runtime-capability-matrix.md)**  
-📝 **[Release notes (v3.3.0) →](docs/RELEASE_NOTES_3.3.0.md)** — opencode support, handover injected into the compaction prompt · [v3.2.0](docs/RELEASE_NOTES_3.2.0.md) · [v3.1.2](docs/RELEASE_NOTES_3.1.2.md) · [v3.1.1](docs/RELEASE_NOTES_3.1.1.md) · [v3.1.0](docs/RELEASE_NOTES_3.1.0.md) · [v3.0.1](docs/RELEASE_NOTES_3.0.1.md) · [v3.0.0](docs/RELEASE_NOTES_3.0.0.md)
+📝 **[Release notes (v3.4.0) →](docs/RELEASE_NOTES_3.4.0.md)** — `cek-mcp`, the universal floor · [v3.3.0](docs/RELEASE_NOTES_3.3.0.md) · [v3.2.0](docs/RELEASE_NOTES_3.2.0.md) · [v3.1.2](docs/RELEASE_NOTES_3.1.2.md) · [v3.1.1](docs/RELEASE_NOTES_3.1.1.md) · [v3.1.0](docs/RELEASE_NOTES_3.1.0.md) · [v3.0.1](docs/RELEASE_NOTES_3.0.1.md) · [v3.0.0](docs/RELEASE_NOTES_3.0.0.md)
 
 ---
+
+## What's new in v3.4.0
+
+Phase 4 of the [v4.0 plan](docs/PLAN_v4_universal_runtime.md): **`cek-mcp`, the
+universal floor** (**Option H** below). A stdlib-only stdio MCP server exposing
+the kit's state to any agent that speaks the protocol — Warp, Cline, Continue,
+Goose, Zed, and Antigravity CLI, where it is the *only* way to write a handover
+at all. Weaker than hooks by construction: the model must choose to call a tool,
+so there is no guaranteed save at 85%. Verified against the official
+`@modelcontextprotocol/inspector`.
+See [`docs/RELEASE_NOTES_3.4.0.md`](docs/RELEASE_NOTES_3.4.0.md) and
+[`docs/mcp-setup.md`](docs/mcp-setup.md).
 
 ## What's new in v3.3.0
 
@@ -41,7 +53,7 @@ Re-verified Codex and Grok against their current docs. Neither event set has
 drifted — but Grok also reads `.cursor/hooks.json`, "including Cursor's
 camelCase event names", which this repo claimed it did not. Every Grok session
 was running the kit twice. Fixed, with evals. Also documents Antigravity CLI
-compatibility and its limits (**Option H** below), and Codex's hook-output
+compatibility and its limits (**Option I** below), and Codex's hook-output
 spilling. See [`docs/RELEASE_NOTES_3.1.2.md`](docs/RELEASE_NOTES_3.1.2.md).
 
 ## What's new in v3.1.1
@@ -175,7 +187,7 @@ The easiest path. One zip works in both **Claude Cowork** and **Claude Code Desk
 **Either** download the prebuilt zip from the [latest GitHub release](https://github.com/musicofthings/context-engineering-kit/releases/latest):
 
 ```
-context-engineering-kit-3.3.0.zip
+context-engineering-kit-3.4.0.zip
 ```
 
 **Or** build it from source (requires Python 3):
@@ -184,7 +196,7 @@ context-engineering-kit-3.3.0.zip
 git clone https://github.com/musicofthings/context-engineering-kit.git
 cd context-engineering-kit
 python scripts/package_plugin.py
-# → writes context-engineering-kit-3.3.0.zip in the project root
+# → writes context-engineering-kit-3.4.0.zip in the project root
 ```
 
 The packaging script reads the version from `.claude-plugin/plugin.json` and excludes git history, runtime session state, audit logs, and caches automatically.
@@ -192,7 +204,7 @@ The packaging script reads the version from `.claude-plugin/plugin.json` and exc
 ### Step 2a — Upload to Claude Cowork
 
 1. Open Cowork → **Settings** → **Plugins** (or **Skills** → **Add plugin**)
-2. Click **Upload plugin** → select `context-engineering-kit-3.3.0.zip`
+2. Click **Upload plugin** → select `context-engineering-kit-3.4.0.zip`
 3. Confirm install — the eight skills appear as `/context-engineering-kit:*` commands
 4. Type `/context-engineering-kit:handover` in any conversation to use it
 
@@ -201,7 +213,7 @@ The packaging script reads the version from `.claude-plugin/plugin.json` and exc
 ### Step 2b — Upload to Claude Code Desktop
 
 1. Open **Claude Code Desktop** → click **Customize** (bottom-left gear) → **Upload Plugin**
-2. Select `context-engineering-kit-3.3.0.zip` and restart Claude Code
+2. Select `context-engineering-kit-3.4.0.zip` and restart Claude Code
 3. Verify in any project:
    ```
    /context-engineering-kit:context-health
@@ -495,7 +507,51 @@ rather than pretending to work if it cannot find the core.
 
 ---
 
-## Option H — Antigravity CLI (`agy`) — **not yet supported**
+## Option H — Any MCP client (Warp, Cline, Continue, Goose, Zed, …)
+
+```bash
+python3 scripts/cek_mcp.py       # stdio MCP server, stdlib-only
+python3 scripts/eval_mcp.py      # verify it
+```
+
+`scripts/cek_mcp.py` exposes the kit's state as six MCP tools — `handover_read`,
+`handover_write`, `state_get`, `usage_status`, `context_health`, `session_sync`.
+Full setup, per-client config snippets and the security model:
+**[`docs/mcp-setup.md`](docs/mcp-setup.md)**.
+
+**This is weaker than hooks, and the difference matters.** The model has to
+*choose* to call a tool, so there is **no guaranteed save at 85% and no
+automatic save before compaction**. If your runtime has an adapter above
+(Claude Code, Cursor, Codex, Grok, opencode), install that — MCP is a supplement
+there, not a replacement.
+
+Where it is the only option:
+
+| Runtime | Why |
+|---|---|
+| **Warp** | No hook mechanism at all (`warpdotdev/warp#6857`, open since Jul 2025) |
+| **Antigravity CLI** | No session or compaction events — see Option I |
+| **Cline / Continue / Goose / Zed** | No adapter here; MCP is the shared surface |
+
+Those clients are listed because they speak MCP, **not because the kit has been
+tested in each of them.** The protocol surface is verified against the official
+`@modelcontextprotocol/inspector`; the individual clients are not.
+
+### Security
+
+No tool accepts a path. The project directory comes from the environment at
+launch and cannot be redirected by a tool argument, so a prompt-injected model
+has nowhere else to name. All state access goes through `cek_paths`, so the same
+containment guard and locks the hooks use apply unchanged.
+
+`session_sync` is **status-only by default**: its `save` mode commits *and
+pushes*, and `load` runs `git pull --rebase --autostash` over your working tree.
+Both need an explicit `CEK_MCP_ALLOW_GIT=1`. `CEK_MCP_READONLY=1` disables every
+mutating tool.
+
+---
+
+## Option I — Antigravity CLI (`agy`) — **not yet supported**
 
 Google sunset **Gemini CLI on 2026-06-18** with no grace period and replaced it
 with Antigravity CLI. If you came here looking for Gemini CLI support: that
@@ -1011,7 +1067,7 @@ Resuming on another device
 bash scripts/check_sync.sh
 bash scripts/eval_phase_c.sh
 bash scripts/eval_usage_lifecycle.sh
-python scripts/package_plugin.py    # → context-engineering-kit-3.3.0.zip
+python scripts/package_plugin.py    # → context-engineering-kit-3.4.0.zip
 ```
 
 ---

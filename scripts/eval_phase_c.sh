@@ -354,7 +354,38 @@ else
   pass "cek.ts uses only standard JS APIs"
 fi
 
-# 23) The matrix table is generated, not hand-written.
+# 23) cek-mcp, the universal floor. Protocol conformance and the security
+# boundaries are covered by scripts/eval_mcp.py, which launches the server as a
+# subprocess and drives it as a real MCP client would.
+if "$PYTHON" scripts/eval_mcp.py >/dev/null 2>&1; then
+  pass "cek-mcp: protocol lifecycle, tools, and security boundaries"
+else
+  fail "cek-mcp evals — run: $PYTHON scripts/eval_mcp.py"
+fi
+
+# 24) The server must be stdlib-only. The kit's core is dependency-free and a
+# universal floor that needs `pip install mcp` is not universal.
+if "$PYTHON" - <<'PYEOF'
+import ast, sys
+stdlib = set(sys.stdlib_module_names)
+local = {"cek_paths"}
+tree = ast.parse(open("scripts/cek_mcp.py").read())
+bad = []
+for node in ast.walk(tree):
+    if isinstance(node, ast.Import):
+        bad += [a.name.split(".")[0] for a in node.names]
+    elif isinstance(node, ast.ImportFrom) and node.module and node.level == 0:
+        bad.append(node.module.split(".")[0])
+extra = [m for m in bad if m not in stdlib and m not in local]
+sys.exit(1 if extra else 0)
+PYEOF
+then
+  pass "cek_mcp.py imports stdlib only"
+else
+  fail "cek_mcp.py grew a third-party dependency"
+fi
+
+# 25) The matrix table is generated, not hand-written.
 if grep -q "BEGIN GENERATED: event-support" docs/runtime-capability-matrix.md; then
   pass "capability matrix table is generated"
 else

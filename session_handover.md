@@ -1,5 +1,5 @@
 # Session Handover
-_Generated: 2026-09-17T18:23:36Z_
+_Generated: 2026-09-17T18:52:38Z_
 _Branch: main_
 _Trigger: stable | Context at compact: unknown%_
 _Compact count this project: 0_
@@ -8,10 +8,10 @@ _Compact count this project: 0_
 
 ## 🎯 Active Task
 **What we're building/fixing:**
-v4.0 universal runtime support — Phase 2 (opencode adapter) shipped as v3.3.0
+v4.0 universal runtime support — Phase 4 (cek-mcp universal floor) shipped as v3.4.0
 
-**Phase:** Phases 0-2 complete; Phase 4 (cek-mcp universal floor) recommended next
-**Next action:** Confirm scope, then Phase 4: stdio MCP server wrapping the kit's logic (handover_read/write, state_get, usage_status, session_sync, context_health) reusing cek_paths.py so containment and locks apply unchanged
+**Phase:** Phases 0-2 and 4 complete; Phase 5 (Warp AGENTS.md) or Phase 3 (Antigravity) next
+**Next action:** Decide: Phase 5 Warp (AGENTS.md generator, small — cek-mcp already reaches Warp) or Phase 3 Antigravity adapter (larger, partial parity, closed source)
 
 ---
 
@@ -24,14 +24,15 @@ v4.0 universal runtime support — Phase 2 (opencode adapter) shipped as v3.3.0
 - [x] README Option G — Antigravity compatibility and limitations
 - [x] **Phase 1** shipped as v3.2.0 — one runtime registry (config/runtime_events.json); generator, cek_runtime_supports() and the matrix table all read it; .cursor/hooks.json now generated
 - [x] **Phase 2** shipped as v3.3.0 — opencode adapter (.opencode/plugins/cek.ts + hooks/run.sh); handover injected into the compaction prompt via experimental.session.compacting
-- [x] Evals 130 → 155; every new assertion negative-controlled
+- [x] **Phase 4** shipped as v3.4.0 — cek-mcp stdio MCP server (stdlib-only), reaches Warp/Cline/Continue/Goose/Zed/Antigravity; verified with the official MCP inspector
+- [x] Evals 130 → 183; every new assertion negative-controlled (two were found passing for the wrong reason and tightened)
 
 ---
 
 ## 🔄 In Progress (Exact Resume Point)
 **Branch:** `main`
-**Last commit:** `3c806c8 feat: Phase 1 — one runtime registry, generated everywhere (v3.2.0)`
-**Next immediate action:** Confirm scope, then Phase 4: stdio MCP server wrapping the kit's logic (handover_read/write, state_get, usage_status, session_sync, context_health) reusing cek_paths.py so containment and locks apply unchanged
+**Last commit:** `2ba3e2b feat: Phase 2 — opencode support (v3.3.0)`
+**Next immediate action:** Decide: Phase 5 Warp (AGENTS.md generator, small — cek-mcp already reaches Warp) or Phase 3 Antigravity adapter (larger, partial parity, closed source)
 
 ---
 
@@ -45,13 +46,14 @@ v4.0 universal runtime support — Phase 2 (opencode adapter) shipped as v3.3.0
    - Warp: is "read-only, no auto-save" acceptable to advertise, or drop it until it has hooks?
    - Rename `.claude/` (the shared core's home) to `core/`? Breaking; decide at v4.0.0 or not at all.
 
-2. **Phase 4 — `cek-mcp`, the universal floor** (recommended next)
-   - stdio MCP server wrapping the existing Python/shell logic: `handover_read`, `handover_write`, `state_get`, `usage_status`, `session_sync`, `context_health`
-   - Reuse `cek_paths.py` for all state access so the containment guard and locks apply unchanged
-   - Config snippets for Warp, Cursor, Claude Code, Codex, Antigravity, opencode, Cline, Continue, Goose, Zed
-   - Load-bearing on Antigravity, which has no compaction hook — not just a convenience
+2. **Phase 5 — Warp** (small; `cek-mcp` already reaches Warp)
+   - `AGENTS.md` generator emitting a Warp-compatible rules file pointing at `session_handover.md` and telling the agent to call `handover_read` first
+   - Caps filename required; `WARP.md` wins if both exist
+   - README capability table distinguishing automatic (hooks) / on-request (MCP) / read-only (rules)
 
-3. ~~**Phase 2 — opencode**~~ ✅ done (v3.3.0)
+3. **Phase 3 — Antigravity CLI** (`agy`) — larger; 5 events, no session or compaction events, closed source. README Option I documents the gaps. `cek-mcp` already covers it on-request
+
+4. ~~**Phase 2 — opencode**~~ ✅ done (v3.3.0) · ~~**Phase 4 — cek-mcp**~~ ✅ done (v3.4.0)
 
 3. **Phase 3 — Antigravity CLI** (`agy`) — 5 events only, no session or compaction events; partial parity. README Option G documents the gaps
 4. **Phase 4 — `cek-mcp`** (universal floor; unlocks Warp, Cline, Continue, Goose, Zed — and is the ONLY handover path on Antigravity)
@@ -117,7 +119,6 @@ bash scripts/session_sync.sh --load
 |------|--------|
 | `.claude-plugin/marketplace.json` | modified |
 | `.claude-plugin/plugin.json` | modified |
-| `.claude/hooks/extract-state-on-stop.sh` | modified |
 | `.claude/hooks/native-event-log.sh` | modified |
 | `.claude/hooks/permission-denied.sh` | modified |
 | `.claude/hooks/post-tool-failure.sh` | modified |
@@ -128,8 +129,9 @@ bash scripts/session_sync.sh --load
 | `.codex-plugin/plugin.json` | modified |
 | `.cursor/hooks/_common.sh` | modified |
 | `.cursor/hooks/guard-read.sh` | modified |
-| `.cursor/hooks/on-agent-response.sh` | modified |
 | `.cursor/hooks/on-precompact.sh` | modified |
+| `.opencode/hooks/run.sh` | modified |
+| `.opencode/plugins/cek.ts` | modified |
 | _(+43 more files not shown)_ | — |
 
 ---
@@ -137,7 +139,7 @@ bash scripts/session_sync.sh --load
 ## 🌿 Git Context
 ```
 Branch  : main
-Commit  : 3c806c8 feat: Phase 1 — one runtime registry, generated everywhere (v3.2.0)
+Commit  : 2ba3e2b feat: Phase 2 — opencode support (v3.3.0)
 Status  : M .claude-plugin/marketplace.json
  M .claude-plugin/plugin.json
  M .claude/hooks/session-start.sh
@@ -145,24 +147,22 @@ Status  : M .claude-plugin/marketplace.json
  M .codex-plugin/plugin.json
  M README.md
  M api_docs.md
- M config/runtime_events.json
  M docs/PLAN_v4_universal_runtime.md
- M docs/runtime-capability-matrix.md
  M scripts/eval_phase_c.sh
- M scripts/generate_runtime_hooks.py
  M session_handover.md
-?? .opencode/
-?? docs/RELEASE_NOTES_3.3.0.md
-?? scripts/eval_opencode.mjs
+?? docs/RELEASE_NOTES_3.4.0.md
+?? docs/mcp-setup.md
+?? scripts/cek_mcp.py
+?? scripts/eval_mcp.py
 ```
 
 Recent commits:
 ```
+2ba3e2b feat: Phase 2 — opencode support (v3.3.0)
 3c806c8 feat: Phase 1 — one runtime registry, generated everywhere (v3.2.0)
 090fb4c fix: Grok ran the Cursor hooks too — double-fire (v3.1.2)
 7d32c21 docs: correct the plan — Gemini CLI is dead, Antigravity CLI replaced it
 6ef0d89 fix: Phase 0 — close the core bugs before new runtimes inherit them (v3.1.1)
-b6d2eb4 docs: v4.0 plan — universal runtime support
 ```
 
 ---
