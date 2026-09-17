@@ -1,7 +1,7 @@
 # Session Handover
-_Generated: 2026-09-17T18:52:38Z_
+_Generated: 2026-09-17T19:05:59Z_
 _Branch: main_
-_Trigger: stable | Context at compact: unknown%_
+_Trigger: session-end | Context at compact: unknown%_
 _Compact count this project: 0_
 
 ---
@@ -29,9 +29,11 @@ v4.0 universal runtime support — Phase 4 (cek-mcp universal floor) shipped as 
 
 ---
 
+---
+
 ## 🔄 In Progress (Exact Resume Point)
 **Branch:** `main`
-**Last commit:** `2ba3e2b feat: Phase 2 — opencode support (v3.3.0)`
+**Last commit:** `d0a21c6 feat: Phase 4 — cek-mcp, the universal floor (v3.4.0)`
 **Next immediate action:** Decide: Phase 5 Warp (AGENTS.md generator, small — cek-mcp already reaches Warp) or Phase 3 Antigravity adapter (larger, partial parity, closed source)
 
 ---
@@ -67,7 +69,11 @@ v4.0 universal runtime support — Phase 4 (cek-mcp universal floor) shipped as 
 
 ---
 
+---
+
 ## 🏗 Architecture Decisions Made
+| Decision | Rationale | Date |
+|----------|-----------|------|
 | Decision | Rationale | Date |
 |----------|-----------|------|
 | `state.json` stays untracked/machine-local | Confirmed deliberate via `90545c6 "chore: ignore Claude session state"`; `session_handover.md` is the portable cross-device anchor | 2026-08-30 |
@@ -79,6 +85,8 @@ v4.0 universal runtime support — Phase 4 (cek-mcp universal floor) shipped as 
 | `hooks/hooks.json` is the single hook source; drop settings.json hooks | Both declare all 16 events at the same scripts and Claude Code does not dedupe across plugin/project scope | 2026-08-30 (planned) |
 | SessionEnd work moves to `Stop` `async: true` | A plugin cannot raise its own 1.5s SessionEnd budget; this is not fixable with a bigger timeout | 2026-08-30 (planned) |
 | No `agent`-type hooks | Documented experimental; inappropriate for a distributed plugin | 2026-08-30 (planned) |
+
+---
 
 ---
 
@@ -117,52 +125,40 @@ bash scripts/session_sync.sh --load
 ## 📁 Files Modified This Session
 | File | Status |
 |------|--------|
-| `.claude-plugin/marketplace.json` | modified |
-| `.claude-plugin/plugin.json` | modified |
 | `.claude/hooks/native-event-log.sh` | modified |
 | `.claude/hooks/permission-denied.sh` | modified |
 | `.claude/hooks/post-tool-failure.sh` | modified |
-| `.claude/hooks/session-start.sh` | modified |
 | `.claude/hooks/stop-failure.sh` | modified |
 | `.claude/hooks/usage-sentinel.sh` | modified |
-| `.claude/settings.json` | modified |
-| `.codex-plugin/plugin.json` | modified |
 | `.cursor/hooks/_common.sh` | modified |
 | `.cursor/hooks/guard-read.sh` | modified |
 | `.cursor/hooks/on-precompact.sh` | modified |
 | `.opencode/hooks/run.sh` | modified |
 | `.opencode/plugins/cek.ts` | modified |
-| _(+43 more files not shown)_ | — |
+| `/private/tmp/claude-501/-Users-theranosis-dx-projects-context-engineering-kit/4e5d9f07-548f-435b-8ad3-c430a8ea2480/scratchpad/test_grok.sh` | modified |
+| `/private/tmp/claude-501/-Users-theranosis-dx-projects-context-engineering-kit/4e5d9f07-548f-435b-8ad3-c430a8ea2480/scratchpad/test_r026.sh` | modified |
+| `/private/tmp/claude-501/-Users-theranosis-dx-projects-context-engineering-kit/4e5d9f07-548f-435b-8ad3-c430a8ea2480/scratchpad/test_reason.sh` | modified |
+| `/private/tmp/claude-501/-Users-theranosis-dx-projects-context-engineering-kit/88b4e1b5-a3ff-4af2-8117-cfe59f96e6c7/scratchpad/add_oc_evals.py` | modified |
+| `/private/tmp/claude-501/-Users-theranosis-dx-projects-context-engineering-kit/88b4e1b5-a3ff-4af2-8117-cfe59f96e6c7/scratchpad/capability_parity.sh` | modified |
+| _(+36 more files not shown)_ | — |
 
 ---
 
 ## 🌿 Git Context
 ```
 Branch  : main
-Commit  : 2ba3e2b feat: Phase 2 — opencode support (v3.3.0)
-Status  : M .claude-plugin/marketplace.json
- M .claude-plugin/plugin.json
- M .claude/hooks/session-start.sh
- M .claude/settings.json
- M .codex-plugin/plugin.json
- M README.md
- M api_docs.md
- M docs/PLAN_v4_universal_runtime.md
- M scripts/eval_phase_c.sh
- M session_handover.md
-?? docs/RELEASE_NOTES_3.4.0.md
-?? docs/mcp-setup.md
-?? scripts/cek_mcp.py
-?? scripts/eval_mcp.py
+Commit  : d0a21c6 feat: Phase 4 — cek-mcp, the universal floor (v3.4.0)
+Status  : M api_docs.md
+?? session_handover.md.lock
 ```
 
 Recent commits:
 ```
+d0a21c6 feat: Phase 4 — cek-mcp, the universal floor (v3.4.0)
 2ba3e2b feat: Phase 2 — opencode support (v3.3.0)
 3c806c8 feat: Phase 1 — one runtime registry, generated everywhere (v3.2.0)
 090fb4c fix: Grok ran the Cursor hooks too — double-fire (v3.1.2)
 7d32c21 docs: correct the plan — Gemini CLI is dead, Antigravity CLI replaced it
-6ef0d89 fix: Phase 0 — close the core bugs before new runtimes inherit them (v3.1.1)
 ```
 
 ---
@@ -174,6 +170,8 @@ Recent commits:
 - **Do not trust WebFetch for Claude Code hook field names** — it truncates and the summariser fabricates. Use the extracted PDF text.
 - Verify subagent findings against the source before acting; two agents contradicted each other on `FileChanged` and one was wrong
 - `state.json` is gitignored by design — do not re-add it to any `git add` list
+
+---
 
 ---
 
