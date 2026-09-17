@@ -45,7 +45,7 @@ Claude snake_case the shared core reads, and `async` is not in its schema.
 | UserPromptExpansion | ✅ | ❌ | ❌ | ❌ | `native-event-log.sh` |
 | PreToolUse (Bash) | ✅ | ✅ | ✅ | ✅ | `guard-dangerous.sh` |
 | PermissionRequest | ✅ | ❌ | ✅ | ❌ | `auto-approve-permissions.sh` |
-| PermissionDenied | ✅ | ❌ | ❌ | ✅ | `permission-denied.sh` + `native-event-log.sh` |
+| PermissionDenied | ✅ | ❌ | ❌ | ✅ | `permission-denied.sh` |
 | PostToolUse (Edit/Write) | ✅ | ✅ | ✅ | ✅ | `track-changes.sh` |
 | PostToolUseFailure | ✅ | ✅ | ❌ | ✅ | `post-tool-failure.sh` |
 | PostToolBatch | ✅ | ❌ | ❌ | ❌ | `native-event-log.sh` |
@@ -99,7 +99,7 @@ table above:
 |---|---|---|
 | `afterAgentResponse` | `on-agent-response.sh` | Carries `text`, the final assistant message. Cursor's `stop` payload is only `{status, loop_count}` and its transcript is not in the Claude JSONL shape, so `next_action` extraction was effectively dead on Cursor without this |
 | `beforeReadFile` | `guard-read.sh` (`failClosed: true`) | Enforces the `.env` rule in `.claude/rules/security.md`. Claude Code gets this from `deny: Read(./.env)` in settings.json; Cursor has no equivalent config, so the rule was documentation only |
-| `preCompact` | `on-precompact.sh` | Supplies `context_usage_percent`, `context_tokens` and `context_window_size`. `pre-compact.sh` prefers that over its own estimate — snapshots used to be stamped `ctx=unknown%` on every runtime |
+| `preCompact` | `on-precompact.sh` | Supplies `context_usage_percent`, `context_tokens` and `context_window_size`. `pre-compact.sh` prefers that over its own estimate — snapshots used to be stamped `ctx=unknown%` on every runtime. The adapter returns the kit banner as `{"user_message": …}`, which Cursor shows when compaction fires; it used to go to stderr, where only the Hooks output channel saw it |
 
 Cursor's `sessionStart` also accepts a JSON response with `additional_context`,
 which is added to the conversation's initial system context. The adapter returns

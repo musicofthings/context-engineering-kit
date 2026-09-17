@@ -10,5 +10,15 @@ set -uo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/_common.sh"
 
 INPUT=$(cat 2>/dev/null || true)
-printf '%s' "$INPUT" | bash "$CEK_HOOKS_DIR/pre-compact.sh" 1>&2 || true
+
+# pre-compact.sh's stdout is a Claude Code context injection. Cursor's
+# preCompact cannot inject into the conversation, but it DOES accept
+# {"user_message": "..."} and shows it to the user when compaction fires.
+# That is strictly better than the stderr-only routing this used to do, where
+# the text reached the Hooks output channel and nowhere the user would look.
+OUT=$(printf '%s' "$INPUT" | bash "$CEK_HOOKS_DIR/pre-compact.sh" 2>/dev/null || true)
+
+if [ -n "$OUT" ] && command -v jq >/dev/null 2>&1; then
+  jq -nc --arg m "$OUT" '{"user_message": $m}'
+fi
 exit 0

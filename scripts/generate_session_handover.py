@@ -15,7 +15,12 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from cek_paths import atomic_write_text, resolve_state_file, state_lock  # noqa: E402
+from cek_paths import (  # noqa: E402
+    atomic_write_text,
+    resolve_state_file,
+    state_lock,
+    state_writes_allowed,
+)
 
 
 def run(cmd, cwd: str = None) -> str:
@@ -43,17 +48,68 @@ def load_state(project_dir: Path) -> dict:
     return {}
 
 
-def _extract_section(content: str, header: str) -> str:
+# First line of the footer the template emits at the end of every handover.
+# load_existing_handover() truncates there so the final section's capture does
+# not swallow it. Keep in sync with the template at the bottom of generate().
+FOOTER_MARKER = "_Auto-updated by `pre-compact.sh` hook and `/handover` skill._"
+
+
+def _is_table_header(first: str, second: str) -> bool:
+    """True when these two lines are a markdown table header + separator pair."""
+    f, s = first.strip(), second.strip()
+    if not (f.startswith("|") and f.endswith("|")):
+        return False
+    if not (s.startswith("|") and s.endswith("|")):
+        return False
+    return bool(s.strip("|").strip()) and set(s) <= set("|:- \t")
+
+
+def _strip_carried_scaffold(body: str, *, table_header: bool = False) -> str:
+    """Remove the scaffold the template emits around a carried-over section.
+
+    A section's captured body runs from its `## ` heading to the next one, so it
+    includes the `---` separator that follows it — and, for the decisions table,
+    the header rows the template prints ABOVE the interpolated body. Carrying
+    those forward means the next regeneration emits a fresh copy on top of the
+    one it just re-read, and the file grows by a fixed amount every single time.
+    Measured before this guard: +10 lines and +4 separators per run, unbounded;
+    the handover in this repo had accumulated six rounds of it.
+
+    Loops rather than stripping once, so a file that already accreted several
+    copies is repaired on the next write instead of merely stopping the growth.
+    """
+    lines = body.splitlines()
+
+    if table_header:
+        while len(lines) >= 2 and _is_table_header(lines[0], lines[1]):
+            del lines[:2]
+
+    def _is_separator(line: str) -> bool:
+        s = line.strip()
+        return len(s) >= 3 and set(s) == {"-"}
+
+    while lines and (not lines[-1].strip() or _is_separator(lines[-1])):
+        lines.pop()
+    while lines and (not lines[0].strip() or _is_separator(lines[0])):
+        lines.pop(0)
+
+    return "\n".join(lines).strip()
+
+
+def _extract_section(content: str, header: str, *, table_header: bool = False) -> str:
     """Extract body text between `header` and the next ## heading (or EOF).
 
     Uses line-anchored regex so headers inside code blocks are not matched.
+    Template-emitted scaffold is stripped — see _strip_carried_scaffold.
     """
     pattern = re.compile(
         r"^" + re.escape(header) + r"[ \t]*\n(.*?)(?=^## |\Z)",
         re.MULTILINE | re.DOTALL,
     )
     m = pattern.search(content)
-    return m.group(1).strip() if m else ""
+    if not m:
+        return ""
+    return _strip_carried_scaffold(m.group(1), table_header=table_header)
 
 
 def load_existing_handover(handover_file: Path) -> dict:
@@ -67,6 +123,17 @@ def load_existing_handover(handover_file: Path) -> dict:
         return {}
 
     content = handover_file.read_text(encoding="utf-8", errors="replace")
+
+    # Drop the template's footer before extracting anything. The LAST section
+    # has no following `## ` heading, so its capture runs to end-of-file and
+    # swallows the footer — which the template then re-emits underneath. That
+    # was the second accretion source, worth +4 lines per regeneration on its
+    # own. Truncating here fixes it for whichever section happens to be last,
+    # rather than special-casing the one that is last today.
+    footer = content.find(FOOTER_MARKER)
+    if footer != -1:
+        content = content[:footer]
+
     sections = {}
 
     # Generation timestamp ("_Generated: 2026-07-21T06:48:00Z_") — used to
@@ -87,7 +154,10 @@ def load_existing_handover(handover_file: Path) -> dict:
     if remaining:
         sections["remaining"] = remaining
 
-    decisions = _extract_section(content, "## 🏗 Architecture Decisions Made")
+    # The only carried section the template prints a table header above.
+    decisions = _extract_section(
+        content, "## 🏗 Architecture Decisions Made", table_header=True
+    )
     if decisions:
         sections["decisions"] = decisions
 
@@ -97,8 +167,10 @@ def load_existing_handover(handover_file: Path) -> dict:
 
     bioinfo = _extract_section(content, "## 🧬 Bioinformatics Context (if applicable)")
     if bioinfo:
-        # Strip trailing --- separator if present
-        sections["bioinfo"] = bioinfo.split("\n---")[0].strip()
+        # The bespoke `.split("\n---")` that used to live here was the single
+        # instance of this bug anyone had noticed; _strip_carried_scaffold now
+        # does the same job for every section.
+        sections["bioinfo"] = bioinfo
 
     return sections
 
@@ -304,7 +376,27 @@ def main():
 
     # PreCompact and /handover can target the same shared handover file.
     # Hold the lock through generation because generate() reads prior state.
-    with state_lock(output_path) as locked:
+    #
+    # The lock lives beside state.json, NOT beside the handover. state_lock()
+    # deliberately leaves its `.lock` file behind — unlinking it races a peer
+    # that already holds the inode — so the path it uses has to be one that is
+    # already ignored. `.claude/session/` is; the repo root is not, and locking
+    # the output path directly left a permanent untracked `session_handover.md.lock`
+    # in every project the kit touched. Writing a rule into the host project's
+    # root .gitignore was the alternative, and this kit does not do that.
+    # Fail open like every other kit writer when this is not a place kit state
+    # belongs (non-git dir, $HOME, Claude Code's own config dir). Checked here
+    # rather than inferred from a False lock, so a genuine lock timeout below
+    # still reports itself as a timeout.
+    if not state_writes_allowed(project_dir):
+        print(
+            f"[handover] skipping {output_path} — not a project checkout",
+            file=sys.stderr,
+        )
+        sys.exit(0)
+
+    lock_path = resolve_state_file(project_dir).parent / "handover"
+    with state_lock(lock_path) as locked:
         if not locked:
             raise RuntimeError(f"Timed out waiting to write {output_path}")
         content = generate(args, output_path)

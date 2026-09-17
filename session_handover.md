@@ -1,85 +1,69 @@
 # Session Handover
-_Generated: 2026-09-14T14:52:05Z_
+_Generated: 2026-09-17T15:18:36Z_
 _Branch: main_
-_Trigger: session-end | Context at compact: unknown%_
+_Trigger: check | Context at compact: unknown%_
 _Compact count this project: 0_
 
 ---
 
 ## 🎯 Active Task
 **What we're building/fixing:**
-Upgrade CEK to current Claude Code compatibility (v3.0.0) — audit complete, plan awaiting approval
+v4.0 universal runtime support — Phase 0 (core fixes) shipped as v3.1.1
 
-**Phase:** Phase 0 not started — blocked on user decision
-**Next action:** Answer the 2 open questions in session_handover.md, then start Phase 0 (remove duplicate hooks block)
+**Phase:** Phase 0 complete; Phase 1 (single generated runtime registry) not started
+**Next action:** Decide scope in docs/PLAN_v4_universal_runtime.md (4 open questions), then start Phase 1: move the event table into config/runtime_events.json and generate Cursor's config from it
 
 ---
 
 ## ✅ Completed This Session
-- [ ] (track completed items here)
+- [x] Git sync — pushed `8d58226..b9104c0` to origin/main
+- [x] Full-repo code review — 6 findings, 3 reproduced (see docs/PLAN_v4_universal_runtime.md Part 1)
+- [x] Verified runtime surfaces against vendor docs: Warp has NO hooks, Gemini CLI has snake_case shell hooks, opencode needs a JS shim
+- [x] Wrote docs/PLAN_v4_universal_runtime.md (committed b6d2eb4)
+- [x] Phase 0 shipped as v3.1.1 — handover accretion, lock placement, containment on 4 shell writers + state_lock(), StopFailure fields, PermissionDenied wiring, imperative inject text, Cursor preCompact user_message
+- [x] Evals 130 → 135; every new assertion negative-controlled
 
 ---
 
 ## 🔄 In Progress (Exact Resume Point)
 **Branch:** `main`
-**Last commit:** `147001f chore(context): save session state — Upgrade CEK to current Claude Code compatibility (v3.0.0) — audit complete, plan awaiting approval [2026-09-13T18:30:19Z]`
-**Next immediate action:** Answer the 2 open questions in session_handover.md, then start Phase 0 (remove duplicate hooks block)
+**Last commit:** `b6d2eb4 docs: v4.0 plan — universal runtime support`
+**Next immediate action:** Decide scope in docs/PLAN_v4_universal_runtime.md (4 open questions), then start Phase 1: move the event table into config/runtime_events.json and generate Cursor's config from it
 
 ---
 
 ## 📋 Remaining Work
-1. **Get answers to two open questions** (blocking):
-   - Phase 0 is **breaking** for anyone who opens this repo directly rather than installing it as a plugin — confirm that's acceptable.
-   - Parallelize implementation across subagents by phase, or work through it in order? (Recommendation: do Phase 0+1 solo — overlapping files — and fan out on Phase 2.)
+**Phase 0 is done and shipped as v3.1.1.** Full plan:
+[`docs/PLAN_v4_universal_runtime.md`](docs/PLAN_v4_universal_runtime.md).
 
-2. **Phase 0 — stop the double-fire** (breaking; biggest win, lowest risk)
-   - Delete the `hooks` block from `.claude/settings.json:40-262`. All 16 events are declared in BOTH that file and `hooks/hooks.json`, pointing at the same scripts. Docs: *"A plugin's or skill's copy of the same handler stays separate."* `SessionStart` runs 10 handlers; `Stop` runs 6, including `usage-tracker.py` twice per turn. `hooks/hooks.json` is auto-discovered and must NOT be declared in `plugin.json`.
-   - Delete `.claude/skills/` (byte-identical to `skills/`; both register — 18 skill descriptions in context instead of 9, confirmed live)
-   - Delete `.claude/agents/` (project scope priority 3 shadows plugin priority 5)
-   - Retire `hook_once()` in `scripts/resolve_state_dir.sh` once duplication is gone — it exists only to paper over this
+1. **Four open decisions blocking Phase 1** (in the plan's "Decisions to make" section):
+   - Scope: all six phases, or the Gemini CLI + MCP subset (Phases 1, 2, 4)?
+   - opencode: JS shim over the bash core (recommended), or a native TS path?
+   - Warp: is "read-only, no auto-save" acceptable to advertise, or drop it until it has hooks?
+   - Rename `.claude/` (the shared core's home) to `core/`? Breaking; decide at v4.0.0 or not at all.
 
-3. **Phase 1 — fix what is silently dead**
-   - `SessionEnd`: 1.5s default budget, and *"Timeouts set on plugin-provided hooks don't raise the budget."* `hooks/hooks.json`'s `timeout: 30` is ignored while `.claude/settings.json`'s is honoured → works when the repo is opened, killed for plugin installs. Move handover+commit to `Stop` with `async: true`; leave SessionEnd a fast marker write. Document `CLAUDE_CODE_SESSIONEND_HOOKS_TIMEOUT_MS`.
-   - `FileChanged`: matcher must be basenames (`model_thresholds.json|usage_budget.json|plugin_settings.json`) — segments containing `/` fail both the watch-list build and the basename filter. Read `file_path` from stdin; `$CLAUDE_FILE_PATH` does not exist.
-   - `StopFailure`: read `error` (+ `error_details`); `failure_type`/`error_type` have 0 occurrences → always recorded `"unknown"`
-   - `PreCompact`: drop `context_percent` (0 occurrences; currently bakes `ctx=unknown%` into every snapshot commit). Its stdout is NOT injected — only `UserPromptSubmit`, `UserPromptExpansion`, `SessionStart`, `PostModelSwitch` turn stdout into context. Move that text to the already-wired `SessionStart` `compact` matcher (`compact-restore.sh`). Consider `custom_instructions`.
-   - `Stop`: use `last_assistant_message` instead of grepping the transcript — docs warn the transcript isn't guaranteed to contain the final message at Stop time. Same for `SubagentStop`.
-   - Packaging: delete `"bash_path"` (`.claude/settings.json:3`, not a settings key); `auto-invoke-when:` → `when_to_use:` (8 skills — currently dropped entirely); `args:` → `argument-hint:` (`skills/init-cek/SKILL.md:5`); delete the orphaned `precompact-extract-agent.md` (both copies — frontmatter is `#` comments only, and the `type: agent` hook it claims to serve does not exist)
+2. **Phase 1 — one generated runtime registry** (the enabling refactor)
+   - Move the event table to `config/runtime_events.json`: per runtime, supported events,
+     event-name aliases, timeout ceilings, async support, payload casing, injection mechanism
+   - `generate_runtime_hooks.py` emits ALL adapter configs from it, **including Cursor**
+   - `cek_runtime_supports()` reads it instead of carrying a second copy
+   - `docs/runtime-capability-matrix.md` becomes generated output
+   - Today the same table lives in three hand-synced places:
+     `generate_runtime_hooks.py:162`, `cek_runtime.sh:62`, the matrix doc
 
-4. **Phase 2 — adopt native signals**
-   - `SessionStart` resume fields (`seconds_since_last_response`, `context_tokens`, `prompt_cache_likely_expired`, `estimated_cache_write_usd`) — ONLY on `source: resume|fork`, requires Claude Code v2.1.251+. Keep the wall-clock path as fallback; these do NOT cover mid-session tracking.
-   - `PermissionDenied`: it IS a real Claude Code event. Fix the false claim in `docs/runtime-capability-matrix.md:35` and `scripts/cek_runtime.sh:67-69`, and wire the already-schema-correct `permission-denied.sh` on Claude.
-   - `PostModelSwitch` (track; sees switches Claude Code makes itself) and `PreModelSwitch` (advisory `systemMessage` only — it fails **closed**: a timeout blocks the switch, unlike PreToolUse; short explicit timeout, never `deny`)
-   - `SessionEnd` `reason` — stop committing on `/clear` and `/resume`
-   - Rewrite inject text as factual statements; the current imperative phrasing ("Tell the user…") is the shape that trips prompt-injection defenses. Use `hookSpecificOutput.additionalContext` (10,000-char cap).
+3. **Phase 2 — Gemini CLI** (cheapest new runtime; `.gemini/settings.json`, snake_case, `$GEMINI_PROJECT_DIR`)
+4. **Phase 3 — opencode** (JS/TS plugin; `experimental.session.compacting` can inject the handover into the compaction prompt)
+5. **Phase 4 — `cek-mcp`** (universal floor; unlocks Warp, Cline, Continue, Goose, Zed)
+6. **Phase 5 — Warp** (AGENTS.md generator + MCP, with honest capability disclosure)
+7. **Phase 6 — v4.0.0** (per-runtime evals, generated matrix, per-runtime bundles)
 
-5. **Phase 3 — evaluate, don't assume:** `watchPaths`, `reloadSkills`, `asyncRewake`, `if` filters, `statusMessage`. Document the rejected ones so they aren't re-litigated: `http`, `mcp_tool`, `agent` (experimental), `suppressOutput` (inert), `MessageDisplay`, `WorktreeCreate` (replaces default git behaviour; any non-zero exit fails worktree creation).
-
-6. **Deferred, not part of v3.0.0:** `mozhi` push (5 local vs 17 remote, remote renames project → WalkieTalkie; needs a real merge decision); `panchangam` push (no upstream — would publish a never-public branch); `dermatrack_ai` + `pubpulse` staged untrack deletions (both on detached HEAD).
-
----
-
----
-
----
-
----
-
----
+**Carried over, not Phase 0 scope:**
+- `PreCompact` stamps `ctx=unknown%` into snapshot commits on Claude Code (`context_percent` is not a field on that event; Cursor supplies the real number)
+- Your installed plugin copy is v3.0.0 at `~/.claude/plugins/marketplaces/local-desktop-app-uploads/` — re-upload the zip
 
 ---
 
 ## 🏗 Architecture Decisions Made
-| Decision | Rationale | Date |
-|----------|-----------|------|
-| Decision | Rationale | Date |
-|----------|-----------|------|
-| Decision | Rationale | Date |
-|----------|-----------|------|
-| Decision | Rationale | Date |
-|----------|-----------|------|
-| Decision | Rationale | Date |
-|----------|-----------|------|
 | Decision | Rationale | Date |
 |----------|-----------|------|
 | `state.json` stays untracked/machine-local | Confirmed deliberate via `90545c6 "chore: ignore Claude session state"`; `session_handover.md` is the portable cross-device anchor | 2026-08-30 |
@@ -94,27 +78,17 @@ Upgrade CEK to current Claude Code compatibility (v3.0.0) — audit complete, pl
 
 ---
 
----
-
----
-
----
-
----
-
----
-
 ## 🔧 Commands to Resume
 
 **This exact conversation** (SDK/CLI transcript resume):
 ```bash
 # Same machine AND same directory it started in:
-claude --resume 1310f18e-eb2c-4ab5-9357-1d2ce7ef0597
+claude --resume 88b4e1b5-a3ff-4af2-8117-cfe59f96e6c7
 ```
-- Session ID    : `1310f18e-eb2c-4ab5-9357-1d2ce7ef0597`
-- Transcript    : `/Users/theranosis_dx/.claude/projects/-Users-theranosis-dx-projects-context-engineering-kit/1310f18e-eb2c-4ab5-9357-1d2ce7ef0597.jsonl`
+- Session ID    : `88b4e1b5-a3ff-4af2-8117-cfe59f96e6c7`
+- Transcript    : `/Users/theranosis_dx/.claude/projects/-Users-theranosis-dx-projects-context-engineering-kit/88b4e1b5-a3ff-4af2-8117-cfe59f96e6c7.jsonl`
 - Bound to cwd  : `/Users/theranosis_dx/projects/context-engineering-kit`
-- Stored at     : `~/.claude/projects/-Users-theranosis-dx-projects-context-engineering-kit/1310f18e-eb2c-4ab5-9357-1d2ce7ef0597.jsonl`
+- Stored at     : `~/.claude/projects/-Users-theranosis-dx-projects-context-engineering-kit/88b4e1b5-a3ff-4af2-8117-cfe59f96e6c7.jsonl`
 
 > ⚠️ Transcript resume is **cwd-bound**. It only works from the same directory
 > on the same machine. If this session started in a git **worktree**, that
@@ -139,39 +113,58 @@ bash scripts/session_sync.sh --load
 ## 📁 Files Modified This Session
 | File | Status |
 |------|--------|
+| `.claude-plugin/marketplace.json` | modified |
+| `.claude-plugin/plugin.json` | modified |
 | `.claude/hooks/auto-approve-permissions.sh` | modified |
-| `.claude/hooks/compact-restore.sh` | modified |
 | `.claude/hooks/config-changed.sh` | modified |
 | `.claude/hooks/extract-state-on-stop.sh` | modified |
-| `.claude/hooks/guard-dangerous.sh` | modified |
 | `.claude/hooks/native-event-log.sh` | modified |
-| `.claude/hooks/post-compact.sh` | modified |
-| `.claude/hooks/pre-compact.sh` | modified |
+| `.claude/hooks/permission-denied.sh` | modified |
+| `.claude/hooks/post-tool-failure.sh` | modified |
 | `.claude/hooks/session-end.sh` | modified |
 | `.claude/hooks/session-start.sh` | modified |
+| `.claude/hooks/stop-failure.sh` | modified |
 | `.claude/hooks/usage-sentinel.sh` | modified |
 | `.claude/settings.json` | modified |
-| `.claude/skills/compact-smart/SKILL.md` | modified |
 | `.codex-plugin/plugin.json` | modified |
 | `.codex/hooks/run.sh` | modified |
-| _(+35 more files not shown)_ | — |
+| _(+41 more files not shown)_ | — |
 
 ---
 
 ## 🌿 Git Context
 ```
 Branch  : main
-Commit  : 147001f chore(context): save session state — Upgrade CEK to current Claude Code compatibility (v3.0.0) — audit complete, plan awaiting approval [2026-09-13T18:30:19Z]
-Status  : ?? session_handover.md.lock
+Commit  : b6d2eb4 docs: v4.0 plan — universal runtime support
+Status  : M .claude-plugin/marketplace.json
+ M .claude-plugin/plugin.json
+ M .claude/hooks/permission-denied.sh
+ M .claude/hooks/post-tool-failure.sh
+ M .claude/hooks/session-start.sh
+ M .claude/hooks/stop-failure.sh
+ M .claude/hooks/usage-sentinel.sh
+ M .claude/settings.json
+ M .codex-plugin/plugin.json
+ M .cursor/hooks/on-precompact.sh
+ M README.md
+ M api_docs.md
+ M docs/PLAN_v4_universal_runtime.md
+ M docs/runtime-capability-matrix.md
+ M hooks/hooks.json
+ M scripts/cek_paths.py
+ M scripts/eval_hooks_smoke.sh
+ M scripts/generate_session_handover.py
+ M session_handover.md
+?? docs/RELEASE_NOTES_3.1.1.md
 ```
 
 Recent commits:
 ```
+b6d2eb4 docs: v4.0 plan — universal runtime support
+b9104c0 chore(context): save session state — Upgrade CEK to current Claude Code compatibility (v3.0.0) — audit complete, plan awaiting approval [2026-09-14T14:52:05Z]
 147001f chore(context): save session state — Upgrade CEK to current Claude Code compatibility (v3.0.0) — audit complete, plan awaiting approval [2026-09-13T18:30:19Z]
 8d58226 docs: fix every command claim against the runtimes' own docs (R-031)
 4df6be3 feat: close the known gaps — Grok verified, install tested (R-027..R-030)
-19a162b fix: eval suite crashed on stock macOS bash 3.2 under a UTF-8 locale
-8356481 chore(release): v3.0.1
 ```
 
 ---
@@ -183,16 +176,6 @@ Recent commits:
 - **Do not trust WebFetch for Claude Code hook field names** — it truncates and the summariser fabricates. Use the extracted PDF text.
 - Verify subagent findings against the source before acting; two agents contradicted each other on `FileChanged` and one was wrong
 - `state.json` is gitignored by design — do not re-add it to any `git add` list
-
----
-
----
-
----
-
----
-
----
 
 ---
 

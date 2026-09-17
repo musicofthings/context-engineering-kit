@@ -135,6 +135,14 @@ def state_lock(state_file: Path):
     fatal — the caller should still write (losing a field beats losing the
     turn), but it means a concurrent writer may clobber.
     """
+    # Containment first. This helper mkdir -p's the lock's parent, so without a
+    # guard it recreates the very directory state_rejection_reason() exists to
+    # keep empty — state_update() checked containment before calling in, but
+    # every other caller (usage-tracker, the handover writer) did not.
+    if state_rejection_reason(Path(state_file).parent.parent.parent):
+        yield False
+        return
+
     lock_file = Path(str(state_file) + ".lock")
     lock_dir = Path(str(state_file) + ".lockd")
     fh = None

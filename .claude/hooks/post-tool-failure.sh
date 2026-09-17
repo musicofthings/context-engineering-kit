@@ -16,14 +16,15 @@ TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name // "unknown"' 2>/dev/null || echo 
 ERROR_MSG=$(echo "$INPUT" | jq -r '.error // ""' 2>/dev/null || echo "")
 FILE_PATH=$(echo "$INPUT" | jq -r '.tool_input.file_path // .tool_input.command // ""' 2>/dev/null || echo "")
 
-# Append to failures log
-jq -n \
+# Append to failures log via state_append() — it honours the containment guard,
+# which a bare `>>` does not.
+state_append "$FAILURE_LOG" "$(jq -nc \
   --arg ts "$TIMESTAMP" \
   --arg tool "$TOOL_NAME" \
   --arg error "$ERROR_MSG" \
   --arg path "$FILE_PATH" \
   '{"ts":$ts,"tool":$tool,"error":$error,"path":$path}' \
-  >> "$FAILURE_LOG" 2>/dev/null || true
+  2>/dev/null)" || true
 
 # Update last_tool_failure (lock-guarded, concurrency-safe)
 state_write \

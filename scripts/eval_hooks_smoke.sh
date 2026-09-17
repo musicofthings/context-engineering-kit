@@ -198,6 +198,32 @@ grep -q "Active Task" "$SANDBOX/session_handover.md" 2>/dev/null && ok "full han
 fire post-compact.sh "{$BASE,\"hook_event_name\":\"PostCompact\"}"
 [ "$RC" -eq 0 ] && ok "post-compact exit 0" || bad "post-compact exit 0" "rc=$RC $ERR"
 
+# Regenerating the handover must be idempotent. _extract_section() used to
+# re-capture the table header rows and `---` separators the template itself
+# emits, so every regeneration re-emitted them on top of the copy it had just
+# read back: +10 lines and +4 separators per run, unbounded. This hook fires on
+# PreCompact, at the 85%/92% usage thresholds and at SessionEnd — several times
+# a working day — and the file is re-read into context at every session start.
+# Warm up first: each pre-compact commits a snapshot, and the "Recent commits"
+# block renders `git log --oneline -5`, so a fresh sandbox legitimately grows a
+# line per run until that caps at five. Measure after the plateau, or the
+# assertion fails on real content.
+for _ in 1 2 3 4 5; do
+  fire pre-compact.sh "{$BASE,\"trigger\":\"auto\",\"hook_event_name\":\"PreCompact\"}"
+done
+HANDOVER_BEFORE=$(wc -l < "$SANDBOX/session_handover.md" 2>/dev/null | tr -d ' ')
+for _ in 1 2 3; do
+  fire pre-compact.sh "{$BASE,\"trigger\":\"auto\",\"hook_event_name\":\"PreCompact\"}"
+done
+HANDOVER_AFTER=$(wc -l < "$SANDBOX/session_handover.md" 2>/dev/null | tr -d ' ')
+[ "$HANDOVER_BEFORE" = "$HANDOVER_AFTER" ] \
+  && ok "handover regeneration is idempotent (${HANDOVER_AFTER} lines over 3 runs)" \
+  || bad "handover regeneration is idempotent" "grew ${HANDOVER_BEFORE}→${HANDOVER_AFTER} lines"
+
+DUP_HDRS=$(grep -c '^| Decision | Rationale | Date |$' "$SANDBOX/session_handover.md" 2>/dev/null || echo 0)
+[ "$DUP_HDRS" -le 1 ] && ok "no duplicated decisions table header" \
+  || bad "no duplicated decisions table header" "$DUP_HDRS copies"
+
 # ── Misc events ──────────────────────────────────────────────────────────────
 head_ "InstructionsLoaded / Notification"
 fire instructions-loaded.sh "{$BASE,\"hook_event_name\":\"InstructionsLoaded\"}"
@@ -312,11 +338,62 @@ GUARD=$(export HOME="$FAKEHOME" CLAUDE_PROJECT_DIR="$FAKEHOME" CLAUDE_PLUGIN_ROO
 [ "$GUARD" = "false" ] && ok "cek_state_ok false for \$HOME (symlink-safe compare)" \
   || bad "cek_state_ok false for \$HOME" "got $GUARD"
 
-for h in native-event-log.sh config-changed.sh; do
-  printf '%s' '{"hook_event_name":"PreModelSwitch","file_path":"/x/usage_budget.json"}' \
+# Every hook, not a hand-picked two. The old list covered native-event-log.sh
+# and config-changed.sh only, and permission-denied.sh — which mkdir'd the
+# rejected directory and appended to it — sat outside the loop and passed for
+# months. Checking after EACH hook also matters: run back-to-back, the next
+# hook's containment cleanup deletes the previous one's leak, so a whole-loop
+# assertion at the end reports clean while individual hooks are leaking.
+LEAK_PAYLOAD='{"hook_event_name":"PreModelSwitch","session_id":"leak-probe",'
+LEAK_PAYLOAD+='"file_path":"/x/usage_budget.json","tool_name":"Bash","error":"rate_limit",'
+LEAK_PAYLOAD+='"reason":"[Test]","tool_input":{"command":"true","file_path":"/x/y"}}'
+
+PER_HOOK_LEAKS=""
+for hook_path in "$KIT"/.claude/hooks/*.sh; do
+  h=$(basename "$hook_path")
+  printf '%s' "$LEAK_PAYLOAD" \
     | env HOME="$FAKEHOME" CLAUDE_PROJECT_DIR="$FAKEHOME" CLAUDE_PLUGIN_ROOT="$KIT" \
-      bash "$KIT/.claude/hooks/$h" >/dev/null 2>&1
+      bash "$hook_path" >/dev/null 2>&1
+  if [ -n "$(find "$FAKEHOME/.claude" -type f 2>/dev/null)" ]; then
+    PER_HOOK_LEAKS="$PER_HOOK_LEAKS $h"
+    rm -rf "$FAKEHOME/.claude"
+  fi
 done
+[ -z "$PER_HOOK_LEAKS" ] && ok "no hook leaks state under \$HOME/.claude (all $(ls "$KIT"/.claude/hooks/*.sh | wc -l | tr -d ' '))" \
+  || bad "no hook leaks state under \$HOME/.claude" "leaked:$PER_HOOK_LEAKS"
+
+# The Python writers go through cek_paths, which mkdir -p's a lock's parent.
+# state_update() guarded containment before calling in; state_lock() itself did
+# not, so the handover writer and usage-tracker went around it.
+printf '%s' '{"session_id":"leak-probe"}' \
+  | env HOME="$FAKEHOME" CLAUDE_PROJECT_DIR="$FAKEHOME" CLAUDE_PLUGIN_ROOT="$KIT" \
+    python3 "$KIT/scripts/generate_session_handover.py" \
+    --output "$FAKEHOME/session_handover.md" >/dev/null 2>&1
+[ -z "$(find "$FAKEHOME/.claude" -type f 2>/dev/null)" ] && [ ! -f "$FAKEHOME/session_handover.md" ] \
+  && ok "handover writer honours containment (no lock, no output)" \
+  || bad "handover writer honours containment" \
+         "left: $(find "$FAKEHOME/.claude" -type f 2>/dev/null | tr '\n' ' ')$([ -f "$FAKEHOME/session_handover.md" ] && echo 'session_handover.md')"
+rm -rf "$FAKEHOME/.claude" "$FAKEHOME/session_handover.md"
+
+# state_lock() directly, not via a caller. generate_session_handover.py also
+# checks state_writes_allowed() before it gets here, so testing only through
+# that path passes even with this guard removed — and usage-tracker.py calls
+# state_lock() with no such pre-check.
+cat > "$FAKEHOME/.lockcheck.py" <<'PYEOF'
+import sys
+from pathlib import Path
+sys.path.insert(0, sys.argv[1] + "/scripts")
+from cek_paths import state_lock
+target = Path(sys.argv[2]) / ".claude" / "session" / "probe"
+with state_lock(target) as locked:
+    pass
+leaked = (Path(sys.argv[2]) / ".claude").exists()
+print("LEAKED" if leaked else ("REFUSED" if not locked else "ACQUIRED"))
+PYEOF
+LOCKGUARD=$(HOME="$FAKEHOME" python3 "$FAKEHOME/.lockcheck.py" "$KIT" "$FAKEHOME" 2>/dev/null)
+[ "$LOCKGUARD" = "REFUSED" ] && ok "state_lock honours containment (creates nothing)" \
+  || bad "state_lock honours containment" "got '$LOCKGUARD'"
+rm -rf "$FAKEHOME/.claude"
 (export HOME="$FAKEHOME" CLAUDE_PROJECT_DIR="$FAKEHOME" CLAUDE_PLUGIN_ROOT="$KIT" CEK_SESSION_END_SYNC=1
  bash "$KIT/scripts/session_finalize.sh") >/dev/null 2>&1
 

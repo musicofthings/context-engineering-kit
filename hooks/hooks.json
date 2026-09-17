@@ -111,8 +111,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/.claude/hooks/native-event-log.sh\"",
-            "async": false
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/.claude/hooks/permission-denied.sh\"",
+            "async": true
           }
         ]
       }

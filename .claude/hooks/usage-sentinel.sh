@@ -184,16 +184,21 @@ USAGE_PCT=$(_num "$USAGE_PCT" 0)
 if [ "$USAGE_PCT" -gt 100 ]; then USAGE_PCT=100; fi
 
 # ── Log usage snapshot ────────────────────────────────────────────────────────
-echo "{\"ts\":\"$TIMESTAMP\",\"pct\":$USAGE_PCT,\"source\":\"$USAGE_SOURCE\",\"elapsed_min\":$ELAPSED_MIN,\"sub\":\"$SUB_TYPE\",\"cost_usd\":\"$SESSION_COST_USD\"}" \
-  >> "$USAGE_LOG" 2>/dev/null || true
+# state_append() rather than a bare `>>`: it honours the containment guard.
+state_append "$USAGE_LOG" \
+  "{\"ts\":\"$TIMESTAMP\",\"pct\":$USAGE_PCT,\"source\":\"$USAGE_SOURCE\",\"elapsed_min\":$ELAPSED_MIN,\"sub\":\"$SUB_TYPE\",\"cost_usd\":\"$SESSION_COST_USD\"}" \
+  || true
 
 SUBS_RUNNING=$(_num "$(cek_subagents_running)" 0)
 SUBS_NOTE=""
 if [ "$SUBS_RUNNING" -gt 0 ]; then
+  # Factual statements only. Imperative phrasing addressed at the model
+  # ("Tell the user…", "Mention … once") is the shape prompt-injection defences
+  # are built to distrust, and this text arrives through the same channel as
+  # untrusted tool output. State what happened; let the model decide what to do.
   SUBS_NOTE="
-⚠ SUBAGENTS ACTIVE: ${SUBS_RUNNING} still running. State was auto-saved.
-  Prefer finishing or cancelling subagents before heavy new work; do not assume
-  children see this usage notice."
+⚠ subagents still running: ${SUBS_RUNNING}. State was auto-saved.
+  Subagents do not receive this usage notice."
 fi
 
 HANDOVER_PATH=$(cek_handover_path)
@@ -208,9 +213,9 @@ if [ "$USAGE_PCT" -ge "$CRITICAL_PCT" ]; then
     cek_claim_sentinel warn >/dev/null 2>&1 || true
     cek_execute_save_pipeline "usage-critical-${USAGE_PCT}pct" "$USAGE_PCT"
     if [ "$CEK_EXECUTE_HANDOVER" = "true" ]; then
-      SAVE_LINE="Context-engineering-kit AUTO-SAVED session_handover.md (${HANDOVER_PATH})."
+      SAVE_LINE="context-engineering-kit auto-saved session_handover.md (${HANDOVER_PATH})."
     else
-      SAVE_LINE="Auto-execute handover is OFF — run /handover then /session-sync save immediately."
+      SAVE_LINE="Auto-execute handover is OFF, so no handover was written. /handover and /session-sync save are the manual equivalents."
     fi
     cat << INJECT
 
@@ -220,7 +225,7 @@ if [ "$USAGE_PCT" -ge "$CRITICAL_PCT" ]; then
 ${SAVE_LINE}
 execute_handover=${CEK_EXECUTE_HANDOVER}  session_sync=${CEK_EXECUTE_SESSION_SYNC}
 Usage: ${USAGE_PCT}% of the ${SUB_TYPE} window (${USAGE_LABEL}, ~${LIMIT_LABEL}).
-Tell the user in one line about the usage state. If context is also full, prefer /compact-smart.
+/compact-smart preserves more than blind auto-compaction if context is also full.
 ${SUBS_NOTE}
 ════════════════════════════════════════════════════════════════
 INJECT
@@ -232,9 +237,9 @@ elif [ "$USAGE_PCT" -ge "$AUTO_SAVE_PCT" ]; then
     cek_claim_sentinel warn >/dev/null 2>&1 || true
     cek_execute_save_pipeline "usage-autosave-${USAGE_PCT}pct" "$USAGE_PCT"
     if [ "$CEK_EXECUTE_HANDOVER" = "true" ]; then
-      SAVE_LINE="Context-engineering-kit wrote session_handover.md (${HANDOVER_PATH}). Mention \"State auto-saved.\" once."
+      SAVE_LINE="context-engineering-kit auto-saved session_handover.md (${HANDOVER_PATH})."
     else
-      SAVE_LINE="Auto-execute handover is OFF — please run /handover soon."
+      SAVE_LINE="Auto-execute handover is OFF, so no handover was written. /handover is the manual equivalent."
     fi
     cat << INJECT
 

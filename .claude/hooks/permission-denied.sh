@@ -1,9 +1,20 @@
 #!/usr/bin/env bash
 # .claude/hooks/permission-denied.sh
 #
-# Grok fires PermissionDenied when the permission system blocks a tool call.
+# PermissionDenied fires after a tool call has already been denied.
 # Observability-only — the deny already happened. Logs for handover/debug.
-# Claude Code uses PermissionRequest (pre-decision) via auto-approve-permissions.sh.
+#
+# Both Claude Code and Grok emit it, and the payloads agree on the two fields
+# this hook reads: Claude sends {tool_name, tool_input, tool_use_id, reason}
+# (verified against the hooks reference 2026-09-17), Grok sends the camelCase
+# equivalents which .grok/hooks/run.sh normalises. Claude Code additionally
+# uses PermissionRequest as the PRE-decision event — that is a separate hook,
+# auto-approve-permissions.sh.
+#
+# Claude Code's PermissionDenied accepts hookSpecificOutput.retry:true to tell
+# the model it may retry the denied call. Deliberately not used: a context
+# preservation kit has no basis for second-guessing a permission decision, and
+# the retry prompt would fire on every denial in auto mode.
 
 set -euo pipefail
 
@@ -46,14 +57,18 @@ print(g('tool_name','tool','name')+chr(9)+g('reason','error','message','permissi
   unset _PD_FIELDS
 fi
 
-mkdir -p "$STATE_DIR" 2>/dev/null || true
-jq -n \
+# state_append() honours the containment guard; a bare `mkdir -p` + `>>` here
+# did not, and recreated the directory resolve_state_dir.sh had just rm -rf'd
+# for being $HOME or Claude Code's own config dir. Running the appenders
+# back-to-back hid it — the next hook's containment cleanup deleted this one's
+# leak — so it only showed up when this hook ran alone.
+state_append "$FAILURE_LOG" "$(jq -nc \
   --arg ts "$TIMESTAMP" \
   --arg tool "$TOOL" \
   --arg error "permission_denied: $REASON" \
   --arg path "" \
   '{"ts":$ts,"tool":$tool,"error":$error,"path":$path,"event":"PermissionDenied"}' \
-  >> "$FAILURE_LOG" 2>/dev/null || true
+  2>/dev/null)" || true
 
 if declare -f state_write >/dev/null 2>&1; then
   state_write \

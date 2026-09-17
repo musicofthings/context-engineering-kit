@@ -231,7 +231,11 @@ everywhere else (best effort)**, and say which one you are getting.
 Each phase is independently shippable. Phase 0 blocks everything else because
 those bugs are in the shared core and would be inherited by three new runtimes.
 
-**Phase 0 — fix the core first** *(~half a day, no new runtimes)*
+**Phase 0 — fix the core first** — ✅ **shipped as v3.1.1**, see
+[`RELEASE_NOTES_3.1.1.md`](RELEASE_NOTES_3.1.1.md). Evals 130 → 135, all five
+new assertions negative-controlled. One extra fix landed that the review had
+not found: `state_lock()` in `cek_paths.py` had no containment guard either,
+which only surfaced once the handover lock moved under `.claude/session/`.
 - F1 handover accretion + a regression eval asserting stable line count
 - F2 root-level lock ignore, in the repo and in `auto_init_project.sh`
 - F3 containment on all four bare appenders + leak eval over every writer
