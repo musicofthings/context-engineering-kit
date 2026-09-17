@@ -1,7 +1,7 @@
 # Session Handover
-_Generated: 2026-09-17T15:18:36Z_
+_Generated: 2026-09-17T15:24:33Z_
 _Branch: main_
-_Trigger: check | Context at compact: unknown%_
+_Trigger: stability | Context at compact: unknown%_
 _Compact count this project: 0_
 
 ---
@@ -18,7 +18,8 @@ v4.0 universal runtime support — Phase 0 (core fixes) shipped as v3.1.1
 ## ✅ Completed This Session
 - [x] Git sync — pushed `8d58226..b9104c0` to origin/main
 - [x] Full-repo code review — 6 findings, 3 reproduced (see docs/PLAN_v4_universal_runtime.md Part 1)
-- [x] Verified runtime surfaces against vendor docs: Warp has NO hooks, Gemini CLI has snake_case shell hooks, opencode needs a JS shim
+- [x] Verified runtime surfaces against vendor docs: Warp has NO hooks (warpdotdev/warp#6857 still open), opencode needs a JS shim
+- [x] **Corrected**: Gemini CLI was sunset 2026-06-18; the live runtime is Antigravity CLI (`agy`), re-derived from antigravity.google/docs/hooks. Plan Phase 2/3 reordered — opencode first, Antigravity after.
 - [x] Wrote docs/PLAN_v4_universal_runtime.md (committed b6d2eb4)
 - [x] Phase 0 shipped as v3.1.1 — handover accretion, lock placement, containment on 4 shell writers + state_lock(), StopFailure fields, PermissionDenied wiring, imperative inject text, Cursor preCompact user_message
 - [x] Evals 130 → 135; every new assertion negative-controlled
@@ -27,7 +28,7 @@ v4.0 universal runtime support — Phase 0 (core fixes) shipped as v3.1.1
 
 ## 🔄 In Progress (Exact Resume Point)
 **Branch:** `main`
-**Last commit:** `b6d2eb4 docs: v4.0 plan — universal runtime support`
+**Last commit:** `6ef0d89 fix: Phase 0 — close the core bugs before new runtimes inherit them (v3.1.1)`
 **Next immediate action:** Decide scope in docs/PLAN_v4_universal_runtime.md (4 open questions), then start Phase 1: move the event table into config/runtime_events.json and generate Cursor's config from it
 
 ---
@@ -37,7 +38,7 @@ v4.0 universal runtime support — Phase 0 (core fixes) shipped as v3.1.1
 [`docs/PLAN_v4_universal_runtime.md`](docs/PLAN_v4_universal_runtime.md).
 
 1. **Four open decisions blocking Phase 1** (in the plan's "Decisions to make" section):
-   - Scope: all six phases, or the Gemini CLI + MCP subset (Phases 1, 2, 4)?
+   - Scope: all six phases, or the recommended subset — Phases 1, 2, 4 (registry, opencode, MCP floor)?
    - opencode: JS shim over the bash core (recommended), or a native TS path?
    - Warp: is "read-only, no auto-save" acceptable to advertise, or drop it until it has hooks?
    - Rename `.claude/` (the shared core's home) to `core/`? Breaking; decide at v4.0.0 or not at all.
@@ -51,8 +52,8 @@ v4.0 universal runtime support — Phase 0 (core fixes) shipped as v3.1.1
    - Today the same table lives in three hand-synced places:
      `generate_runtime_hooks.py:162`, `cek_runtime.sh:62`, the matrix doc
 
-3. **Phase 2 — Gemini CLI** (cheapest new runtime; `.gemini/settings.json`, snake_case, `$GEMINI_PROJECT_DIR`)
-4. **Phase 3 — opencode** (JS/TS plugin; `experimental.session.compacting` can inject the handover into the compaction prompt)
+3. **Phase 2 — opencode** (JS/TS plugin; `experimental.session.compacting` can inject the handover into the compaction prompt — the one place the kit beats Claude Code)
+4. **Phase 3 — Antigravity CLI** (`agy`) — NOT Gemini CLI, which Google shut off 2026-06-18 with no grace period. Only 5 events (PreToolUse/PostToolUse/PreInvocation/PostInvocation/Stop): no session, compaction or subagent events. camelCase payload with nested `toolCall.name`/`.args` and PascalCase arg keys, Antigravity-specific tool names, JSON decisions instead of exit 2, and the event name is not in the payload. Closed source. Partial parity, not the cheap win the first draft claimed.
 5. **Phase 4 — `cek-mcp`** (universal floor; unlocks Warp, Cline, Continue, Goose, Zed)
 6. **Phase 5 — Warp** (AGENTS.md generator + MCP, with honest capability disclosure)
 7. **Phase 6 — v4.0.0** (per-runtime evals, generated matrix, per-runtime bundles)
@@ -113,8 +114,6 @@ bash scripts/session_sync.sh --load
 ## 📁 Files Modified This Session
 | File | Status |
 |------|--------|
-| `.claude-plugin/marketplace.json` | modified |
-| `.claude-plugin/plugin.json` | modified |
 | `.claude/hooks/auto-approve-permissions.sh` | modified |
 | `.claude/hooks/config-changed.sh` | modified |
 | `.claude/hooks/extract-state-on-stop.sh` | modified |
@@ -122,49 +121,34 @@ bash scripts/session_sync.sh --load
 | `.claude/hooks/permission-denied.sh` | modified |
 | `.claude/hooks/post-tool-failure.sh` | modified |
 | `.claude/hooks/session-end.sh` | modified |
-| `.claude/hooks/session-start.sh` | modified |
 | `.claude/hooks/stop-failure.sh` | modified |
 | `.claude/hooks/usage-sentinel.sh` | modified |
-| `.claude/settings.json` | modified |
 | `.codex-plugin/plugin.json` | modified |
 | `.codex/hooks/run.sh` | modified |
-| _(+41 more files not shown)_ | — |
+| `.cursor/hooks/guard-read.sh` | modified |
+| `.cursor/hooks/on-agent-response.sh` | modified |
+| `.cursor/hooks/on-precompact.sh` | modified |
+| `.cursor/hooks/on-session-start.sh` | modified |
+| _(+36 more files not shown)_ | — |
 
 ---
 
 ## 🌿 Git Context
 ```
 Branch  : main
-Commit  : b6d2eb4 docs: v4.0 plan — universal runtime support
-Status  : M .claude-plugin/marketplace.json
- M .claude-plugin/plugin.json
- M .claude/hooks/permission-denied.sh
- M .claude/hooks/post-tool-failure.sh
- M .claude/hooks/session-start.sh
- M .claude/hooks/stop-failure.sh
- M .claude/hooks/usage-sentinel.sh
- M .claude/settings.json
- M .codex-plugin/plugin.json
- M .cursor/hooks/on-precompact.sh
- M README.md
- M api_docs.md
+Commit  : 6ef0d89 fix: Phase 0 — close the core bugs before new runtimes inherit them (v3.1.1)
+Status  : M api_docs.md
  M docs/PLAN_v4_universal_runtime.md
- M docs/runtime-capability-matrix.md
- M hooks/hooks.json
- M scripts/cek_paths.py
- M scripts/eval_hooks_smoke.sh
- M scripts/generate_session_handover.py
  M session_handover.md
-?? docs/RELEASE_NOTES_3.1.1.md
 ```
 
 Recent commits:
 ```
+6ef0d89 fix: Phase 0 — close the core bugs before new runtimes inherit them (v3.1.1)
 b6d2eb4 docs: v4.0 plan — universal runtime support
 b9104c0 chore(context): save session state — Upgrade CEK to current Claude Code compatibility (v3.0.0) — audit complete, plan awaiting approval [2026-09-14T14:52:05Z]
 147001f chore(context): save session state — Upgrade CEK to current Claude Code compatibility (v3.0.0) — audit complete, plan awaiting approval [2026-09-13T18:30:19Z]
 8d58226 docs: fix every command claim against the runtimes' own docs (R-031)
-4df6be3 feat: close the known gaps — Grok verified, install tested (R-027..R-030)
 ```
 
 ---

@@ -1,8 +1,8 @@
 # v4.0 — Universal runtime support
 
-**Status:** proposed, awaiting approval
-**Date:** 2026-09-17
-**Baseline:** v3.1.0 @ `b9104c0` (pushed to `origin/main`)
+**Status:** Phase 0 shipped (v3.1.1); Phases 1–6 awaiting scope decision
+**Date:** 2026-09-17 (revised same day — see the Antigravity correction in Part 2)
+**Baseline:** v3.1.1 @ `6ef0d89` (pushed to `origin/main`)
 **Supersedes:** the open items in `session_handover.md` (Phases 0–3 of the v3.0.0
 Claude-compatibility audit landed in `cb68658..8d58226`; that handover is stale).
 
@@ -175,19 +175,76 @@ Verified against each vendor's own documentation, 2026-09-17.
 | **Cursor** | `.cursor/hooks.json` + plugins (via `workspaceOpen` → `pluginPaths`) | 18 agent events | `sessionStart.additional_context`, `postToolUse.additional_context` | shipped, needs generator coverage |
 | **Codex** | plugin manifest + `.codex/hooks.json` | 12 events | `SessionStart` | shipped |
 | **Grok** | `.grok/hooks/*.json` | 14 events | `SessionStart` | shipped |
-| **Gemini CLI** | `.gemini/settings.json` + extensions | `BeforeTool`, `AfterAgent`, `SessionStart`, … (v0.26.0+, Jan 2026) | hook JSON response | **new — cheapest** |
+| **Antigravity CLI** (`agy`) | `.agents/hooks.json` + plugin bundles | **5 only**: `PreToolUse`, `PostToolUse`, `PreInvocation`, `PostInvocation`, `Stop` | `injectSteps` on Pre/PostInvocation | **new — partial parity** |
 | **opencode** | JS/TS plugin, `.opencode/plugins/` or npm | 25+ events | `experimental.session.compacting` → `output.context.push()`, `tui.prompt.append` | **new — needs a shim** |
 | **Warp** | `AGENTS.md` rules + MCP | **none** | rules file only | **new — read-side only** |
 
 Three things this changes about the plan:
 
-**Gemini CLI is nearly free.** Shell commands, stdin JSON, **snake_case field
-names** (`tool_input`, matching the shared core exactly), a `matcher` key, and a
-`{decision, reason, systemMessage}` response. Config shape is close enough to
-Claude's that it is a generator target, not a rewrite. Its `$GEMINI_PROJECT_DIR`
-maps to `CLAUDE_PROJECT_DIR`. Event *names* differ (`BeforeTool` not
-`PreToolUse`), which is a rename table, not an architecture problem. Extensions
-can bundle hooks, which gives a distribution path.
+> **Correction, 2026-09-17.** The first version of this plan had a "Gemini CLI"
+> row calling it the cheapest, highest-parity new runtime. **Gemini CLI no
+> longer exists.** Google announced its sunset on 2026-05-19 and shut it off for
+> personal tiers on **2026-06-18, with no grace period**
+> (`google-gemini/gemini-cli` discussion #27274). The replacement is Antigravity
+> CLI, invoked as `agy`. The original row was built on a January 2026 blog post
+> about a product that had been dead for three months by the time it was cited —
+> the research question was "what are Gemini CLI's hooks", which is the wrong
+> question to ask about a deprecated tool. Everything below is re-derived from
+> `antigravity.google/docs/hooks/` and the CLI features page.
+
+**Antigravity CLI is moderate work and partial parity — not the cheap win.**
+Three corrections against the row it replaces:
+
+- **Five events, and none of them are session events.** `PreToolUse`,
+  `PostToolUse`, `PreInvocation`, `PostInvocation`, `Stop`. There is **no
+  SessionStart, no SessionEnd, no compaction event, no subagent events, no
+  UserPromptSubmit**. This kit is built on session boundaries, so that is a
+  capability gap, not a naming difference. The closest approximations:
+  `PreInvocation` with `invocationNum == 0` stands in for SessionStart, and
+  `Stop` with `fullyIdle: true` for end-of-turn. **There is no compaction hook
+  at all**, so the PreCompact handover — the kit's single most valuable
+  behaviour — cannot exist on Antigravity via hooks.
+- **The payload is camelCase with a nested, PascalCase-argument tool call.**
+  `toolCall.name` / `toolCall.args`, where the args themselves are
+  `CommandLine`, `TargetFile`, `DirectoryPath`. Tool names are Antigravity's
+  own: `run_command`, not `Bash`; `write_to_file` / `replace_file_content`, not
+  `Write` / `Edit`; `view_file`, not `Read`. So the adapter needs the Grok-style
+  case normaliser **plus** a tool-name alias map — more translation than any
+  runtime shipped so far, not less.
+- **Decisions are JSON on stdout, not exit code 2.** `PreToolUse` returns
+  `{decision: allow|deny|ask|force_ask|deny_unless_prior_grant, reason,
+  permissionOverrides}`. `guard-dangerous.sh` exits 2, so the adapter has to
+  translate. `Stop` inverts the usual sense: `{"decision": "continue"}` means
+  *do not stop*.
+
+One genuine upside, and it is a real one: `PreInvocation` and `PostInvocation`
+return `injectSteps`, a list of `{ephemeralMessage | userMessage | toolCall}`
+pushed into the conversation trajectory. That is a cleaner injection surface
+than Claude Code's stdout capture, and it is how the session banner and the
+usage-threshold notices would reach the model.
+
+Two practical notes for whoever builds the adapter. **Antigravity does not put
+the event name in the payload** — it has to be passed as an argv, which is
+already how `.codex/hooks/run.sh` and `.grok/hooks/run.sh` are shaped, so this
+costs nothing. And `hooks.json` uses **two different shapes in one file**: a
+flat `[{type, command, timeout}]` for `PreInvocation`/`PostInvocation`/`Stop`,
+but `[{matcher, hooks: [{...}]}]` for `PreToolUse`/`PostToolUse`. The generator
+must emit both.
+
+Discovery paths (workspace first): `.agents/hooks.json`,
+`~/.gemini/config/hooks.json`, and plugin bundles under
+`.agents/plugins/<name>/` or `~/.gemini/config/plugins/<name>/`. The CLI
+features page describes installed plugins staged at
+`~/.gemini/antigravity-cli/plugins/<name>/` instead; treat both as live until
+tested on a real install. The plugin bundle takes `plugin.json`, `hooks.json`,
+`skills/`, `agents/`, `rules/` and `mcp_config.json` — so the kit's nine skills
+can ship in the same artifact as its hooks, which no other runtime allows.
+
+**Antigravity is closed source.** Gemini CLI was open source with 100k+ GitHub
+stars; its replacement is a closed-source Go binary. That does not block a hook
+adapter, but it is worth stating plainly given that the goal here is support for
+*open-source* coding agents. Antigravity is a proprietary tool the kit can
+support, not an open-source one it can participate in.
 
 **opencode is the best fit for what this kit does, and the most work.** It is
 the only runtime with a compaction hook that can *inject into the compaction
@@ -254,31 +311,49 @@ which only surfaced once the handover lock moved under `.claude/session/`.
   plus an adapter script.
 - Ship as **v3.2.0**. Still four runtimes; the point is that the fifth is cheap.
 
-**Phase 2 — Gemini CLI** *(first new runtime, proves the registry)*
-- `.gemini/hooks/run.sh` adapter on the `cek_runtime.sh` pattern, `CEK_RUNTIME=gemini`
-- Event-name alias table (`BeforeTool`→`PreToolUse`, `AfterAgent`→`Stop`, …)
-- `.gemini/settings.json` hooks block, generated
-- `GEMINI_PROJECT_DIR` → `CLAUDE_PROJECT_DIR` in detection
-- Decision-response translation: exit 2 → `{"decision":"deny","reason":…}`
-- Gemini CLI extension manifest so it installs in one command
-- Ship as **v3.3.0**
+**Phase 2 — opencode** *(first new runtime, and now the right one to go first)*
 
-**Phase 3 — opencode** *(first non-shell runtime)*
+Reordered. Antigravity was Phase 2 as "Gemini CLI, the cheapest win"; the
+correction above removes both halves of that claim, and opencode is now ahead of
+it on every axis that matters here — it is open source, it has a full session
+lifecycle, and it is the only runtime anywhere that can inject into the
+compaction prompt. Doing it first also proves the registry against a runtime
+whose events genuinely differ, rather than one that merely renames Claude's.
+
 - `.opencode/plugins/cek.ts` — thin shim, no logic. Maps
   `session.created`→`session-start`, `session.idle`→`stop`,
   `experimental.session.compacting`→`pre-compact`, `session.compacted`→`post-compact`,
   `tool.execute.before`→`guard-dangerous` (throw to block),
   `tool.execute.after`→`track-changes`, `file.edited`→`track-changes`,
   `permission.asked`/`permission.replied`→the permission handlers.
-- Serialise each event to Claude-shaped snake_case JSON, pipe to the bash core.
+- Serialise each event to Claude-shaped snake_case JSON, pipe to the bash core
+  via the injected `$` (Bun shell) handle.
 - Use `experimental.session.compacting` to push the live handover into the
-  compaction prompt — the one place this kit gets a better result than on
-  Claude Code. Do **not** override `output.prompt` by default.
-- Publish to npm as `opencode-context-engineering-kit` so it installs via the
-  `plugin` array; keep the local-directory path working too.
-- Open question to settle first: does the bash core stay the single source of
-  truth, or does opencode get a native TS path? Recommendation: shim only. Two
-  cores is how this kit's `.claude/skills` duplication happened.
+  compaction prompt. Do **not** override `output.prompt` by default.
+- Publish to npm as `opencode-context-engineering-kit`; keep the
+  local-directory path working too.
+- Ship as **v3.3.0**
+
+**Phase 3 — Antigravity CLI** *(partial parity, honestly scoped)*
+- `.agents/hooks/run.sh` adapter, `CEK_RUNTIME=antigravity`, event name passed
+  as argv (Antigravity omits it from the payload)
+- Payload normaliser: camelCase → snake_case, **plus** `toolCall.name`/`.args`
+  flattening and a tool-name alias map (`run_command`→`Bash`,
+  `write_to_file`/`replace_file_content`→`Write`/`Edit`, `view_file`→`Read`).
+  Extend the Grok normaliser rather than forking it.
+- Decision translation both ways: exit 2 → `{"decision":"deny","reason":…}` on
+  `PreToolUse`; note `Stop`'s `{"decision":"continue"}` means *do not stop*.
+- Session-boundary synthesis: `PreInvocation` + `invocationNum == 0` →
+  `session-start` chain; `Stop` + `fullyIdle: true` → `stop` chain. Track
+  `conversationId` so the synthesis is per-conversation.
+- Banner and threshold notices go out via `injectSteps` / `ephemeralMessage`.
+- Generator emits **both** `hooks.json` shapes (flat for the invocation events,
+  `{matcher, hooks[]}` for the tool events).
+- Ship the plugin bundle (`plugin.json` + `hooks.json` + `skills/`) — the kit's
+  skills ride along, which no other runtime supports.
+- **Document the gap rather than paper over it:** no compaction hook exists, so
+  there is no PreCompact handover on Antigravity. The MCP tools from Phase 4 are
+  the fallback, and the README must say so.
 - Ship as **v3.4.0**
 
 **Phase 4 — `cek-mcp`, the universal floor**
@@ -287,8 +362,10 @@ which only surfaced once the handover lock moved under `.claude/session/`.
   `session_sync`, `context_health`.
 - Reuse `cek_paths.py` for all state access so the containment guard and the
   locks apply unchanged.
-- Ship config snippets for Warp, Cursor, Claude Code, Codex, Gemini, opencode,
-  Cline, Continue, Goose, Zed.
+- Ship config snippets for Warp, Cursor, Claude Code, Codex, Antigravity,
+  opencode, Cline, Continue, Goose, Zed.
+- This is also the **only** handover path on Antigravity, which has no
+  compaction hook — so it is load-bearing there, not just a convenience.
 - Ship as **v3.5.0**
 
 **Phase 5 — Warp, honestly**
@@ -309,11 +386,16 @@ which only surfaced once the handover lock moved under `.claude/session/`.
 
 ### Decisions to make before Phase 1 starts
 
-1. **Scope.** Six phases is a lot. Gemini CLI + MCP (Phases 0,1,2,4) covers the
-   most surface for the least work and makes Warp and every other MCP-speaking
-   agent reachable. opencode (Phase 3) is the highest-quality integration but
-   the only one needing a second language. Which subset ships first?
-2. **opencode: shim or native?** Recommendation above is shim-only.
+1. **Scope.** Six phases is a lot. The Antigravity correction changes the
+   recommended subset: **Phases 1, 2 and 4** — registry, opencode, MCP floor.
+   That is the open-source half of the request, the only runtime that improves
+   on Claude Code's compaction behaviour, and a protocol-level answer for
+   everything else including Warp and Antigravity. Antigravity (Phase 3) is now
+   a deliberate add-on rather than the cheap first win it was billed as: more
+   translation work than any adapter shipped so far, no session or compaction
+   events, and closed source.
+2. **opencode: shim or native?** Recommendation above is shim-only. Two cores is
+   how this kit's `.claude/skills` duplication happened.
 3. **Warp positioning.** Confirm that "read-only, no auto-save" is acceptable
    to advertise, or drop Warp until it has hooks.
 4. **The `.claude/` directory as the core's home.** Five runtimes now source
