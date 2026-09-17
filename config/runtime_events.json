@@ -1,15 +1,11 @@
 {
-  "_doc": "Single source of truth for what each runtime CAN do. Runtime facts only — which events it emits, what it calls them, how it is configured. Kit policy (which hook handles which event) lives in EVENTS in scripts/generate_runtime_hooks.py.",
-
+  "_doc": "Single source of truth for what each runtime CAN do. Runtime facts only \u2014 which events it emits, what it calls them, how it is configured. Kit policy (which hook handles which event) lives in EVENTS in scripts/generate_runtime_hooks.py.",
   "_why": [
-    "This table used to exist three times: RUNTIME_EVENTS in generate_runtime_hooks.py (codex, grok only), cek_runtime_supports() in scripts/cek_runtime.sh (all four), and the event table in docs/runtime-capability-matrix.md (all four). Three copies cannot disagree safely, and Cursor was absent from the one that actually validates anything — so the guard that caught .codex/hooks.json shipping three events Codex does not have could never fire for Cursor.",
+    "This table used to exist three times: RUNTIME_EVENTS in generate_runtime_hooks.py (codex, grok only), cek_runtime_supports() in scripts/cek_runtime.sh (all four), and the event table in docs/runtime-capability-matrix.md (all four). Three copies cannot disagree safely, and Cursor was absent from the one that actually validates anything \u2014 so the guard that caught .codex/hooks.json shipping three events Codex does not have could never fire for Cursor.",
     "Every runtime carries `source` and `verified`. That is not decoration: the v4 plan's first draft was built on a January 2026 blog post about Gemini CLI, a product Google had shut off three months earlier. A capability claim with no date and no URL is a claim nobody can re-check."
   ],
-
   "schema_version": 1,
-
   "_events_format": "`events` maps CANONICAL event name -> the name THIS runtime uses. They are equal where the runtime follows Claude Code's naming. A canonical name absent from the map means the runtime does not emit that event. `native_extra` lists events with no canonical equivalent that the kit deliberately uses anyway.",
-
   "runtimes": {
     "claude": {
       "display_name": "Claude Code",
@@ -22,7 +18,7 @@
       "inject": "stdout on SessionStart / UserPromptSubmit / UserPromptExpansion / PostModelSwitch, or hookSpecificOutput.additionalContext",
       "timeout_default_sec": 60,
       "timeout_max_sec": {},
-      "_timeout_note": "SessionEnd shares a 1.5s budget that a plugin's own `timeout` cannot raise. Not a per-hook ceiling, so it is not expressible here — session-end.sh detaches instead.",
+      "_timeout_note": "SessionEnd shares a 1.5s budget that a plugin's own `timeout` cannot raise. Not a per-hook ceiling, so it is not expressible here \u2014 session-end.sh detaches instead.",
       "events": {
         "Setup": "Setup",
         "SessionStart": "SessionStart",
@@ -57,7 +53,6 @@
       },
       "native_extra": []
     },
-
     "cursor": {
       "display_name": "Cursor",
       "source": "https://cursor.com/docs/hooks",
@@ -70,7 +65,7 @@
       "inject": "sessionStart.additional_context, postToolUse.additional_context, preCompact.user_message",
       "timeout_default_sec": null,
       "timeout_max_sec": {},
-      "_note": "Cursor emits literal preToolUse / postToolUse as well, but the kit uses beforeShellExecution / afterFileEdit for the same coverage — see the 'deliberately unused' list in the capability matrix. The canonical mapping below reflects the events the kit actually binds.",
+      "_note": "Cursor emits literal preToolUse / postToolUse as well, but the kit uses beforeShellExecution / afterFileEdit for the same coverage \u2014 see the 'deliberately unused' list in the capability matrix. The canonical mapping below reflects the events the kit actually binds.",
       "events": {
         "SessionStart": "sessionStart",
         "SessionEnd": "sessionEnd",
@@ -88,7 +83,6 @@
         "beforeReadFile"
       ]
     },
-
     "codex": {
       "display_name": "Codex",
       "source": "https://learn.chatgpt.com/docs/hooks",
@@ -123,7 +117,6 @@
       },
       "native_extra": []
     },
-
     "grok": {
       "display_name": "Grok Build",
       "source": "https://docs.x.ai/build/features/hooks",
@@ -133,7 +126,7 @@
       "generated_config": ".grok/hooks/cek-hooks.json",
       "config_format": "claude",
       "command_prefix": "bash .grok/hooks/run.sh ",
-      "inject": "none — stdout is ignored on every event except PreToolUse's decision JSON",
+      "inject": "none \u2014 stdout is ignored on every event except PreToolUse's decision JSON",
       "timeout_default_sec": 5,
       "timeout_max_sec": {},
       "_timeout_note": "Default is 5s, not 30. Only the SessionEnd entry sets an explicit timeout, so every other Grok hook runs against 5s. The session-start chain has not been profiled against that ceiling.",
@@ -160,6 +153,35 @@
         "Notification": "Notification"
       },
       "native_extra": []
+    },
+    "opencode": {
+      "display_name": "opencode",
+      "source": "https://opencode.ai/docs/plugins/",
+      "verified": "2026-09-17",
+      "payload_case": "n/a \u2014 the adapter constructs Claude-shaped snake_case JSON in cek.ts",
+      "supports_async": false,
+      "generated_config": null,
+      "_generated_config_note": "opencode's extension surface is a JS/TS module, not a JSON hook file, so there is nothing to generate. .opencode/plugins/cek.ts is a translator with no policy; all wiring lives in .opencode/hooks/run.sh like every other adapter.",
+      "plugin_entry": ".opencode/plugins/cek.ts",
+      "command_prefix": "bash .opencode/hooks/run.sh ",
+      "inject": "experimental.session.compacting -> output.context.push() \u2014 the only runtime where the kit can write into the compaction prompt itself",
+      "timeout_default_sec": null,
+      "timeout_max_sec": {},
+      "_no_user_prompt_note": "opencode has no UserPromptSubmit equivalent: nothing documented fires between the user submitting a prompt and the model seeing it. The usage sentinel therefore runs at TURN END (session.idle) rather than turn start, so the 85%/92% thresholds are evaluated once per turn. Atomic sentinel claims make that safe.",
+      "_payload_caveat": "opencode documents its hook SIGNATURES (tool.execute.before/after, experimental.session.compacting) field-by-field, but not the payload of events delivered through the generic `event` subscriber. cek.ts reads session ids defensively across several shapes rather than assuming one.",
+      "events": {
+        "SessionStart": "session.created",
+        "SessionEnd": "session.deleted",
+        "Stop": "session.idle",
+        "StopFailure": "session.error",
+        "PreToolUse": "tool.execute.before",
+        "PostToolUse": "tool.execute.after",
+        "PreCompact": "experimental.session.compacting",
+        "PostCompact": "session.compacted"
+      },
+      "native_extra": [
+        "file.edited"
+      ]
     }
   }
 }

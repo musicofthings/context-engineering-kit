@@ -311,7 +311,50 @@ else
   fail "capability cache ignores a runtime switch: got '$SWITCH'"
 fi
 
-# 20) The matrix table is generated, not hand-written.
+# 20) opencode adapter. Its plugin is JS/TS, so the shell adapter and the event
+# mapping are exercised by scripts/eval_opencode.mjs, which implements the
+# Bun-shell subset cek.ts uses and spawns a real bash. Skipped rather than
+# failed when no Node is present — nothing else in this kit needs one.
+OC_NODE=""
+for c in node nodejs; do command -v "$c" >/dev/null 2>&1 && { OC_NODE="$c"; break; }; done
+if [ -z "$OC_NODE" ]; then
+  echo "  SKIP  opencode plugin evals (no node on PATH)"
+elif "$OC_NODE" --experimental-strip-types scripts/eval_opencode.mjs >/dev/null 2>&1; then
+  pass "opencode plugin: event mapping, exit-2 block, compaction inject"
+else
+  fail "opencode plugin evals — run: $OC_NODE --experimental-strip-types scripts/eval_opencode.mjs"
+fi
+
+# 21) opencode's run.sh follows the same dispatch contract as Codex and Grok:
+# exit 2 from the core must survive it, because cek.ts turns that 2 into the
+# thrown Error that is opencode's own way of blocking a tool call.
+OC_SB=$(mktemp -d "${TMPDIR:-/tmp}/cek-oc.XXXXXX")
+git -C "$OC_SB" init -q
+OC_DANGER=$(python3 -c "
+import json
+print(json.dumps({'hook_event_name':'PreToolUse','tool_name':'Bash',
+ 'tool_input':{'command': 'rm'+' -'+'rf'+' '+'/'}}))" 2>/dev/null)
+OC_RC=0
+printf '%s' "$OC_DANGER" | env CLAUDE_PROJECT_DIR="$OC_SB" CLAUDE_PLUGIN_ROOT="$ROOT" \
+  bash .opencode/hooks/run.sh hook guard-dangerous.sh >/dev/null 2>&1 || OC_RC=$?
+if [ "$OC_RC" -eq 2 ]; then
+  pass "opencode run.sh propagates exit 2 (deny) to the plugin"
+else
+  fail "opencode run.sh swallowed the deny: rc=$OC_RC"
+fi
+rm -rf "$OC_SB"
+
+# 22) cek.ts must not reach for Bun-only APIs. `import.meta.dir` and `Bun.file`
+# both shipped in the first draft and silently did nothing off Bun — the
+# `Bun.file` one sat inside a try/catch, which made a dead feature look alive.
+if grep -nE '(^|[^/[:alnum:]])Bun\.[a-z]|import\.meta\.dir' .opencode/plugins/cek.ts \
+     | grep -vE '^[0-9]+:\s*(//|\*)' >/dev/null 2>&1; then
+  fail "cek.ts uses a Bun-only API outside a comment"
+else
+  pass "cek.ts uses only standard JS APIs"
+fi
+
+# 23) The matrix table is generated, not hand-written.
 if grep -q "BEGIN GENERATED: event-support" docs/runtime-capability-matrix.md; then
   pass "capability matrix table is generated"
 else

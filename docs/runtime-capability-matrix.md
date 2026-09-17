@@ -84,39 +84,39 @@ session/compaction gaps that follow from it.
 <!-- BEGIN GENERATED: event-support -->
 <!-- regenerate: python scripts/generate_runtime_hooks.py -->
 
-| Event | Claude Code | Cursor | Codex | Grok Build | Kit hook / chain |
-|-------|:------:|:------:|:------:|:------:|------------------|
-| Setup | ✅ | ❌ | ❌ | ❌ | `native-event-log.sh` (Claude only) |
-| SessionStart | ✅ | ✅ | ✅ | ✅ | `session-start` chain + `compact-restore.sh` + `session-title.sh` |
-| SessionEnd | ✅ | ✅ | ✅ | ✅ | `session-end.sh` |
-| UserPromptSubmit | ✅ | ✅ | ✅ | ✅ | `usage-sentinel.sh` |
-| UserPromptExpansion | ✅ | ❌ | ❌ | ❌ | `native-event-log.sh` (Claude only) |
-| PreToolUse | ✅ | ✅ | ✅ | ✅ | `guard-dangerous.sh` |
-| PostToolUse | ✅ | ✅ | ✅ | ✅ | `track-changes.sh` |
-| PostToolUseFailure | ✅ | ✅ | ❌ | ✅ | `post-tool-failure.sh` |
-| PostToolBatch | ✅ | ❌ | ❌ | ❌ | `native-event-log.sh` (Claude only) |
-| PermissionRequest | ✅ | ❌ | ✅ | ❌ | `auto-approve-permissions.sh` |
-| PermissionDenied | ✅ | ❌ | ❌ | ✅ | `permission-denied.sh` |
-| Stop | ✅ | ✅ | ✅ | ✅ | `stop` chain |
-| StopFailure | ✅ | ❌ | ❌ | ✅ | `stop-failure.sh` |
-| Notification | ✅ | ❌ | ❌ | ✅ | `notify.sh` |
-| TaskCreated | ✅ | ❌ | ❌ | ❌ | `native-event-log.sh` (Claude only) |
-| TaskCompleted | ✅ | ❌ | ❌ | ❌ | `native-event-log.sh` (Claude only) |
-| TeammateIdle | ✅ | ❌ | ❌ | ❌ | `native-event-log.sh` (Claude only) |
-| SubagentStart | ✅ | ✅ | ✅ | ✅ | `subagent-start` chain |
-| SubagentStop | ✅ | ✅ | ✅ | ✅ | `subagent-stop` chain |
-| PreCompact | ✅ | ✅ | ✅ | ✅ | `pre-compact.sh` |
-| PostCompact | ✅ | ❌ | ✅ | ✅ | `post-compact.sh` |
-| PreModelSwitch | ✅ | ❌ | ❌ | ❌ | `native-event-log.sh` (Claude only) |
-| PostModelSwitch | ✅ | ❌ | ❌ | ❌ | `native-event-log.sh` (Claude only) |
-| InstructionsLoaded | ✅ | ❌ | ❌ | ❌ | `instructions-loaded.sh` (Claude only) |
-| ConfigChange | ✅ | ❌ | ❌ | ❌ | `native-event-log.sh` (Claude only) |
-| CwdChanged | ✅ | ❌ | ❌ | ❌ | `native-event-log.sh` (Claude only) |
-| DirectoryAdded | ✅ | ❌ | ❌ | ❌ | `native-event-log.sh` (Claude only) |
-| WorktreeCreate | ✅ | ❌ | ❌ | ❌ | **deliberately not wired** — see below |
-| WorktreeRemove | ✅ | ❌ | ❌ | ❌ | `native-event-log.sh` (Claude only) |
-| FileChanged | ✅ | ❌ | ❌ | ❌ | `config-changed.sh` (Claude only) |
-| Interrupt | ❌ | ❌ | ✅ | ❌ | `native-event-log.sh` |
+| Event | Claude Code | Cursor | Codex | Grok Build | opencode | Kit hook / chain |
+|-------|:------:|:------:|:------:|:------:|:------:|------------------|
+| Setup | ✅ | ❌ | ❌ | ❌ | ❌ | `native-event-log.sh` (Claude only) |
+| SessionStart | ✅ | ✅ | ✅ | ✅ | ✅ | `session-start` chain + `compact-restore.sh` + `session-title.sh` |
+| SessionEnd | ✅ | ✅ | ✅ | ✅ | ✅ | `session-end.sh` |
+| UserPromptSubmit | ✅ | ✅ | ✅ | ✅ | ❌ | `usage-sentinel.sh` |
+| UserPromptExpansion | ✅ | ❌ | ❌ | ❌ | ❌ | `native-event-log.sh` (Claude only) |
+| PreToolUse | ✅ | ✅ | ✅ | ✅ | ✅ | `guard-dangerous.sh` |
+| PostToolUse | ✅ | ✅ | ✅ | ✅ | ✅ | `track-changes.sh` |
+| PostToolUseFailure | ✅ | ✅ | ❌ | ✅ | ❌ | `post-tool-failure.sh` |
+| PostToolBatch | ✅ | ❌ | ❌ | ❌ | ❌ | `native-event-log.sh` (Claude only) |
+| PermissionRequest | ✅ | ❌ | ✅ | ❌ | ❌ | `auto-approve-permissions.sh` |
+| PermissionDenied | ✅ | ❌ | ❌ | ✅ | ❌ | `permission-denied.sh` |
+| Stop | ✅ | ✅ | ✅ | ✅ | ✅ | `stop` chain |
+| StopFailure | ✅ | ❌ | ❌ | ✅ | ✅ | `stop-failure.sh` |
+| Notification | ✅ | ❌ | ❌ | ✅ | ❌ | `notify.sh` |
+| TaskCreated | ✅ | ❌ | ❌ | ❌ | ❌ | `native-event-log.sh` (Claude only) |
+| TaskCompleted | ✅ | ❌ | ❌ | ❌ | ❌ | `native-event-log.sh` (Claude only) |
+| TeammateIdle | ✅ | ❌ | ❌ | ❌ | ❌ | `native-event-log.sh` (Claude only) |
+| SubagentStart | ✅ | ✅ | ✅ | ✅ | ❌ | `subagent-start` chain |
+| SubagentStop | ✅ | ✅ | ✅ | ✅ | ❌ | `subagent-stop` chain |
+| PreCompact | ✅ | ✅ | ✅ | ✅ | ✅ | `pre-compact.sh` |
+| PostCompact | ✅ | ❌ | ✅ | ✅ | ✅ | `post-compact.sh` |
+| PreModelSwitch | ✅ | ❌ | ❌ | ❌ | ❌ | `native-event-log.sh` (Claude only) |
+| PostModelSwitch | ✅ | ❌ | ❌ | ❌ | ❌ | `native-event-log.sh` (Claude only) |
+| InstructionsLoaded | ✅ | ❌ | ❌ | ❌ | ❌ | `instructions-loaded.sh` (Claude only) |
+| ConfigChange | ✅ | ❌ | ❌ | ❌ | ❌ | `native-event-log.sh` (Claude only) |
+| CwdChanged | ✅ | ❌ | ❌ | ❌ | ❌ | `native-event-log.sh` (Claude only) |
+| DirectoryAdded | ✅ | ❌ | ❌ | ❌ | ❌ | `native-event-log.sh` (Claude only) |
+| WorktreeCreate | ✅ | ❌ | ❌ | ❌ | ❌ | **deliberately not wired** — see below |
+| WorktreeRemove | ✅ | ❌ | ❌ | ❌ | ❌ | `native-event-log.sh` (Claude only) |
+| FileChanged | ✅ | ❌ | ❌ | ❌ | ❌ | `config-changed.sh` (Claude only) |
+| Interrupt | ❌ | ❌ | ✅ | ❌ | ❌ | `native-event-log.sh` |
 
 Cursor-native events with no canonical equivalent, wired anyway:
 
@@ -131,6 +131,7 @@ Cursor-native events with no canonical equivalent, wired anyway:
 | Cursor | https://cursor.com/docs/hooks | 2026-09-17 |
 | Codex | https://learn.chatgpt.com/docs/hooks | 2026-09-17 |
 | Grok Build | https://docs.x.ai/build/features/hooks | 2026-09-17 |
+| opencode | https://opencode.ai/docs/plugins/ | 2026-09-17 |
 
 <!-- END GENERATED: event-support -->
 

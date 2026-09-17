@@ -1,0 +1,19 @@
+{
+  "name": "opencode-context-engineering-kit",
+  "version": "3.3.0",
+  "description": "Session handover, token tracking and cross-device context sync for opencode. Writes the live handover into the compaction prompt so state survives context compaction.",
+  "keywords": ["opencode", "opencode-plugin", "context", "handover", "compaction", "session"],
+  "license": "MIT",
+  "homepage": "https://github.com/musicofthings/context-engineering-kit",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/musicofthings/context-engineering-kit.git"
+  },
+  "type": "module",
+  "main": "./plugins/cek.ts",
+  "exports": {
+    ".": "./plugins/cek.ts"
+  },
+  "files": ["plugins/", "hooks/", "README.md"],
+  "_publish_note": "Publishing this package alone is not enough: cek.ts is a translator that shells out to the kit's core under .claude/hooks/ and scripts/. An npm install must therefore either vendor those directories or resolve CEK_ROOT to a checkout. See docs/RELEASE_NOTES_3.3.0.md — npm distribution is staged, the supported install today is the local plugin directory."
+}

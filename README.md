@@ -7,11 +7,22 @@ Hooks, skills, and scripts that keep your context alive through compaction, devi
 Works in **Claude Cowork**, **Claude Code Desktop**, **Claude Code CLI**, **Cursor IDE**, **Grok Build**, and **Codex**.
 
 🌐 **[Landing page & full docs →](https://musicofthings.github.io/context-engineering-kit/)**  
-📦 **[Download plugin zip (v3.2.0) →](https://github.com/musicofthings/context-engineering-kit/releases/latest)** — for Cowork or Desktop Plugin upload  
+📦 **[Download plugin zip (v3.3.0) →](https://github.com/musicofthings/context-engineering-kit/releases/latest)** — for Cowork or Desktop Plugin upload  
 📐 **[Runtime capability matrix →](docs/runtime-capability-matrix.md)**  
-📝 **[Release notes (v3.2.0) →](docs/RELEASE_NOTES_3.2.0.md)** — one runtime registry, Cursor now generated · [v3.1.2](docs/RELEASE_NOTES_3.1.2.md) · [v3.1.1](docs/RELEASE_NOTES_3.1.1.md) · [v3.1.0](docs/RELEASE_NOTES_3.1.0.md) · [v3.0.1](docs/RELEASE_NOTES_3.0.1.md) · [v3.0.0](docs/RELEASE_NOTES_3.0.0.md)
+📝 **[Release notes (v3.3.0) →](docs/RELEASE_NOTES_3.3.0.md)** — opencode support, handover injected into the compaction prompt · [v3.2.0](docs/RELEASE_NOTES_3.2.0.md) · [v3.1.2](docs/RELEASE_NOTES_3.1.2.md) · [v3.1.1](docs/RELEASE_NOTES_3.1.1.md) · [v3.1.0](docs/RELEASE_NOTES_3.1.0.md) · [v3.0.1](docs/RELEASE_NOTES_3.0.1.md) · [v3.0.0](docs/RELEASE_NOTES_3.0.0.md)
 
 ---
+
+## What's new in v3.3.0
+
+Phase 2 of the [v4.0 plan](docs/PLAN_v4_universal_runtime.md): **opencode
+support** (**Option G** below). Its plugin API is JavaScript/TypeScript rather
+than a JSON hook file, so `.opencode/plugins/cek.ts` translates each event into
+the Claude-shaped JSON the shared core already reads — there is still one logic
+core. opencode is the only runtime where the kit can write the live handover
+into the **compaction prompt itself**, rather than writing it beside the
+conversation and hoping the summariser keeps it.
+See [`docs/RELEASE_NOTES_3.3.0.md`](docs/RELEASE_NOTES_3.3.0.md).
 
 ## What's new in v3.2.0
 
@@ -30,7 +41,7 @@ Re-verified Codex and Grok against their current docs. Neither event set has
 drifted — but Grok also reads `.cursor/hooks.json`, "including Cursor's
 camelCase event names", which this repo claimed it did not. Every Grok session
 was running the kit twice. Fixed, with evals. Also documents Antigravity CLI
-compatibility and its limits (**Option G** below), and Codex's hook-output
+compatibility and its limits (**Option H** below), and Codex's hook-output
 spilling. See [`docs/RELEASE_NOTES_3.1.2.md`](docs/RELEASE_NOTES_3.1.2.md).
 
 ## What's new in v3.1.1
@@ -164,7 +175,7 @@ The easiest path. One zip works in both **Claude Cowork** and **Claude Code Desk
 **Either** download the prebuilt zip from the [latest GitHub release](https://github.com/musicofthings/context-engineering-kit/releases/latest):
 
 ```
-context-engineering-kit-3.2.0.zip
+context-engineering-kit-3.3.0.zip
 ```
 
 **Or** build it from source (requires Python 3):
@@ -173,7 +184,7 @@ context-engineering-kit-3.2.0.zip
 git clone https://github.com/musicofthings/context-engineering-kit.git
 cd context-engineering-kit
 python scripts/package_plugin.py
-# → writes context-engineering-kit-3.2.0.zip in the project root
+# → writes context-engineering-kit-3.3.0.zip in the project root
 ```
 
 The packaging script reads the version from `.claude-plugin/plugin.json` and excludes git history, runtime session state, audit logs, and caches automatically.
@@ -181,7 +192,7 @@ The packaging script reads the version from `.claude-plugin/plugin.json` and exc
 ### Step 2a — Upload to Claude Cowork
 
 1. Open Cowork → **Settings** → **Plugins** (or **Skills** → **Add plugin**)
-2. Click **Upload plugin** → select `context-engineering-kit-3.2.0.zip`
+2. Click **Upload plugin** → select `context-engineering-kit-3.3.0.zip`
 3. Confirm install — the eight skills appear as `/context-engineering-kit:*` commands
 4. Type `/context-engineering-kit:handover` in any conversation to use it
 
@@ -190,7 +201,7 @@ The packaging script reads the version from `.claude-plugin/plugin.json` and exc
 ### Step 2b — Upload to Claude Code Desktop
 
 1. Open **Claude Code Desktop** → click **Customize** (bottom-left gear) → **Upload Plugin**
-2. Select `context-engineering-kit-3.2.0.zip` and restart Claude Code
+2. Select `context-engineering-kit-3.3.0.zip` and restart Claude Code
 3. Verify in any project:
    ```
    /context-engineering-kit:context-health
@@ -429,7 +440,62 @@ cd my-project
 
 ---
 
-## Option G — Antigravity CLI (`agy`) — **not yet supported**
+## Option G — opencode
+
+```bash
+git clone https://github.com/musicofthings/context-engineering-kit.git my-project
+cd my-project
+opencode          # .opencode/plugins/cek.ts loads automatically at startup
+```
+
+- Entry: `.opencode/plugins/cek.ts` → `.opencode/hooks/run.sh` → `.claude/hooks/*`
+- Plugins load from `.opencode/plugins/` (project) or `~/.config/opencode/plugins/` (global)
+- Verify: `node --experimental-strip-types scripts/eval_opencode.mjs`
+
+opencode's extension surface is a **JavaScript/TypeScript module**, not a JSON
+hook file — the only runtime here where that is true. `cek.ts` is a translator
+with no policy in it: each opencode event becomes the Claude-shaped snake_case
+JSON the shared core already reads, and `run.sh` dispatches it exactly as the
+Codex and Grok adapters do. There is still one logic core.
+
+### The reason opencode is worth supporting
+
+`experimental.session.compacting` lets a plugin write into the **compaction
+prompt itself**:
+
+```
+session_handover.md ──► output.context.push(...) ──► compaction prompt
+```
+
+Everywhere else the kit writes the handover before compaction and hopes the
+summariser keeps what matters. Here the handover *is* part of what the
+continuation is built from. No other supported runtime can do this.
+
+`output.prompt` is deliberately left alone — assigning it replaces opencode's
+entire compaction prompt and causes `output.context` to be ignored. Replacing a
+runtime's summarisation strategy wholesale is not this kit's business.
+
+### Differences from Claude Code
+
+| | |
+|---|---|
+| **No `UserPromptSubmit`** | Nothing documented fires between the user submitting a prompt and the model seeing it. The usage sentinel runs at **turn end** (`session.idle`) instead, so 85%/92% thresholds are evaluated once per turn. Atomic sentinel claims make that safe. |
+| **No subagent events** | Subagent tracking and the mid-flight grace period are inactive. |
+| **No `PermissionRequest`/`PermissionDenied` wiring** | opencode emits `permission.asked` / `permission.replied`, but their payloads are not documented field-by-field, so they are deliberately unwired rather than guessed at. |
+| **Blocking is a thrown Error** | `tool.execute.before` blocks by throwing, not by an exit code. `cek.ts` converts the core's `exit 2` into that throw, so the guard behaves identically. |
+
+### npm
+
+`.opencode/package.json` declares `opencode-context-engineering-kit` for
+`"plugin": [...]` installs, but **the supported install today is the local
+plugin directory above.** `cek.ts` shells out to the kit's core under
+`.claude/hooks/` and `scripts/`, so an npm install has to vendor those or point
+`CEK_ROOT` at a checkout. The plugin says so loudly on stderr and deactivates
+rather than pretending to work if it cannot find the core.
+
+---
+
+## Option H — Antigravity CLI (`agy`) — **not yet supported**
 
 Google sunset **Gemini CLI on 2026-06-18** with no grace period and replaced it
 with Antigravity CLI. If you came here looking for Gemini CLI support: that
@@ -945,7 +1011,7 @@ Resuming on another device
 bash scripts/check_sync.sh
 bash scripts/eval_phase_c.sh
 bash scripts/eval_usage_lifecycle.sh
-python scripts/package_plugin.py    # → context-engineering-kit-3.2.0.zip
+python scripts/package_plugin.py    # → context-engineering-kit-3.3.0.zip
 ```
 
 ---
@@ -1008,4 +1074,4 @@ Then in Claude Code: `/my-skill`
 
 ---
 
-*context-engineering-kit v3.2.0 — Multi-runtime context preservation for Claude Code, Cursor, Grok, and Codex.*
+*context-engineering-kit v3.3.0 — Multi-runtime context preservation for Claude Code, Cursor, Grok, and Codex.*

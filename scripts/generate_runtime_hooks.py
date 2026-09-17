@@ -76,7 +76,7 @@ EVENTS: list[dict] = [
         "event": "SessionStart",
         "matcher": "",
         "chain": "session-start",
-        "runtimes": ["codex", "grok", "cursor"],
+        "runtimes": ["codex", "grok", "cursor", "opencode"],
         "async": False,
         "cursor": {"adapter": "on-session-start.sh"},
     },
@@ -95,7 +95,7 @@ EVENTS: list[dict] = [
     {
         "event": "SessionEnd",
         "hook": "session-end.sh",
-        "runtimes": ["codex", "grok", "cursor"],
+        "runtimes": ["codex", "grok", "cursor", "opencode"],
         # Codex caps SessionEnd at 3s (1s default) and always runs it
         # synchronously; session-end.sh detaches its work, so 3 is ample.
         # Grok's default is 5s, so 30 here is an explicit widening.
@@ -112,7 +112,7 @@ EVENTS: list[dict] = [
         "event": "PreToolUse",
         "matcher": "Bash",
         "hook": "guard-dangerous.sh",
-        "runtimes": ["codex", "grok", "cursor"],
+        "runtimes": ["codex", "grok", "cursor", "opencode"],
         # failClosed stays false: this guard is defence-in-depth, and a crash in
         # it must not wedge every shell command Cursor wants to run.
         "cursor": {"adapter": "guard-shell.sh", "failClosed": False},
@@ -121,7 +121,7 @@ EVENTS: list[dict] = [
         "event": "PostToolUse",
         "matcher": "Edit|Write",
         "hook": "track-changes.sh",
-        "runtimes": ["codex", "grok", "cursor"],
+        "runtimes": ["codex", "grok", "cursor", "opencode"],
         "cursor": {"adapter": "track-edit.sh"},
     },
     {
@@ -146,24 +146,24 @@ EVENTS: list[dict] = [
     {
         "event": "PreCompact",
         "hook": "pre-compact.sh",
-        "runtimes": ["codex", "grok", "cursor"],
+        "runtimes": ["codex", "grok", "cursor", "opencode"],
         "cursor": {"adapter": "on-precompact.sh"},
     },
     {
         "event": "PostCompact",
         "hook": "post-compact.sh",
-        "runtimes": ["codex", "grok"],
+        "runtimes": ["codex", "grok", "opencode"],
     },
     {
         "event": "Stop",
         "chain": "stop",
-        "runtimes": ["codex", "grok", "cursor"],
+        "runtimes": ["codex", "grok", "cursor", "opencode"],
         "cursor": {"adapter": "on-stop.sh"},
     },
     {
         "event": "StopFailure",
         "hook": "stop-failure.sh",
-        "runtimes": ["grok"],  # Codex has no StopFailure event
+        "runtimes": ["grok", "opencode"],  # Codex has no StopFailure event
     },
     {
         "event": "SubagentStart",
@@ -364,7 +364,7 @@ def claude_manifest_wiring() -> dict[str, list[str]]:
 
 def build_matrix_table() -> str:
     """Render the event-support table from the registry plus the wiring table."""
-    order = ["claude", "cursor", "codex", "grok"]
+    order = ["claude", "cursor", "codex", "grok", "opencode"]
     # Union of every canonical event any runtime emits, in registry order so the
     # table is stable and reviewable.
     seen: list[str] = []

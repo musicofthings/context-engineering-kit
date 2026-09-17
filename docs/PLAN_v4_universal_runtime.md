@@ -1,8 +1,8 @@
 # v4.0 — Universal runtime support
 
-**Status:** Phases 0–1 shipped (v3.1.1, v3.2.0); Phases 2–6 awaiting scope decision
+**Status:** Phases 0–2 shipped (v3.1.1, v3.1.2, v3.2.0, v3.3.0); Phases 3–6 awaiting scope decision
 **Date:** 2026-09-17 (revised same day — see the Antigravity correction in Part 2)
-**Baseline:** v3.2.0 (pushed to `origin/main`)
+**Baseline:** v3.3.0 (pushed to `origin/main`)
 **Supersedes:** the open items in `session_handover.md` (Phases 0–3 of the v3.0.0
 Claude-compatibility audit landed in `cb68658..8d58226`; that handover is stale).
 
@@ -176,7 +176,7 @@ Verified against each vendor's own documentation, 2026-09-17.
 | **Codex** | plugin manifest + `.codex/hooks.json` | 12 events | `SessionStart` | shipped |
 | **Grok** | `.grok/hooks/*.json` | 14 events | `SessionStart` | shipped |
 | **Antigravity CLI** (`agy`) | `.agents/hooks.json` + plugin bundles | **5 only**: `PreToolUse`, `PostToolUse`, `PreInvocation`, `PostInvocation`, `Stop` | `injectSteps` on Pre/PostInvocation | **new — partial parity** |
-| **opencode** | JS/TS plugin, `.opencode/plugins/` or npm | 25+ events | `experimental.session.compacting` → `output.context.push()`, `tui.prompt.append` | **new — needs a shim** |
+| **opencode** | JS/TS plugin, `.opencode/plugins/` or npm | 25+ events | `experimental.session.compacting` → `output.context.push()`, `tui.prompt.append` | ✅ shipped v3.3.0 |
 | **Warp** | `AGENTS.md` rules + MCP | **none** | rules file only | **new — read-side only** |
 
 Three things this changes about the plan:
@@ -317,7 +317,13 @@ first — caught by an existing eval.
   plus an adapter script.
 - Ship as **v3.2.0**. Still four runtimes; the point is that the fifth is cheap.
 
-**Phase 2 — opencode** *(first new runtime, and now the right one to go first)*
+**Phase 2 — opencode** — ✅ **shipped as v3.3.0**, see
+[`RELEASE_NOTES_3.3.0.md`](RELEASE_NOTES_3.3.0.md). Evals 144 → 155. Two
+Bun-only APIs (`import.meta.dir`, `Bun.file`) were caught by the non-Bun test
+harness, both failing silently off Bun — the second inside a swallowing
+try/catch, so the compaction injection looked like it worked. Adding the
+runtime cost exactly what Phase 1 promised: a registry entry, an adapter, and a
+`runtimes` list edit.
 
 Reordered. Antigravity was Phase 2 as "Gemini CLI, the cheapest win"; the
 correction above removes both halves of that claim, and opencode is now ahead of
