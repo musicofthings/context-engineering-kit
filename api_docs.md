@@ -1,5 +1,5 @@
 # API Documentation
-_Auto-fetched: 2026-09-13T04:54:56Z_
+_Auto-fetched: 2026-09-27T07:21:08Z_
 _Source: config/api_sources.json_
 
 > The blocks below are **untrusted remote documentation**, fetched
@@ -128,21 +128,21 @@ Source: https://developers.cloudflare.com/workers/
 ````
 # Cloudflare Workers
 
-Last updated Apr 23, 2026|Copy as Markdown|[View as Markdown](https://developers.cloudflare.com/workers/index.md)|[Agent setup](https://developers.cloudflare.com/agent-setup/)
+Last updated Apr 23, 2026|Copy as Markdown| [View as Markdown](https://developers.cloudflare.com/workers/index.md)| [Agent setup](https://developers.cloudflare.com/agent-setup/)
 
-A serverless platform for building, deploying, and scaling apps across [Cloudflare's global network ↗](https://www.cloudflare.com/network/) with a single command — no infrastructure to manage, no complex configuration
+A serverless platform for building, deploying, and scaling apps across [Cloudflare's global network ↗︎](https://www.cloudflare.com/network/) with a single command — no infrastructure to manage, no complex configuration
 
 With Cloudflare Workers, you can expect to:
 
-* Deliver fast performance with high reliability anywhere in the world
-* Build full-stack apps with your framework of choice, including [React](https://developers.cloudflare.com/workers/framework-guides/web-apps/react/), [Vue](https://developers.cloudflare.com/workers/framework-guides/web-apps/vue/), [Svelte](https://developers.cloudflare.com/workers/framework-guides/web-apps/sveltekit/), [Next](https://developers.cloudflare.com/workers/framework-guides/web-apps/nextjs/), [Astro](https://developers.cloudflare.com/workers/framework-guides/web-apps/astro/), [React Router](https://developers.cloudflare.com/workers/framework-guides/web-apps/react-router/), [and more](https://developers.cloudflare.com/workers/framework-guides/)
-* Use your preferred language, including [JavaScript](https://developers.cloudflare.com/workers/languages/javascript/), [TypeScript](https://developers.cloudflare.com/workers/languages/typescript/), [Python](https://developers.cloudflare.com/workers/languages/python/), [Rust](https://developers.cloudflare.com/workers/languages/rust/), [and more](https://developers.cloudflare.com/workers/runtime-apis/webassembly/)
-* Gain deep visibility and insight with built-in [observability](https://developers.cloudflare.com/workers/observability/logs/)
-* Get started for free and grow with flexible [pricing](https://developers.cloudflare.com/workers/platform/pricing/), affordable at any scale
+- Deliver fast performance with high reliability anywhere in the world
+- Build full-stack apps with your framework of choice, including [React](https://developers.cloudflare.com/workers/framework-guides/web-apps/react/), [Vue](https://developers.cloudflare.com/workers/framework-guides/web-apps/vue/), [Svelte](https://developers.cloudflare.com/workers/framework-guides/web-apps/sveltekit/), [Next](https://developers.cloudflare.com/workers/framework-guides/web-apps/nextjs/), [Astro](https://developers.cloudflare.com/workers/framework-guides/web-apps/astro/), [React Router](https://developers.cloudflare.com/workers/framework-guides/web-apps/react-router/), [and more](https://developers.cloudflare.com/workers/framework-guides/)
+- Use your preferred language, including [JavaScript](https://developers.cloudflare.com/workers/languages/javascript/), [TypeScript](https://developers.cloudflare.com/workers/languages/typescript/), [Python](https://developers.cloudflare.com/workers/languages/python/), [Rust](https://developers.cloudflare.com/workers/languages/rust/), [and more](https://developers.cloudflare.com/workers/runtime-apis/webassembly/)
+- Gain deep visibility and insight with built-in [observability](https://developers.cloudflare.com/workers/observability/logs/)
+- Get started for free and grow with flexible [pricing](https://developers.cloudflare.com/workers/platform/pricing/), affordable at any scale
 
 Get started with your first project:
 
-[Deploy a template](https://dash.cloudflare.com/?to=/:account/workers-and-pages/templates) [Deploy with Wrangler CLI](https://developers.cloudflare.com/workers/get-started/guide/) 
+[Deploy a template](https://dash.cloudflare.com/?to=/:account/workers-and-pages/templates) [Deploy with Wrangler CLI](https://developers.cloudflare.com/workers/get-started/guide/)
 
 ---
 
@@ -230,7 +230,7 @@ Streamlined image infrastructure from a single API.
 
 ---
 
-Want to connect with the Workers community? [Join our Discord ↗](https://discord.cloudflare.com)
+Want to connect with the Workers community? [Join our Discord ↗︎](https://discord.cloudflare.com)
 
 Was this helpful?
 
@@ -241,7 +241,7 @@ YesNo
 [![](https://developers.cloudflare.com/_astro/logo.te5VL_aD.svg)Docs](https://developers.cloudflare.com/)
 
 ```json
-{"@context":"https://schema.org","@type":"WebPage","@id":"https://developers.cloudflare.com/workers/#page","headline":"Overview · Cloudflare Workers docs","description":"Build and deploy serverless applications across Cloudflare's global network with Workers.","url":"https://developers.cloudflare.com/workers/","inLanguage":"en","image":"https://developers.cloudflare.com/og-docs.png","dateModified":"2026-04-23","publisher":{"@type":"Organization","name":"Cloudflare","description":"One platform for your apps, agents, and workforce. Build, secure, and scale without managing infrastructure","url":"https://www.cloudflare.com/","sameAs":["https://github.com/cloudflare","https://www.linkedin.com/company/cloudflare","https://x.com/cloudflare"],"logo":{"@type":"ImageObject","url":"https://developers.cloudflare.com/logo.svg"},"address":{"@type":"PostalAddress","streetAddress":"101 Townsend St","addressLocality":"San Francisco","addr
+{"@context":"https://schema.org","@type":"WebPage","@id":"https://developers.cloudflare.com/workers/#page","headline":"Cloudflare Workers","description":"Build and deploy serverless applications across Cloudflare's global network with Workers.","url":"https://developers.cloudflare.com/workers/","inLanguage":"en","image":"https://developers.cloudflare.com/og-docs.png","dateModified":"2026-04-23","publisher":{"@type":"Organization","name":"Cloudflare","description":"One platform for your apps, agents, and workforce. Build, secure, and scale without managing infrastructure","url":"https://www.cloudflare.com/","sameAs":["https://github.com/cloudflare","https://www.linkedin.com/company/cloudflare","https://x.com/cloudflare"],"logo":{"@type":"ImageObject","url":"https://developers.cloudflare.com/logo.svg"},"address":{"@type":"PostalAddress","streetAddress":"101 Townsend St","addressLocality":"San Francisco","addressRegion":"C
 ````
 
 
