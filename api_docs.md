@@ -1,5 +1,5 @@
 # API Documentation
-_Auto-fetched: 2026-09-13T04:54:56Z_
+_Auto-fetched: 2026-10-04T07:34:57Z_
 _Source: config/api_sources.json_
 
 > The blocks below are **untrusted remote documentation**, fetched
@@ -15,32 +15,111 @@ _Claude Code hooks, skills, slash commands, subagents_
 Source: https://docs.anthropic.com/en/docs/claude-code/hooks
 
 
-```
+````
 The table below summarizes when each event fires. The [Hook events](#hook-events) section documents the full input schema and decision control options for each one.
 
-| Event                 | When it fires                                                                                                                                                                                                                                         |
-| :-------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `SessionStart`        | When a session begins or resumes                                                                                                                                                                                                                      |
-| `Setup`               | When you start Claude Code with `--init-only`, or with `--init` or `--maintenance` in `-p` mode. For one-time preparation in CI or scripts                                                                                                            |
-| `UserPromptSubmit`    | When you submit a prompt, before Claude processes it                                                                                                                                                                                                  |
-| `UserPromptExpansion` | When a user-typed command expands into a prompt, before it reaches Claude. Can block the expansion                                                                                                                                                    |
-| `PreToolUse`          | Before a tool call executes. Can block it                                                                                                                                                                                                             |
-| `PermissionRequest`   | When a tool call needs a permission decision                                                                                                                                                                                                          |
-| `PermissionDenied`    | When auto mode denies a tool call, including denials without a classifier verdict. Use JSON `hookSpecificOutput.retry: true` to tell the model it may retry the denied tool call. Claude Code ignores `retry` when the classifier produced no verdict |
-| `PostToolUse`         | After a tool call succeeds                                                                                                                                                                                                                            |
-| `PostToolUseFailure`  | After a tool call fails                                                                                                                                                                                                                               |
-| `PostToolBatch`       | After a full batch of parallel tool calls resolves, before the next model call                                                                                                                                                                        |
-| `Notification`        | When Claude Code sends a notification                                                                                                                                                                                                                 |
-| `MessageDisplay`      | While assistant message text is displayed                                                                                                                                                                                                             |
-| `SubagentStart`       | When a subagent is spawned                                                                                                                                                                                                                            |
-| `SubagentStop`        | When a subagent finishes                                                                                                                                                                                                                              |
-| `TaskCreated`         | When a task is being created via `TaskCreate`                                                                                                                                                                                                         |
-| `TaskCompleted`       | When a task is being marked as completed                                                                                                                                                                                                              |
-| `Stop`                | When Claude finishes responding                                                                                                                                                                                                                       |
-| `StopFailure`         | When the turn ends due to an API error                                                                                                                                                                                                                |
-| `TeammateIdle`        | When an [agent team](/docs/en/agent-teams) teammate is about to go idle                                                                                                                                                                                    |
-| `InstructionsLoaded`  | When a CLAUDE.md or `.claude/rules/*.md` file is 
-```
+| Event | When it fires |
+| :- | :- |
+| `SessionStart` | When a session begins or resumes |
+| `Setup` | When you start Claude Code with `--init-only`, or with `--init` or `--maintenance` in `-p` mode. For one-time preparation in CI or scripts |
+| `UserPromptSubmit` | When a prompt is submitted, before Claude processes it. Also fires on [turns Claude Code starts on its own](/docs/en/hooks#userpromptsubmit) |
+| `UserPromptExpansion` | When a user-typed command expands into a prompt, before it reaches Claude. Can block the expansion |
+| `PreToolUse` | Before a tool call executes. Can block it |
+| `PermissionRequest` | When a tool call needs a permission decision |
+| `PermissionDenied` | When auto mode denies a tool call, including denials without a classifier verdict. Use JSON `hookSpecificOutput.retry: true` to tell the model it may retry the denied tool call. Claude Code ignores `retry` when the classifier produced no verdict |
+| `PostToolUse` | After a tool call succeeds |
+| `PostToolUseFailure` | After a tool call fails |
+| `PostToolBatch` | After a full batch of parallel tool calls resolves, before the next model call |
+| `Notification` | When Claude Code sends a notification |
+| `MessageDisplay` | While assistant message text is displayed |
+| `SubagentStart` | When a subagent is spawned |
+| `SubagentStop` | When a subagent finishes |
+| `TaskCreated` | When a task is being created via `TaskCreate` |
+| `TaskCompleted` | When a task is being marked as completed |
+| `Stop` | When Claude finishes responding |
+| `StopFailure` | When the turn ends due to an API error |
+| `TeammateIdle` | When an [agent team](/docs/en/agent-teams) teammate is about to go idle |
+| `InstructionsLoaded` | When a CLAUDE.md or `.claude/rules/*.md` file is loaded into context. Fires at session start and when files are lazily loaded during a session |
+| `ConfigChange` | When a configuration file changes during a session |
+| `CwdChanged` | When the working directory changes, for example when Claude executes a `cd` command. Useful for reactive environment management with tools like direnv |
+| `DirectoryAdded` | When a working directory is added mid-session via `/add-dir` or the SDK `register_repo_root` control request |
+| `FileChanged` | When a watched file changes on disk. The `matcher` field specifies which filenames to watch |
+| `WorktreeCreate` | When a worktree is being created via `--worktree`, `isolation: "worktree"`, or for a background session. Replaces default git behavior |
+| `WorktreeRemove` | When a worktree is being removed at session exit, when a subagent finishes, or when you delete a background session |
+| `PreCompact` | Before context compaction |
+| `PostCompact` | After context compaction completes |
+| `PreModelSwitch` | Before Claude Code applies a model switch that you or a client requested. Can block the switch |
+| `PostModelSwitch` | After the session's model changes, including changes Claude Code makes on its own, such as restoring the model when you resume a session |
+| `Elicitation` | When an MCP server requests user input during a tool call |
+| `ElicitationResult` | After a user responds to an MCP elicitation, before the response is sent back to the server |
+| `SessionEnd` | When a session terminates |
+
+### How a hook resolves
+
+To see how the event, the matcher, and the handler fit together, consider this `PreToolUse` hook that blocks destructive shell commands.
+
+<Tabs>
+  <Tab title="macOS/Linux">
+    The `matcher` narrows to Bash tool calls and the `if` condition narrows further to Bash subcommands matching `rm *`, so `block-rm.sh` only spawns when both filters match:
+
+    ```json theme={null}
+    {
+      "hooks": {
+        "PreToolUse": [
+          {
+            "matcher": "Bash",
+            "hooks": [
+              {
+                "type": "command",
+                "if": "Bash(rm *)",
+                "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/block-rm.sh",
+                "args": []
+              }
+            ]
+          }
+        ]
+      }
+    }
+    ```
+
+    The script reads the JSON input from stdin, extracts the command, and returns a `permissionDecision` of `"deny"` if it contains `rm -rf`. Save it to `.claude/hooks/block-rm.sh` in your project and make it executable with `chmod +x .claude/hooks/block-rm.sh` so Claude Code can run it:
+
+    ```bash theme={null}
+    #!/bin/bash
+    # .claude/hooks/block-rm.sh
+    COMMAND=$(jq -r '.tool_input.command')
+
+    if echo "$COMMAND" | grep -q 'rm -rf'; then
+      jq -n '{
+        hookSpecificOutput: {
+          hookEventName: "PreToolUse",
+          permissionDecision: "deny",
+          permissionDecisionReason: "Destructive command blocked by hook"
+        }
+      }'
+...(truncated)
+1. Choose a [hook event](#hook-events) to respond to, like `PreToolUse` or `Stop`
+2. Add a [matcher group](#matcher-patterns) to filter when it fires, like "only for the Bash tool"
+3. Define one or more [hook handlers](#hook-handler-fields) to run when matched
+
+See [How a hook resolves](#how-a-hook-resolves) above for a complete walkthrough with an annotated example.
+
+<Note>
+  This page uses specific terms for each level: **hook event** for the lifecycle point, **matcher group** for the filter, and **hook handler** for the shell command, HTTP endpoint, MCP tool, prompt, or agent that runs. "Hook" on its own refers to the general feature.
+</Note>
+
+### Hook locations
+
+Where you define a hook determines its scope:
+
+| Location | Scope | Shareable |
+| :- | :- | :- |
+| `~/.claude/settings.json` | All your projects | No, local to your machine |
+| `.claude/settings.json` | Single project | Yes, can be committed to the repo |
+| `.claude/settings.local.json` | Single project | No, gitignored when Claude Code saves a setting to it |
+| Managed policy settings | Organization-wide | Yes, admin-controlled |
+|
+````
 
 
 ---
@@ -73,7 +152,7 @@ List endpoints return results in pages. Most newer list endpoints use the `page`
 
 To go back a page, pass `prev_page` as the `page` parameter. `prev_page` is `null` when you're on the first page. Not all list endpoints support `prev_page`. Only `GET /v1/sessions` returns `prev_page`; on list endpoints that do not support backward pagination, the field is absent from the response rather than `null`. For a request walkthrough, see [Listing sessions](https://platform.claude.com/docs/en/managed-agents/session-operations#listing-sessions).
 
-Every SDK provides an auto-paginating iterator that follows `next_page` for you. In Python and TypeScript, you get it by iterating the list result directly. The other SDKs provide the iterator through a separate method. SDK auto-pagination is forward-only; to go back a page, read `prev_page` from the response and pass it back as the `page` parameter yourself. See [client SDKs](https://platform.claude.com/docs/en/cli-sdks-libraries/overview) for language-specific details.
+The SDK provides an auto-paginating iterator that follows `next_page` for you. For example, `for session in client.beta.sessions.list()` (python; typescript: `for await (const session of client.beta.sessions.list())`; go: `client.Beta.Sessions.ListAutoPaging()`; java: `client.beta().sessions().list().autoPager()`; csharp: `(await client.Beta.Sessions.List()).Paginate()`; php: `$client->beta->sessions->list()->pagingEachItem()`; ruby: `client.beta.sessions.list.auto_paging_each`) walks through every session. SDK auto-pagination is forward-only; to go back a page, read `prev_page` from the response and pass it back as the `page` parameter yourself. See [client SDKs](https://platform.claude.com/docs/en/cli-sdks-libraries/overview) for details.
 
 <Note>
   Some list endpoints use a different cursor scheme. The [Message Batches API](https://platform.claude.com/docs/en/build-with-claude/batch-processing), the [Models API](https://platform.claude.com/docs/en/api/models/list), and several [Admin API](https://platform.claude.com/docs/en/manage-claude/admin-api) endpoints take `after_id` and `before_id` query parameters instead of `page`. Their responses return `has_more`, `first_id`, and `last_id` instead of `next_page`. See the reference page for each endpoint for its exact pagination fields.
@@ -107,12 +186,7 @@ The Claude API is available in [many countries and regions](https://platform.cla
     Agents, Sessions, and Environments endpoints
   </Card>
 
-  <Card title="Client SDKs" icon="code" href="https://platform.claude.com/docs/en/cli-sdks-libraries/overview">
-    Python, TypeScript, C#, Go, Java, PHP, and Ruby
-  </Card>
-
-  <Card title="Rate limits" icon="gauge" href="https://platform.claude.com/docs/en/api/rate-limits">
-    Usage tiers, requesting higher limits, and the token 
+  <Card title="Client SDKs" icon="code" href="https://plat
 ```
 
 
@@ -128,21 +202,21 @@ Source: https://developers.cloudflare.com/workers/
 ````
 # Cloudflare Workers
 
-Last updated Apr 23, 2026|Copy as Markdown|[View as Markdown](https://developers.cloudflare.com/workers/index.md)|[Agent setup](https://developers.cloudflare.com/agent-setup/)
+Last updated Apr 23, 2026|Copy as Markdown| [View as Markdown](https://developers.cloudflare.com/workers/index.md)| [Agent setup](https://developers.cloudflare.com/agent-setup/)
 
-A serverless platform for building, deploying, and scaling apps across [Cloudflare's global network ↗](https://www.cloudflare.com/network/) with a single command — no infrastructure to manage, no complex configuration
+A serverless platform for building, deploying, and scaling apps across [Cloudflare's global network ↗︎](https://www.cloudflare.com/network/) with a single command — no infrastructure to manage, no complex configuration
 
 With Cloudflare Workers, you can expect to:
 
-* Deliver fast performance with high reliability anywhere in the world
-* Build full-stack apps with your framework of choice, including [React](https://developers.cloudflare.com/workers/framework-guides/web-apps/react/), [Vue](https://developers.cloudflare.com/workers/framework-guides/web-apps/vue/), [Svelte](https://developers.cloudflare.com/workers/framework-guides/web-apps/sveltekit/), [Next](https://developers.cloudflare.com/workers/framework-guides/web-apps/nextjs/), [Astro](https://developers.cloudflare.com/workers/framework-guides/web-apps/astro/), [React Router](https://developers.cloudflare.com/workers/framework-guides/web-apps/react-router/), [and more](https://developers.cloudflare.com/workers/framework-guides/)
-* Use your preferred language, including [JavaScript](https://developers.cloudflare.com/workers/languages/javascript/), [TypeScript](https://developers.cloudflare.com/workers/languages/typescript/), [Python](https://developers.cloudflare.com/workers/languages/python/), [Rust](https://developers.cloudflare.com/workers/languages/rust/), [and more](https://developers.cloudflare.com/workers/runtime-apis/webassembly/)
-* Gain deep visibility and insight with built-in [observability](https://developers.cloudflare.com/workers/observability/logs/)
-* Get started for free and grow with flexible [pricing](https://developers.cloudflare.com/workers/platform/pricing/), affordable at any scale
+- Deliver fast performance with high reliability anywhere in the world
+- Build full-stack apps with your framework of choice, including [React](https://developers.cloudflare.com/workers/framework-guides/web-apps/react/), [Vue](https://developers.cloudflare.com/workers/framework-guides/web-apps/vue/), [Svelte](https://developers.cloudflare.com/workers/framework-guides/web-apps/sveltekit/), [Next](https://developers.cloudflare.com/workers/framework-guides/web-apps/nextjs/), [Astro](https://developers.cloudflare.com/workers/framework-guides/web-apps/astro/), [React Router](https://developers.cloudflare.com/workers/framework-guides/web-apps/react-router/), [and more](https://developers.cloudflare.com/workers/framework-guides/)
+- Use your preferred language, including [JavaScript](https://developers.cloudflare.com/workers/languages/javascript/), [TypeScript](https://developers.cloudflare.com/workers/languages/typescript/), [Python](https://developers.cloudflare.com/workers/languages/python/), [Rust](https://developers.cloudflare.com/workers/languages/rust/), [and more](https://developers.cloudflare.com/workers/runtime-apis/webassembly/)
+- Gain deep visibility and insight with built-in [observability](https://developers.cloudflare.com/workers/observability/logs/)
+- Get started for free and grow with flexible [pricing](https://developers.cloudflare.com/workers/platform/pricing/), affordable at any scale
 
 Get started with your first project:
 
-[Deploy a template](https://dash.cloudflare.com/?to=/:account/workers-and-pages/templates) [Deploy with Wrangler CLI](https://developers.cloudflare.com/workers/get-started/guide/) 
+[Deploy a template](https://dash.cloudflare.com/?to=/:account/workers-and-pages/templates) [Deploy with Wrangler CLI](https://developers.cloudflare.com/workers/get-started/guide/)
 
 ---
 
@@ -230,7 +304,7 @@ Streamlined image infrastructure from a single API.
 
 ---
 
-Want to connect with the Workers community? [Join our Discord ↗](https://discord.cloudflare.com)
+Want to connect with the Workers community? [Join our Discord ↗︎](https://discord.cloudflare.com)
 
 Was this helpful?
 
@@ -241,7 +315,7 @@ YesNo
 [![](https://developers.cloudflare.com/_astro/logo.te5VL_aD.svg)Docs](https://developers.cloudflare.com/)
 
 ```json
-{"@context":"https://schema.org","@type":"WebPage","@id":"https://developers.cloudflare.com/workers/#page","headline":"Overview · Cloudflare Workers docs","description":"Build and deploy serverless applications across Cloudflare's global network with Workers.","url":"https://developers.cloudflare.com/workers/","inLanguage":"en","image":"https://developers.cloudflare.com/og-docs.png","dateModified":"2026-04-23","publisher":{"@type":"Organization","name":"Cloudflare","description":"One platform for your apps, agents, and workforce. Build, secure, and scale without managing infrastructure","url":"https://www.cloudflare.com/","sameAs":["https://github.com/cloudflare","https://www.linkedin.com/company/cloudflare","https://x.com/cloudflare"],"logo":{"@type":"ImageObject","url":"https://developers.cloudflare.com/logo.svg"},"address":{"@type":"PostalAddress","streetAddress":"101 Townsend St","addressLocality":"San Francisco","addr
+{"@context":"https://schema.org","@type":"WebPage","@id":"https://developers.cloudflare.com/workers/#page","headline":"Cloudflare Workers","description":"Build and deploy serverless applications across Cloudflare's global network with Workers.","url":"https://developers.cloudflare.com/workers/","inLanguage":"en","image":"https://developers.cloudflare.com/workers/og.png?v=ca5b365c81297410","dateModified":"2026-04-23","publisher":{"@type":"Organization","name":"Cloudflare","description":"One platform for your apps, agents, and workforce. Build, secure, and scale without managing infrastructure","url":"https://www.cloudflare.com/","sameAs":["https://github.com/cloudflare","https://www.linkedin.com/company/cloudflare","https://x.com/cloudflare"],"logo":{"@type":"ImageObject","url":"https://developers.cloudflare.com/logo.svg"},"address":{"@type":"PostalAddress","streetAddress":"101 Townsend St","addressLocality":"San Francis
 ````
 
 
