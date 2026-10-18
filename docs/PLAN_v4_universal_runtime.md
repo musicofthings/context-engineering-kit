@@ -1,6 +1,6 @@
 # v4.0 — Universal runtime support
 
-**Status:** Phases 0–4 shipped (v3.1.1, v3.1.2, v3.2.0, v3.3.0, v3.4.0, v3.5.0); Phases 5, 6 open
+**Status:** Phases 0–5 shipped (v3.1.1, v3.1.2, v3.2.0, v3.3.0, v3.4.0, v3.5.0, v3.6.0); Phase 6 open
 **Date:** 2026-09-17 (revised same day — see the Antigravity correction in Part 2)
 **Baseline:** v3.4.0 (pushed to `origin/main`)
 **Supersedes:** the open items in `session_handover.md` (Phases 0–3 of the v3.0.0
@@ -385,15 +385,16 @@ controls — the containment assertion was satisfied by a second layer inside
 - This is also the **only** handover path on Antigravity, which has no
   compaction hook — so it is load-bearing there, not just a convenience.
 - Ship as **v3.5.0**
+- See [`RELEASE_NOTES_3.5.0.md`](RELEASE_NOTES_3.5.0.md)
 
-**Phase 5 — Warp, honestly**
-- `AGENTS.md` generator that emits a Warp-compatible rules file pointing at
-  `session_handover.md`, with the caps-filename and `WARP.md`-precedence rules
+**Phase 5 — Warp, honestly** — ✅ **shipped as v3.6.0**, see [`RELEASE_NOTES_3.6.0.md`](RELEASE_NOTES_3.6.0.md)
+- `AGENTS.md` / `WARP.md` generator (`scripts/generate_agents_rules.py`) emitting a Warp-compatible rules file pointing at
+  `session_handover.md`, with uppercase filename enforcement and `WARP.md`-precedence rules
   handled.
 - Wire `cek-mcp` as the write path.
 - README capability table that distinguishes **automatic** (hooks) from
-  **on-request** (MCP) from **read-only** (rules file). Do not list Warp as
-  "supported" without that qualifier.
+  **hybrid** (hooks + MCP) from **on-request / read-only** (rules file + MCP).
+- 6 new negative-controlled assertions in `scripts/eval_phase_c.sh`.
 - Ship as **v3.6.0**
 
 **Phase 6 — v4.0.0**

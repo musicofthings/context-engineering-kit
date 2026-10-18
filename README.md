@@ -161,16 +161,25 @@ Release notes: [`docs/RELEASE_NOTES_2.7.0.md`](docs/RELEASE_NOTES_2.7.0.md).
 
 ---
 
-## Installation
+## Installation & Capability Tiers
 
-Choose the path that matches your agent runtime:
+The kit categorises agent runtimes into three distinct capability tiers based on vendor runtime architecture:
 
-| | Claude Cowork | Claude Code Desktop | Claude Code CLI | Cursor | Grok Build | Codex |
-|--|--------------|---------------------|-----------------|--------|------------|-------|
-| **How** | Upload zip | Upload zip | Clone + `setup.sh` | Clone (`.cursor/`) | Clone; `/hooks-trust` | Clone (`.codex/`) |
-| **Skills** | `/context-engineering-kit:*` | `/context-engineering-kit:*` | `/handover` etc. | Chat / scripts | Skills if mirrored | Scripts |
-| **Hooks** | Skills only | ✅ Full | ✅ Full | ✅ Adapters | ✅ `.grok/hooks` (+ optional Claude settings) | ✅ `.codex/hooks` |
-| **Best for** | Chat context | Always-on desktop | Terminal project | Cursor agents | Grok TUI | Codex CLI |
+1. **Tier 1 — Automatic (Full Hooks):** Lifecycle hooks fire automatically on session start/end, tool execution, and context compaction (Claude Code, Cursor, Codex, Grok Build, opencode). Handover and state preservation require zero agent initiative.
+2. **Tier 2 — Hybrid (Hooks + MCP):** Hooks protect commands and track invocations, but vendor lacks compaction events (Antigravity CLI/IDE). Compaction saves are supplemented on-demand via `cek-mcp`.
+3. **Tier 3 — On-Request / Read-Only (Rules + MCP / Skills):** Runtime lacks lifecycle hooks entirely (Warp, Cline, Continue, Goose, Zed, or Claude Cowork). Agents follow project rules (`WARP.md` / `AGENTS.md`) and call `cek-mcp` tools or slash skills on request.
+
+| Runtime | Tier | How to Install | Skills / Commands | Lifecycle Hooks | Best For |
+|---------|:----:|----------------|-------------------|-----------------|----------|
+| **Claude Cowork** | Tier 3 | Upload zip ([Option A](#option-a--download-the-plugin-zip-cowork-or-desktop)) | `/context-engineering-kit:*` | Skills only (no shell) | Chat context |
+| **Claude Code Desktop** | Tier 1 | Upload zip ([Option A](#option-a--download-the-plugin-zip-cowork-or-desktop)) | `/context-engineering-kit:*` | ✅ Full (30+ events) | Always-on desktop |
+| **Claude Code CLI** | Tier 1 | Clone + `setup.sh` ([Option B](#option-b--claude-code-cli-installed-plugin-full-hooks)) | `/handover` etc. | ✅ Full (30+ events) | Terminal workflows |
+| **Cursor IDE** | Tier 1 | Open repo (`.cursor/`) ([Option D](#option-d--cursor-ide-project-hooks)) | Chat / scripts | ✅ Full adapter (18 events) | Cursor agents |
+| **Grok Build** | Tier 1 | Clone; `/hooks-trust` ([Option E](#option-e--grok-build)) | Skills if mirrored | ✅ `.grok/hooks` (14 events) | Grok TUI |
+| **Codex** | Tier 1 | Open repo (`.codex/`) ([Option F](#option-f--codex)) | `$handover` / `/skills` | ✅ `.codex/hooks` (12 events) | Codex CLI |
+| **opencode** | Tier 1 | Clone repo (`.opencode/`) ([Option G](#option-g--opencode)) | Injected in compaction | ✅ Full plugin (25+ events) | Open-source terminal |
+| **Antigravity CLI / IDE** | Tier 2 | `generate_runtime_hooks.py` ([Option I](#option-i--antigravity-cli--ide-agy)) | MCP tools / prose | ⚠️ Partial adapter (5 events) | Google Antigravity |
+| **Warp & MCP Clients** | Tier 3 | `cek_mcp.py` + rules ([Option H](#option-h--any-mcp-client-warp-cline-continue-goose-zed-)) | `cek-mcp:*` tools | ❌ None (Rules + MCP) | Warp terminal & IDEs |
 
 Full event support table: [`docs/runtime-capability-matrix.md`](docs/runtime-capability-matrix.md).
 
@@ -548,6 +557,20 @@ containment guard and locks the hooks use apply unchanged.
 pushes*, and `load` runs `git pull --rebase --autostash` over your working tree.
 Both need an explicit `CEK_MCP_ALLOW_GIT=1`. `CEK_MCP_READONLY=1` disables every
 mutating tool.
+
+### Warp Project Rules (`WARP.md` / `AGENTS.md`)
+
+Warp discovers project rules files in uppercase (`WARP.md` or `AGENTS.md`). If both exist, `WARP.md` takes precedence:
+
+```bash
+# Generate root AGENTS.md:
+python3 scripts/generate_agents_rules.py
+
+# Or generate project-specific WARP.md:
+python3 scripts/generate_agents_rules.py --warp
+```
+
+Because Warp has no lifecycle hooks, the generated rules explicitly instruct the Warp agent to call `cek-mcp` tools (`handover_read`, `handover_write`, `context_health`) at session start, at phase completion, and before any context window reset.
 
 ---
 

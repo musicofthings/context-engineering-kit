@@ -51,6 +51,18 @@ if [ -f scripts/generate_runtime_hooks.py ]; then
   fi
 fi
 
+# Phase 5: AGENTS.md rules sync
+if [ -f scripts/generate_agents_rules.py ]; then
+  if [ -n "$PY" ]; then
+    if ! "$PY" scripts/generate_agents_rules.py --check; then
+      echo "DRIFT: run  python scripts/generate_agents_rules.py  to regenerate AGENTS.md"
+      status=1
+    fi
+  else
+    echo "SKIP: generate_agents_rules.py (no python)"
+  fi
+fi
+
 # v3.0.0: hooks/hooks.json (auto-discovered plugin manifest) is the SINGLE hook
 # source. The repo's .claude/settings.json used to declare the same 16 events a
 # second time and Claude Code does not dedupe across plugin/project scope —
@@ -104,7 +116,7 @@ done
 
 # Required adapter entrypoints
 for f in scripts/cek_runtime.sh .codex/hooks/run.sh .grok/hooks/run.sh .cursor/hooks/_common.sh \
-         .agents/hooks/run.sh docs/runtime-capability-matrix.md; do
+         .agents/hooks/run.sh scripts/generate_agents_rules.py AGENTS.md docs/runtime-capability-matrix.md; do
   if [ -f "$f" ]; then
     echo "OK: $f"
   else

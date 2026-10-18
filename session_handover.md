@@ -8,10 +8,10 @@ _Compact count this project: 0_
 
 ## 🎯 Active Task
 **What we're building/fixing:**
-v4.0 universal runtime support — Phase 3 (Antigravity CLI / IDE adapter) shipped as v3.5.0
+v4.0 universal runtime support — Phase 5 (Warp AGENTS.md rules generator & capability tiers) shipped as v3.6.0
 
-**Phase:** Phases 0-4 complete; Phase 5 (Warp AGENTS.md) next
-**Next action:** Implement Phase 5 Warp (AGENTS.md rules generator, honest capability disclosure)
+**Phase:** Phases 0-5 complete; Phase 6 (v4.0.0 universal runtime release) next
+**Next action:** Implement Phase 6 (per-runtime evals & bundles, v4.0.0 release)
 
 ---
 
@@ -26,7 +26,8 @@ v4.0 universal runtime support — Phase 3 (Antigravity CLI / IDE adapter) shipp
 - [x] **Phase 2** shipped as v3.3.0 — opencode adapter (.opencode/plugins/cek.ts + hooks/run.sh); handover injected into the compaction prompt via experimental.session.compacting
 - [x] **Phase 4** shipped as v3.4.0 — cek-mcp stdio MCP server (stdlib-only), reaches Warp/Cline/Continue/Goose/Zed/Antigravity; verified with the official MCP inspector
 - [x] **Phase 3** shipped as v3.5.0 — Antigravity CLI / IDE adapter (.agents/hooks/run.sh + .agents/hooks.json); payload normalizer, JSON decision handling (exit 2 -> deny), PreInvocation banner synthesis; evals 46 -> 54
-- [x] Evals 130 → 191; every new assertion negative-controlled
+- [x] **Phase 5** shipped as v3.6.0 — Warp AGENTS.md / WARP.md rules generator (scripts/generate_agents_rules.py), uppercase standard enforcement, honest 3-tier capability classification in README & rules, 6 new negative-controlled assertions in eval_phase_c.sh (evals 54 -> 60)
+- [x] Evals 130 → 197; every new assertion negative-controlled
 
 ---
 
@@ -34,21 +35,16 @@ v4.0 universal runtime support — Phase 3 (Antigravity CLI / IDE adapter) shipp
 
 ## 🔄 In Progress (Exact Resume Point)
 **Branch:** `main`
-**Last commit:** `Phase 3 — Antigravity CLI / IDE adapter (v3.5.0)`
-**Next immediate action:** Phase 5 Warp (AGENTS.md generator, honest capability disclosure)
+**Last commit:** `Phase 5 — Warp AGENTS.md rules generator (v3.6.0)`
+**Next immediate action:** Phase 6 — v4.0.0 universal runtime release
 
 ---
 
 ## 📋 Remaining Work
-**Phases 0, 1, 2, 3, and 4 are done** (v3.1.1, v3.1.2, v3.2.0, v3.3.0, v3.4.0, v3.5.0). Full plan:
+**Phases 0, 1, 2, 3, 4, and 5 are done** (v3.1.1, v3.1.2, v3.2.0, v3.3.0, v3.4.0, v3.5.0, v3.6.0). Full plan:
 [`docs/PLAN_v4_universal_runtime.md`](docs/PLAN_v4_universal_runtime.md).
 
-1. **Phase 5 — Warp** (small; `cek-mcp` already reaches Warp)
-   - `AGENTS.md` generator emitting a Warp-compatible rules file pointing at `session_handover.md` and telling the agent to call `handover_read` first
-   - Caps filename required; `WARP.md` wins if both exist
-   - README capability table distinguishing automatic (hooks) / on-request (MCP) / read-only (rules)
-
-2. **Phase 6 — v4.0.0** (per-runtime evals, generated matrix, per-runtime bundles)
+1. **Phase 6 — v4.0.0** (per-runtime evals, generated matrix, per-runtime bundles)
 
 **Carried over, not yet scoped:**
 - `PreCompact` stamps `ctx=unknown%` into snapshot commits on Claude Code (`context_percent` is not a field on that event; Cursor supplies the real number)

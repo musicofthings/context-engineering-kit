@@ -479,9 +479,65 @@ fi
 
 rm -rf "$AGY_SB"
 
+# ── Phase 5: Warp & AGENTS.md rules generator ────────────────────────────────
+
+# 1) generate_agents_rules.py --check passes on tracked AGENTS.md
+if "$PYTHON" scripts/generate_agents_rules.py --check >/dev/null 2>&1; then
+  pass "generate_agents_rules.py --check passes on AGENTS.md"
+else
+  fail "generate_agents_rules.py --check failed on AGENTS.md"
+fi
+
+# 2) Negative test: drift detection in generate_agents_rules.py --check
+RULES_SB=$(mktemp -d /tmp/cek-rules-eval-XXXXXX)
+cp AGENTS.md "$RULES_SB/AGENTS.md"
+echo "drifted line" >> "$RULES_SB/AGENTS.md"
+DRIFT_RC=0
+"$PYTHON" scripts/generate_agents_rules.py --check --target "$RULES_SB" >/dev/null 2>&1 || DRIFT_RC=$?
+if [ "$DRIFT_RC" -ne 0 ]; then
+  pass "generate_agents_rules.py --check detects content drift (negative control)"
+else
+  fail "generate_agents_rules.py --check missed content drift"
+fi
+
+# 3) Missing file detection in generate_agents_rules.py --check
+MISSING_RC=0
+"$PYTHON" scripts/generate_agents_rules.py --check --target "$RULES_SB" --warp >/dev/null 2>&1 || MISSING_RC=$?
+if [ "$MISSING_RC" -ne 0 ]; then
+  pass "generate_agents_rules.py --check detects missing target file (negative control)"
+else
+  fail "generate_agents_rules.py --check failed to detect missing target file"
+fi
+
+# 4) WARP.md generation includes WARP.md precedence and MCP guidance
+WARP_OUT=$("$PYTHON" scripts/generate_agents_rules.py --warp --target "$RULES_SB" 2>&1)
+if [ -f "$RULES_SB/WARP.md" ] && grep -q "Warp reads \`WARP.md\` first with higher precedence" "$RULES_SB/WARP.md" && grep -q "cek-mcp:handover_read" "$RULES_SB/WARP.md"; then
+  pass "generate_agents_rules.py --warp emits WARP.md with precedence note and MCP guidance"
+else
+  fail "generate_agents_rules.py --warp failed: $WARP_OUT"
+fi
+
+# 5) Exact uppercase filename standard: git must track AGENTS.md, not lowercase agents.md
+TRACKED_NAME=$(git ls-files AGENTS.md agents.md)
+if [ "$TRACKED_NAME" = "AGENTS.md" ]; then
+  pass "git tracks exact uppercase AGENTS.md (case-sensitivity guard)"
+else
+  fail "git tracks incorrect filename casing: '$TRACKED_NAME'"
+fi
+
+# 6) Warp honest capability disclosure: AGENTS.md and README.md explicitly disclose no automatic hooks for Warp
+if grep -q "Warp coding agents do not have lifecycle hooks" AGENTS.md && grep -q "warpdotdev/warp#6857" README.md; then
+  pass "Warp honest capability disclosure: explicit zero automatic hooks noted in AGENTS.md & README.md"
+else
+  fail "Warp honest disclosure missing in AGENTS.md or README.md"
+fi
+
+rm -rf "$RULES_SB"
+
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "Results: $PASS passed, $FAIL failed"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 [ "$FAIL" -eq 0 ]
+
 

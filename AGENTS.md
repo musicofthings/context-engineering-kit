@@ -1,67 +1,78 @@
-# Agents — Multi-Agent Workflow Definitions
+# AGENTS.md — Multi-Agent Workflow Definitions
 _Part of context-engineering-kit_
 
-This file defines the roles and responsibilities of subagents used in this project.
-Reference these in `agents/` files or when orchestrating multi-agent tasks.
+This file defines the roles, responsibilities, and runtime protocols for AI agents
+collaborating on this project.
 
-> **Filename matters.** This is the `AGENTS.md` standard, which Codex discovers by
-> exact name. It was previously committed as lowercase `agents.md`, which resolves
-> on case-insensitive filesystems (macOS, Windows) but not on Linux or in CI, so
-> Codex found no instruction file there. Keep the name uppercase.
+> **Filename matters.** This is the `AGENTS.md` standard, which Codex and Warp
+> discover by exact uppercase name. If `WARP.md` exists beside it, Warp prioritises
+> `WARP.md`. On case-sensitive filesystems (Linux/CI), lowercase names are ignored.
 
-**How to read this file.** The agent roles and the communication protocol below
-are runtime-neutral — they describe what each agent is responsible for, and hold
-on any harness. Anything harness-specific is confined to two places: the
-*Runtime mechanics* table under each role, and **Invoking subagents** at the end.
-Claude-only material (slash commands, `.claude/` paths, hook filenames) lives in
-`CLAUDE.md`, not here.
+**How to read this file.** The agent roles and communication protocols are
+runtime-neutral. Anything harness-specific is documented in the *Runtime mechanics*
+table and the *Invoking subagents* guide below.
 
 ---
 
 ## ORCHESTRATOR
-**Role:** Coordinates all other agents. Reads session_handover.md at start. Decides which
-subagent to dispatch. Writes task completion state back to session_handover.md.
+**Role:** Coordinates all other agents. Reads `session_handover.md` at start. Decides which
+subagent or tool to dispatch. Writes task completion state back to `session_handover.md`.
 
 **Responsibilities:**
-- Read session state before every work session
+- Read session state before every work session (via `session_handover.md` or `cek-mcp:handover_read`)
 - Dispatch specialised agents for defined tasks
 - Enforce commit protocol (solo default: commit on main; branches only when requested)
-- Refresh the handover before any compaction (see Runtime mechanics below)
-- Update `session_handover.md` with every completed phase gate
+- Refresh the handover before any compaction or context window reset
+- Update `session_handover.md` (or call `cek-mcp:handover_write`) with every completed phase gate
 
 **Decision tree** (runtime-neutral):
 ```
 New session start
-  → Read session_handover.md          ← always; this is the state anchor
-  → Read the project instruction file  ← AGENTS.md, plus CLAUDE.md on Claude Code
+  → Read session_handover.md (or call cek-mcp:handover_read)  ← state anchor
+  → Read project instruction file (AGENTS.md / WARP.md / CLAUDE.md)
   → Assess context usage
   → If context is high: compact before starting new work, not during it
-  → Dispatch the appropriate agent for the active task
+  → Dispatch the appropriate agent / tool for the active task
   → After the task: update the handover, then check git status
 ```
 
-**Runtime mechanics for the two harness-specific steps:**
+**Runtime mechanics for harness-specific operations:**
 
-| Step | Claude Code | Codex | Cursor / Grok |
-|------|-------------|-------|---------------|
-| Assess context usage | `/token-status` | no equivalent — read `.claude/session/usage-forecast.json` | same as Codex |
-| Compact | `/compact-smart` | prepare the handover, then tell the user to run `/compact` | Cursor compacts on its own; `preCompact` reports the real percentage |
+| Runtime | Assess Context Usage | Compact / Save State | Lifecycle Hooks? |
+|---------|----------------------|----------------------|:----------------:|
+| **Claude Code** | `/token-status` | `/compact-smart` | ✅ Full (30+ events) |
+| **Cursor** | Native IDE status | `preCompact` hook snapshots state | ✅ Full (18 events) |
+| **Codex** | `.claude/session/usage-forecast.json` | `PreCompact` hook snapshots state | ✅ Full (12 events) |
+| **Grok Build** | Native TUI status | `PreCompact` hook snapshots state | ✅ Full (14 events) |
+| **opencode** | Native status | Handover injected directly into compaction prompt | ✅ Full (25+ events) |
+| **Antigravity CLI / IDE** | `injectSteps` on `PreInvocation` | `cek-mcp:handover_write` (no compaction hook) | ⚠️ Partial (5 events) |
+| **Warp** | `cek-mcp:usage_status` | `cek-mcp:handover_write` before manual reset | ❌ **None** (Rules + MCP) |
+
+---
+
+## Warp & MCP Execution Rules
+
+Warp coding agents do not have lifecycle hooks. There is **no automatic save at 85%**
+and **no hook before context compaction**. Warp agents must strictly follow these rules:
+
+1. **Session Start:** Read `session_handover.md` immediately, or call MCP tool `handover_read`.
+2. **Phase Completion:** When a task or milestone finishes, call MCP tool `handover_write`
+   (or write `session_handover.md`) to persist progress for future sessions.
+3. **Before Context Reset:** Always run `handover_write` before clearing or compacting the chat.
+4. **Health Audit:** Call MCP tool `context_health` to verify repository wiring.
 
 ---
 
 ## CONTEXT-UPDATER
-**Role:** Maintains all context engineering files. Invoked by pre-compact hook.
+**Role:** Maintains all context engineering files. Invoked by pre-compact hook or manual request.
 
 **Responsibilities:**
 - Update `session_handover.md` with current task state
-- Update CLAUDE.md "Active work context" section
-- Update README.md synopsis if architecture changed
+- Update `CLAUDE.md` / `AGENTS.md` "Active work context" section
+- Update `README.md` synopsis if architecture changed
 - Commit updated files with `chore(context):` prefix
 
-**Trigger:** the pre-compact hook on any runtime, or an explicit handover request
-(`/handover` on Claude Code, `$handover` or the `/skills` picker on Codex).
-
-**Output:** Updated files + confirmation message with files changed.
+**Trigger:** Hook on supported runtimes, explicit `/handover` / `$handover`, or `cek-mcp:handover_write`.
 
 ---
 
@@ -69,56 +80,46 @@ New session start
 **Role:** Captures and structures work done in a session for future reference.
 
 **Responsibilities:**
-- Extract architecture decisions from conversation → `CLAUDE.md` decisions section
-- Extract lessons learned → `CLAUDE.md` lessons section
+- Extract architecture decisions from conversation → decisions log
+- Extract lessons learned → lessons log
 - Identify and record any frozen constraints or hard requirements
 - Tag high-value code snippets for preservation before compaction
 
-**Trigger:** an explicit handover request, or the session-end hook on any runtime.
-
-**Output:** Appended sections in CLAUDE.md + confirmation.
-
 ---
 
-## VALIDATOR (for bioinformatics projects)
-**Role:** Validates bioinformatics pipeline outputs before phase gate is passed.
+## VALIDATOR (for bioinformatics / science pipelines)
+**Role:** Validates pipeline outputs before phase gate is passed.
 
 **Responsibilities:**
 - Run test suite before any phase gate
-- Validate VCF format and variant counts
-- Check ACMG criteria application
-- Verify constraint compliance (frozen positions, scores)
-
-**Output:** `results/validation_report.json` + pass/fail decision.
+- Validate domain formats (e.g., VCF, PDB, coordinates)
+- Check scoring criteria and constraint compliance
 
 ---
 
-## REPORTER (for bioinformatics projects)
+## REPORTER (for bioinformatics / pipeline projects)
 **Role:** Generates final reports from pipeline runs.
 
 **Responsibilities:**
-- Aggregate scoring data from `results/` directory
-- Compute Pareto frontier if applicable
-- Generate top-N JSON + CSV + Markdown dossier
+- Aggregate scoring data from output directories
+- Generate structured candidate dossiers (Markdown, JSON, CSV)
 - Flag candidates for review with rationale
-
-**Output:** `results/final_report/` directory with ranked results.
 
 ---
 
-## Agent communication protocol
+## Agent Communication Protocol
 
-All agents communicate through files only — no in-memory state between agents:
+All agents communicate through files and MCP tools — no in-memory state between agents:
 ```
-ORCHESTRATOR → reads:   session_handover.md, .claude/session/state.json
-             → writes:  session_handover.md (task updates)
-CONTEXT-UPDATER → reads:  stdin (current conversation context)
-               → writes: session_handover.md, CLAUDE.md
-SESSION-SCRIBE → reads:  conversation history
-              → writes: CLAUDE.md (decisions, lessons)
+ORCHESTRATOR    → reads:  session_handover.md, .claude/session/state.json, or cek-mcp:handover_read
+                → writes: session_handover.md, or cek-mcp:handover_write
+CONTEXT-UPDATER → reads:  conversation history, current task status
+                → writes: session_handover.md, CLAUDE.md, AGENTS.md
+SESSION-SCRIBE  → reads:  conversation history
+                → writes: CLAUDE.md (decisions, lessons)
 ```
 
-## Invoking subagents
+## Invoking Subagents & Tools
 
 The agent prompts are runtime-neutral; only the invocation syntax differs.
 
@@ -133,17 +134,18 @@ Task: extract all lessons learned and architecture decisions from this conversat
 Append them to CLAUDE.md in the correct sections with today's date.
 ```
 
-| Runtime | Skill invocation | Notes |
-|---------|------------------|-------|
-| Claude Code | `/context-health`, `/handover`, `/token-status` | Plugin-scoped form also works: `/context-engineering-kit:handover` |
-| Codex | `$context-health`, or run `/skills` to pick | Documented forms are `/skills` and typing `$` to mention a skill. Whether a plugin namespaces its skills (`$plugin:skill`) is **not documented** — use the bare name. Codex has no `/model`: recommend a model and reasoning setting, don't claim to switch it |
-| Cursor | Skills are not slash commands — state the task in prose | |
-| Grok | Prose; skills are not slash commands | Project hooks need trust first: `/hooks-trust`, or launch with `--trust`. Inspect what loaded in the `/hooks` tab of the extensions modal |
+| Runtime | Skill / Tool Invocation | Notes |
+|---------|-------------------------|-------|
+| **Claude Code** | `/context-health`, `/handover`, `/token-status` | Plugin-scoped slash commands |
+| **Codex** | `$context-health`, `$handover`, or `/skills` | Documented `$` mentions or picker |
+| **Cursor** | Stated in prose in agent prompt | Uses project hooks |
+| **Grok Build** | Prose instructions | Needs `/hooks-trust` on first open |
+| **opencode** | Local plugin or slash commands | Injects handover into compaction |
+| **Antigravity CLI / IDE** | Prose instructions or `cek-mcp` tools | PreToolUse guard & invocation banner |
+| **Warp** | MCP tools (`handover_read`, `handover_write`) | Guided by this rules file; no hooks |
 
-Codex-specific caveats:
+### Runtime-Specific Caveats
 
-- Project hooks load only when the `.codex/` layer is trusted. Run `/hooks` once
-  to review and trust them; Codex records trust against each hook's hash, so a
-  changed hook needs re-approval.
-- `SessionEnd` hooks are capped at 3 seconds, so end-of-session work has to be
-  fast or move earlier in the lifecycle.
+- **Warp:** Warp has no lifecycle hooks mechanism (`warpdotdev/warp#6857` remains open). Context preservation is **on-request** via `cek-mcp`.
+- **Codex:** Project hooks load only when the `.codex/` layer is trusted. `SessionEnd` hooks are capped at 3 seconds, so end-of-session work must be fast.
+- **Antigravity CLI / IDE:** No compaction event exists; call `cek-mcp:handover_write` to preserve state across compacts.
