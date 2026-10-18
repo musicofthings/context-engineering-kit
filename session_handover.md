@@ -8,10 +8,10 @@ _Compact count this project: 0_
 
 ## 🎯 Active Task
 **What we're building/fixing:**
-v4.0 universal runtime support — Phase 5 (Warp AGENTS.md rules generator & capability tiers) shipped as v3.6.0
+v4.0 universal runtime support — All Phases (0–6) complete; v4.0.0 Universal Runtime Release shipped
 
-**Phase:** Phases 0-5 complete; Phase 6 (v4.0.0 universal runtime release) next
-**Next action:** Implement Phase 6 (per-runtime evals & bundles, v4.0.0 release)
+**Phase:** Phases 0-6 complete; v4.0.0 shipped
+**Next action:** Maintenance, monitoring runtime vendor doc evolution, community adoption
 
 ---
 
@@ -27,7 +27,8 @@ v4.0 universal runtime support — Phase 5 (Warp AGENTS.md rules generator & cap
 - [x] **Phase 4** shipped as v3.4.0 — cek-mcp stdio MCP server (stdlib-only), reaches Warp/Cline/Continue/Goose/Zed/Antigravity; verified with the official MCP inspector
 - [x] **Phase 3** shipped as v3.5.0 — Antigravity CLI / IDE adapter (.agents/hooks/run.sh + .agents/hooks.json); payload normalizer, JSON decision handling (exit 2 -> deny), PreInvocation banner synthesis; evals 46 -> 54
 - [x] **Phase 5** shipped as v3.6.0 — Warp AGENTS.md / WARP.md rules generator (scripts/generate_agents_rules.py), uppercase standard enforcement, honest 3-tier capability classification in README & rules, 6 new negative-controlled assertions in eval_phase_c.sh (evals 54 -> 60)
-- [x] Evals 130 → 197; every new assertion negative-controlled
+- [x] **Phase 6** shipped as v4.0.0 — Per-runtime packaging bundles (`package_plugin.py --runtime {all,universal,claude,codex,antigravity,opencode,cursor}`), end-to-end Antigravity install test suite (`scripts/eval_antigravity_install.sh`), master test runner (`scripts/eval_all_runtimes.sh`), manifests bumped to 4.0.0
+- [x] Evals: 8 complete test suites passing (224+ assertions across all runtimes)
 
 ---
 
@@ -35,16 +36,14 @@ v4.0 universal runtime support — Phase 5 (Warp AGENTS.md rules generator & cap
 
 ## 🔄 In Progress (Exact Resume Point)
 **Branch:** `main`
-**Last commit:** `Phase 5 — Warp AGENTS.md rules generator (v3.6.0)`
-**Next immediate action:** Phase 6 — v4.0.0 universal runtime release
+**Last commit:** `feat: Phase 6 — v4.0.0 universal runtime release`
+**Next immediate action:** Monitor runtime updates and vendor hook APIs
 
 ---
 
 ## 📋 Remaining Work
-**Phases 0, 1, 2, 3, 4, and 5 are done** (v3.1.1, v3.1.2, v3.2.0, v3.3.0, v3.4.0, v3.5.0, v3.6.0). Full plan:
+**All Phases (0–6) complete** (v3.1.1, v3.1.2, v3.2.0, v3.3.0, v3.4.0, v3.5.0, v3.6.0, v4.0.0). Full roadmap archived at:
 [`docs/PLAN_v4_universal_runtime.md`](docs/PLAN_v4_universal_runtime.md).
-
-1. **Phase 6 — v4.0.0** (per-runtime evals, generated matrix, per-runtime bundles)
 
 **Carried over, not yet scoped:**
 - `PreCompact` stamps `ctx=unknown%` into snapshot commits on Claude Code (`context_percent` is not a field on that event; Cursor supplies the real number)

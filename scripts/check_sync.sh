@@ -116,7 +116,8 @@ done
 
 # Required adapter entrypoints
 for f in scripts/cek_runtime.sh .codex/hooks/run.sh .grok/hooks/run.sh .cursor/hooks/_common.sh \
-         .agents/hooks/run.sh scripts/generate_agents_rules.py AGENTS.md docs/runtime-capability-matrix.md; do
+         .agents/hooks/run.sh scripts/generate_agents_rules.py AGENTS.md \
+         scripts/eval_antigravity_install.sh scripts/eval_all_runtimes.sh docs/runtime-capability-matrix.md; do
   if [ -f "$f" ]; then
     echo "OK: $f"
   else

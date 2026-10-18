@@ -60,16 +60,31 @@ EXCLUDE_GLOBS = [
     "desktop.ini",
 ]
 
+RUNTIME_EXCLUDES: dict[str, set[str]] = {
+    "universal": set(),
+    "claude": {".codex", ".codex-plugin", ".grok", ".opencode", ".agents"},
+    "codex": {".claude-plugin", ".grok", ".opencode", ".agents"},
+    "antigravity": {".claude-plugin", ".codex", ".codex-plugin", ".grok", ".opencode"},
+    "opencode": {".claude-plugin", ".codex", ".codex-plugin", ".grok", ".agents"},
+    "cursor": {".claude-plugin", ".codex", ".codex-plugin", ".grok", ".opencode", ".agents"},
+}
 
-def is_excluded(rel_posix: str, is_dir: bool) -> bool:
+
+def is_excluded(rel_posix: str, is_dir: bool, runtime: str = "universal") -> bool:
     if is_dir:
-        return rel_posix in EXCLUDE_DIRS or any(
-            rel_posix.startswith(d + "/") for d in EXCLUDE_DIRS
-        )
+        if rel_posix in EXCLUDE_DIRS or any(rel_posix.startswith(d + "/") for d in EXCLUDE_DIRS):
+            return True
+        rt_ex = RUNTIME_EXCLUDES.get(runtime, set())
+        if rel_posix in rt_ex or any(rel_posix.startswith(d + "/") for d in rt_ex):
+            return True
+        return False
     if rel_posix in EXCLUDE_FILES:
         return True
     parent = rel_posix.rsplit("/", 1)[0] if "/" in rel_posix else ""
     if parent in EXCLUDE_DIRS or any(parent.startswith(d + "/") for d in EXCLUDE_DIRS):
+        return True
+    rt_ex = RUNTIME_EXCLUDES.get(runtime, set())
+    if parent in rt_ex or any(parent.startswith(d + "/") for d in rt_ex):
         return True
     name = rel_posix.rsplit("/", 1)[-1]
     return any(fnmatch.fnmatch(name, g) for g in EXCLUDE_GLOBS)
@@ -126,15 +141,15 @@ def validate_manifests() -> str:
     return claude["version"]
 
 
-def build(out_path: Path) -> tuple[int, int]:
+def build(out_path: Path, runtime: str = "universal") -> tuple[int, int]:
     file_count = 0
     total_bytes = 0
     with zipfile.ZipFile(out_path, "w", zipfile.ZIP_DEFLATED, compresslevel=9) as zf:
         for path in sorted(ROOT.rglob("*")):
             rel = path.relative_to(ROOT).as_posix()
-            if rel == out_path.name:
-                continue  # don't include the zip in itself
-            if is_excluded(rel, path.is_dir()):
+            if rel == out_path.name or rel.endswith(".zip"):
+                continue  # don't include zips inside zips
+            if is_excluded(rel, path.is_dir(), runtime=runtime):
                 continue
             if path.is_file():
                 zf.write(path, arcname=rel)
@@ -144,24 +159,35 @@ def build(out_path: Path) -> tuple[int, int]:
 
 
 def main():
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(description="Package context-engineering-kit for distribution.")
     parser.add_argument("--out", type=Path, default=None,
-                        help="Output path (default: context-engineering-kit-<version>.zip)")
+                        help="Output path (default: context-engineering-kit-<version>[-<runtime>].zip)")
+    parser.add_argument("--runtime", choices=["universal", "claude", "codex", "antigravity", "opencode", "cursor", "all"],
+                        default="universal", help="Target runtime bundle (default: universal)")
     args = parser.parse_args()
 
     version = validate_manifests()
-    out_path = args.out or (ROOT / f"context-engineering-kit-{version}.zip")
-    out_path = out_path.resolve()
 
-    if out_path.exists():
-        out_path.unlink()
+    targets = (
+        ["universal", "claude", "codex", "antigravity", "opencode", "cursor"]
+        if args.runtime == "all"
+        else [args.runtime]
+    )
 
-    print(f"[package] version: {version}")
-    print(f"[package] writing: {out_path}")
-    file_count, total_bytes = build(out_path)
-    final_size = out_path.stat().st_size
-    print(f"[package] included: {file_count} files ({total_bytes:,} raw bytes)")
-    print(f"[package] zip size: {final_size:,} bytes")
+    for rt in targets:
+        suffix = "" if rt == "universal" else f"-{rt}"
+        out_path = args.out if (args.out and args.runtime != "all") else (ROOT / f"context-engineering-kit-{version}{suffix}.zip")
+        out_path = out_path.resolve()
+
+        if out_path.exists():
+            out_path.unlink()
+
+        print(f"[package] runtime: {rt} | version: {version}")
+        print(f"[package] writing: {out_path.name}")
+        file_count, total_bytes = build(out_path, runtime=rt)
+        final_size = out_path.stat().st_size
+        print(f"[package] included: {file_count} files ({total_bytes:,} raw bytes) -> {final_size:,} zip bytes")
+
     print("[package] OK")
 
 

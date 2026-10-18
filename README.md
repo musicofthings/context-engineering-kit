@@ -196,7 +196,7 @@ The easiest path. One zip works in both **Claude Cowork** and **Claude Code Desk
 **Either** download the prebuilt zip from the [latest GitHub release](https://github.com/musicofthings/context-engineering-kit/releases/latest):
 
 ```
-context-engineering-kit-3.4.0.zip
+context-engineering-kit-4.0.0.zip
 ```
 
 **Or** build it from source (requires Python 3):
@@ -205,15 +205,15 @@ context-engineering-kit-3.4.0.zip
 git clone https://github.com/musicofthings/context-engineering-kit.git
 cd context-engineering-kit
 python scripts/package_plugin.py
-# → writes context-engineering-kit-3.4.0.zip in the project root
+# → writes context-engineering-kit-4.0.0.zip in the project root
 ```
 
-The packaging script reads the version from `.claude-plugin/plugin.json` and excludes git history, runtime session state, audit logs, and caches automatically.
+The packaging script reads the version from `.claude-plugin/plugin.json` and excludes git history, runtime session state, audit logs, and caches automatically. Per-runtime bundles can also be emitted via `python scripts/package_plugin.py --runtime all`.
 
 ### Step 2a — Upload to Claude Cowork
 
 1. Open Cowork → **Settings** → **Plugins** (or **Skills** → **Add plugin**)
-2. Click **Upload plugin** → select `context-engineering-kit-3.4.0.zip`
+2. Click **Upload plugin** → select `context-engineering-kit-4.0.0.zip`
 3. Confirm install — the eight skills appear as `/context-engineering-kit:*` commands
 4. Type `/context-engineering-kit:handover` in any conversation to use it
 
@@ -222,7 +222,7 @@ The packaging script reads the version from `.claude-plugin/plugin.json` and exc
 ### Step 2b — Upload to Claude Code Desktop
 
 1. Open **Claude Code Desktop** → click **Customize** (bottom-left gear) → **Upload Plugin**
-2. Select `context-engineering-kit-3.4.0.zip` and restart Claude Code
+2. Select `context-engineering-kit-4.0.0.zip` and restart Claude Code
 3. Verify in any project:
    ```
    /context-engineering-kit:context-health
@@ -1095,10 +1095,8 @@ Resuming on another device
 ### Verify / release checks
 
 ```bash
-bash scripts/check_sync.sh
-bash scripts/eval_phase_c.sh
-bash scripts/eval_usage_lifecycle.sh
-python scripts/package_plugin.py    # → context-engineering-kit-3.4.0.zip
+bash scripts/eval_all_runtimes.sh   # runs all 8 runtime test suites
+python scripts/package_plugin.py    # → context-engineering-kit-4.0.0.zip
 ```
 
 ---

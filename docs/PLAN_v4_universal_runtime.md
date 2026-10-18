@@ -1,7 +1,7 @@
 # v4.0 — Universal runtime support
 
-**Status:** Phases 0–5 shipped (v3.1.1, v3.1.2, v3.2.0, v3.3.0, v3.4.0, v3.5.0, v3.6.0); Phase 6 open
-**Date:** 2026-09-17 (revised same day — see the Antigravity correction in Part 2)
+**Status:** ALL PHASES COMPLETE (0–6 shipped: v3.1.1, v3.1.2, v3.2.0, v3.3.0, v3.4.0, v3.5.0, v3.6.0, v4.0.0)
+**Date:** 2026-09-17 (completed 2026-10-18)
 **Baseline:** v3.4.0 (pushed to `origin/main`)
 **Supersedes:** the open items in `session_handover.md` (Phases 0–3 of the v3.0.0
 Claude-compatibility audit landed in `cb68658..8d58226`; that handover is stale).
@@ -397,11 +397,12 @@ controls — the containment assertion was satisfied by a second layer inside
 - 6 new negative-controlled assertions in `scripts/eval_phase_c.sh`.
 - Ship as **v3.6.0**
 
-**Phase 6 — v4.0.0**
-- Per-runtime eval suites, extending `eval_phase_c.sh`
+**Phase 6 — v4.0.0** — ✅ **shipped as v4.0.0**, see [`RELEASE_NOTES_4.0.0.md`](RELEASE_NOTES_4.0.0.md)
+- Per-runtime packaging bundles: `package_plugin.py --runtime {all,universal,claude,codex,antigravity,opencode,cursor}`
+- End-to-end install test suites: `eval_codex_install.sh`, `eval_antigravity_install.sh`, `eval_opencode.mjs`
+- Master test runner: `scripts/eval_all_runtimes.sh` executing all 8 suites
 - Regenerated capability matrix as the single published reference
-- `scripts/package_plugin.py` emits per-runtime bundles
-- Install-verification script per runtime, on the `eval_codex_install.sh` model
+- Version bumped to 4.0.0 across all manifests
 
 ### Decisions to make before Phase 1 starts
 

@@ -92,6 +92,12 @@ print(json.dumps(norm))
 
 NORM_INPUT=$(normalize_payload)
 
+# If workspacePaths is present in payload, resolve CLAUDE_PROJECT_DIR to the target project
+PAYLOAD_WS=$("$PYTHON" -c "import json,sys; print(json.loads(sys.argv[1]).get('workspace_root', ''))" "$NORM_INPUT" 2>/dev/null || true)
+if [ -n "$PAYLOAD_WS" ] && [ -d "$PAYLOAD_WS" ]; then
+  export CLAUDE_PROJECT_DIR="$PAYLOAD_WS"
+fi
+
 # ── Handlers ─────────────────────────────────────────────────────────────────
 
 # PreInvocation: synthesize SessionStart when invocationNum == 0,
