@@ -8,10 +8,10 @@ _Compact count this project: 0_
 
 ## 🎯 Active Task
 **What we're building/fixing:**
-v4.0 universal runtime support — Phase 4 (cek-mcp universal floor) shipped as v3.4.0
+v4.0 universal runtime support — Phase 3 (Antigravity CLI / IDE adapter) shipped as v3.5.0
 
-**Phase:** Phases 0-2 and 4 complete; Phase 5 (Warp AGENTS.md) or Phase 3 (Antigravity) next
-**Next action:** Decide: Phase 5 Warp (AGENTS.md generator, small — cek-mcp already reaches Warp) or Phase 3 Antigravity adapter (larger, partial parity, closed source)
+**Phase:** Phases 0-4 complete; Phase 5 (Warp AGENTS.md) next
+**Next action:** Implement Phase 5 Warp (AGENTS.md rules generator, honest capability disclosure)
 
 ---
 
@@ -25,7 +25,8 @@ v4.0 universal runtime support — Phase 4 (cek-mcp universal floor) shipped as 
 - [x] **Phase 1** shipped as v3.2.0 — one runtime registry (config/runtime_events.json); generator, cek_runtime_supports() and the matrix table all read it; .cursor/hooks.json now generated
 - [x] **Phase 2** shipped as v3.3.0 — opencode adapter (.opencode/plugins/cek.ts + hooks/run.sh); handover injected into the compaction prompt via experimental.session.compacting
 - [x] **Phase 4** shipped as v3.4.0 — cek-mcp stdio MCP server (stdlib-only), reaches Warp/Cline/Continue/Goose/Zed/Antigravity; verified with the official MCP inspector
-- [x] Evals 130 → 183; every new assertion negative-controlled (two were found passing for the wrong reason and tightened)
+- [x] **Phase 3** shipped as v3.5.0 — Antigravity CLI / IDE adapter (.agents/hooks/run.sh + .agents/hooks.json); payload normalizer, JSON decision handling (exit 2 -> deny), PreInvocation banner synthesis; evals 46 -> 54
+- [x] Evals 130 → 191; every new assertion negative-controlled
 
 ---
 
@@ -33,34 +34,21 @@ v4.0 universal runtime support — Phase 4 (cek-mcp universal floor) shipped as 
 
 ## 🔄 In Progress (Exact Resume Point)
 **Branch:** `main`
-**Last commit:** `d0a21c6 feat: Phase 4 — cek-mcp, the universal floor (v3.4.0)`
-**Next immediate action:** Decide: Phase 5 Warp (AGENTS.md generator, small — cek-mcp already reaches Warp) or Phase 3 Antigravity adapter (larger, partial parity, closed source)
+**Last commit:** `Phase 3 — Antigravity CLI / IDE adapter (v3.5.0)`
+**Next immediate action:** Phase 5 Warp (AGENTS.md generator, honest capability disclosure)
 
 ---
 
 ## 📋 Remaining Work
-**Phases 0 and 1 are done** (v3.1.1, v3.1.2, v3.2.0). Full plan:
+**Phases 0, 1, 2, 3, and 4 are done** (v3.1.1, v3.1.2, v3.2.0, v3.3.0, v3.4.0, v3.5.0). Full plan:
 [`docs/PLAN_v4_universal_runtime.md`](docs/PLAN_v4_universal_runtime.md).
 
-1. **Four open decisions** (plan's "Decisions to make" section):
-   - Scope: all remaining phases, or the recommended subset — Phases 2 and 4 (opencode, MCP floor)?
-   - opencode: JS shim over the bash core (recommended), or a native TS path?
-   - Warp: is "read-only, no auto-save" acceptable to advertise, or drop it until it has hooks?
-   - Rename `.claude/` (the shared core's home) to `core/`? Breaking; decide at v4.0.0 or not at all.
-
-2. **Phase 5 — Warp** (small; `cek-mcp` already reaches Warp)
+1. **Phase 5 — Warp** (small; `cek-mcp` already reaches Warp)
    - `AGENTS.md` generator emitting a Warp-compatible rules file pointing at `session_handover.md` and telling the agent to call `handover_read` first
    - Caps filename required; `WARP.md` wins if both exist
    - README capability table distinguishing automatic (hooks) / on-request (MCP) / read-only (rules)
 
-3. **Phase 3 — Antigravity CLI** (`agy`) — larger; 5 events, no session or compaction events, closed source. README Option I documents the gaps. `cek-mcp` already covers it on-request
-
-4. ~~**Phase 2 — opencode**~~ ✅ done (v3.3.0) · ~~**Phase 4 — cek-mcp**~~ ✅ done (v3.4.0)
-
-3. **Phase 3 — Antigravity CLI** (`agy`) — 5 events only, no session or compaction events; partial parity. README Option G documents the gaps
-4. **Phase 4 — `cek-mcp`** (universal floor; unlocks Warp, Cline, Continue, Goose, Zed — and is the ONLY handover path on Antigravity)
-5. **Phase 5 — Warp** (AGENTS.md + MCP, honest capability disclosure)
-6. **Phase 6 — v4.0.0** (per-runtime evals, generated matrix, per-runtime bundles)
+2. **Phase 6 — v4.0.0** (per-runtime evals, generated matrix, per-runtime bundles)
 
 **Carried over, not yet scoped:**
 - `PreCompact` stamps `ctx=unknown%` into snapshot commits on Claude Code (`context_percent` is not a field on that event; Cursor supplies the real number)

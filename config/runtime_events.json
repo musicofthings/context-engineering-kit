@@ -182,6 +182,30 @@
       "native_extra": [
         "file.edited"
       ]
+    },
+    "antigravity": {
+      "display_name": "Antigravity CLI",
+      "source": "https://antigravity.google/docs/hooks/",
+      "verified": "2026-10-18",
+      "payload_case": "camel",
+      "supports_async": false,
+      "generated_config": ".agents/hooks.json",
+      "config_format": "antigravity",
+      "command_prefix": "bash .agents/hooks/run.sh ",
+      "inject": "PreInvocation.injectSteps[].ephemeralMessage",
+      "timeout_default_sec": 30,
+      "timeout_max_sec": {},
+      "_note": "Antigravity emits 5 events only: PreToolUse, PostToolUse, PreInvocation, PostInvocation, Stop. No native session or compaction events exist. SessionStart is synthesized on PreInvocation with invocationNum==0; Stop runs on Stop with fullyIdle==true. Compaction recovery is handled on-demand via cek-mcp.",
+      "events": {
+        "PreToolUse": "PreToolUse",
+        "PostToolUse": "PostToolUse",
+        "Stop": "Stop"
+      },
+      "native_extra": [
+        "PreInvocation",
+        "PostInvocation"
+      ]
     }
   }
 }
+

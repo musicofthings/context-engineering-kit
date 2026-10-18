@@ -91,7 +91,7 @@ CODEXCHK
 fi
 
 # Absolute path smell test on tracked runtime entrypoints
-for f in .codex/hooks.json hooks/codex-hooks.json .grok/hooks/cek-hooks.json .cursor/hooks.json; do
+for f in .codex/hooks.json hooks/codex-hooks.json .grok/hooks/cek-hooks.json .cursor/hooks.json .agents/hooks.json; do
   if [ -f "$f" ]; then
     if grep -E 'C:\\\\Users|/Users/[A-Za-z]|C:/Users' "$f" >/dev/null 2>&1; then
       echo "ERROR: absolute machine path in $f"
@@ -104,7 +104,7 @@ done
 
 # Required adapter entrypoints
 for f in scripts/cek_runtime.sh .codex/hooks/run.sh .grok/hooks/run.sh .cursor/hooks/_common.sh \
-         docs/runtime-capability-matrix.md; do
+         .agents/hooks/run.sh docs/runtime-capability-matrix.md; do
   if [ -f "$f" ]; then
     echo "OK: $f"
   else

@@ -112,17 +112,19 @@ EVENTS: list[dict] = [
         "event": "PreToolUse",
         "matcher": "Bash",
         "hook": "guard-dangerous.sh",
-        "runtimes": ["codex", "grok", "cursor", "opencode"],
+        "runtimes": ["codex", "grok", "cursor", "opencode", "antigravity"],
         # failClosed stays false: this guard is defence-in-depth, and a crash in
         # it must not wedge every shell command Cursor wants to run.
         "cursor": {"adapter": "guard-shell.sh", "failClosed": False},
+        "antigravity": {"matcher": "run_command"},
     },
     {
         "event": "PostToolUse",
         "matcher": "Edit|Write",
         "hook": "track-changes.sh",
-        "runtimes": ["codex", "grok", "cursor", "opencode"],
+        "runtimes": ["codex", "grok", "cursor", "opencode", "antigravity"],
         "cursor": {"adapter": "track-edit.sh"},
+        "antigravity": {"matcher": "write_to_file|replace_file_content"},
     },
     {
         "event": "PostToolUseFailure",
@@ -157,7 +159,7 @@ EVENTS: list[dict] = [
     {
         "event": "Stop",
         "chain": "stop",
-        "runtimes": ["codex", "grok", "cursor", "opencode"],
+        "runtimes": ["codex", "grok", "cursor", "opencode", "antigravity"],
         "cursor": {"adapter": "on-stop.sh"},
     },
     {
@@ -218,6 +220,16 @@ CURSOR_NATIVE: list[dict] = [
         "failClosed": True,
     },
 ]
+
+
+# Antigravity hooks with no canonical counterpart.
+ANTIGRAVITY_NATIVE: list[dict] = [
+    {
+        "native_event": "PreInvocation",
+        "action": "pre-invocation",
+    },
+]
+
 
 
 def native_event(runtime: str, canonical: str) -> str:
@@ -322,6 +334,42 @@ def build_cursor() -> dict:
     return {"version": 1, "hooks": hooks}
 
 
+def build_antigravity() -> dict:
+    """Antigravity CLI hooks.json format: {"cek": { PreToolUse: [...], ... }}.
+
+    Tool events (PreToolUse, PostToolUse) use matcher wrappers: [{matcher, hooks: [{...}]}].
+    Invocation and Stop events use flat hook object lists: [{type, command, timeout}].
+    """
+    prefix = RUNTIMES["antigravity"]["command_prefix"]
+    cek_hooks: dict[str, list] = {}
+
+    for entry in EVENTS:
+        if "antigravity" not in entry["runtimes"]:
+            continue
+        evt = entry["event"]
+        emitted = native_event("antigravity", evt)
+        cmd = f"{prefix}{entry['chain']}" if "chain" in entry else f"{prefix}hook {entry['hook']}"
+        hook_obj = {"type": "command", "command": cmd, "timeout": 30}
+        if emitted in ("PreToolUse", "PostToolUse"):
+            matcher = entry.get("antigravity", {}).get("matcher", entry.get("matcher", "*"))
+            block = {"matcher": matcher, "hooks": [hook_obj]}
+            cek_hooks.setdefault(emitted, []).append(block)
+        else:
+            cek_hooks.setdefault(emitted, []).append(hook_obj)
+
+    for entry in ANTIGRAVITY_NATIVE:
+        if entry["native_event"] not in RUNTIMES["antigravity"]["native_extra"]:
+            raise ValueError(
+                f"antigravity: ANTIGRAVITY_NATIVE declares {entry['native_event']}, which is "
+                f"not listed in config/runtime_events.json under runtimes.antigravity.native_extra"
+            )
+        hook_obj = {"type": "command", "command": f"{prefix}{entry['action']}", "timeout": 30}
+        cek_hooks.setdefault(entry["native_event"], []).append(hook_obj)
+
+    return {"cek": cek_hooks}
+
+
+
 # ── Capability matrix table ──────────────────────────────────────────────────
 
 def _handler_label(entry: dict) -> str:
@@ -364,7 +412,7 @@ def claude_manifest_wiring() -> dict[str, list[str]]:
 
 def build_matrix_table() -> str:
     """Render the event-support table from the registry plus the wiring table."""
-    order = ["claude", "cursor", "codex", "grok", "opencode"]
+    order = ["claude", "cursor", "codex", "grok", "opencode", "antigravity"]
     # Union of every canonical event any runtime emits, in registry order so the
     # table is stable and reviewable.
     seen: list[str] = []
@@ -404,6 +452,14 @@ def build_matrix_table() -> str:
     lines.append("|---|---|")
     for entry in CURSOR_NATIVE:
         lines.append(f"| `{entry['native_event']}` | `{entry['adapter']}` |")
+
+    lines.append("")
+    lines.append("Antigravity-native events with no canonical equivalent, wired anyway:")
+    lines.append("")
+    lines.append("| Antigravity event | Action |")
+    lines.append("|---|---|")
+    for entry in ANTIGRAVITY_NATIVE:
+        lines.append(f"| `{entry['native_event']}` | `{entry['action']}` |")
 
     lines.append("")
     lines.append("| Runtime | Source | Verified |")
@@ -474,6 +530,7 @@ def main() -> int:
         ROOT / "hooks" / "codex-hooks.json": as_json(build_claude_style("codex", plugin=True)),
         ROOT / ".grok" / "hooks" / "cek-hooks.json": as_json(build_claude_style("grok")),
         ROOT / ".cursor" / "hooks.json": as_json(build_cursor()),
+        ROOT / ".agents" / "hooks.json": as_json(build_antigravity()),
     }
     if MATRIX_PATH.exists():
         targets[MATRIX_PATH] = render_matrix(MATRIX_PATH.read_text(encoding="utf-8"))

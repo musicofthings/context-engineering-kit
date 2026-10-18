@@ -47,6 +47,10 @@ cek_runtime_detect() {
     CEK_RUNTIME="codex"
   elif [ -n "${GROK_HOME:-}" ] || [ -n "${GROK_SESSION_ID:-}" ] || [ -n "${XAI_SESSION_ID:-}" ]; then
     CEK_RUNTIME="grok"
+  elif [ -n "${ANTIGRAVITY_AGENT_ID:-}" ] || [ -n "${ANTIGRAVITY_CONVERSATION_ID:-}" ] || [ -n "${GEMINI_CLI:-}" ]; then
+    CEK_RUNTIME="antigravity"
+  elif [ -n "${OPENCODE_SESSION_ID:-}" ]; then
+    CEK_RUNTIME="opencode"
   elif [ -n "${CLAUDE_CODE_ENTRYPOINT:-}" ] || [ -n "${CLAUDECODE:-}" ]; then
     CEK_RUNTIME="claude"
   else
@@ -137,7 +141,7 @@ cek_runtime_supports() {
   # wrongly answering "no" silently disables real handlers. Wrongly answering
   # "yes" costs one no-op hook run.
   case "$CEK_RUNTIME" in
-    claude|cursor|codex|grok) ;;
+    claude|cursor|codex|grok|opencode|antigravity) ;;
     *) return 0 ;;
   esac
   _cek_load_supported_events || return 0

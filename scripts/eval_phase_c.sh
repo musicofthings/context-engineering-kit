@@ -23,7 +23,7 @@ else
 fi
 
 # 2) No absolute paths
-for f in .codex/hooks.json .grok/hooks/cek-hooks.json; do
+for f in .codex/hooks.json .grok/hooks/cek-hooks.json .agents/hooks.json; do
   if grep -E 'C:\\\\Users|C:/Users|/Users/[A-Za-z0-9]' "$f" >/dev/null 2>&1; then
     fail "absolute path in $f"
   else
@@ -392,8 +392,96 @@ else
   fail "capability matrix table is no longer generated"
 fi
 
+# 26) Antigravity CLI / IDE adapter (Phase 3)
+if bash -n .agents/hooks/run.sh >/dev/null 2>&1; then
+  pass ".agents/hooks/run.sh parses cleanly"
+else
+  fail ".agents/hooks/run.sh syntax error"
+fi
+
+export CEK_RUNTIME=antigravity
+if cek_runtime_supports PreToolUse && cek_runtime_supports PostToolUse && cek_runtime_supports Stop; then
+  pass "antigravity supports PreToolUse, PostToolUse, Stop"
+else
+  fail "antigravity should support PreToolUse, PostToolUse, Stop"
+fi
+if ! cek_runtime_supports SessionStart && ! cek_runtime_supports PreCompact; then
+  pass "antigravity correctly reports no native SessionStart or PreCompact"
+else
+  fail "antigravity should not claim native SessionStart or PreCompact"
+fi
+
+AGY_SB=$(mktemp -d "${TMPDIR:-/tmp}/cek-agy.XXXXXX")
+git -C "$AGY_SB" init -q
+
+# PreToolUse deny on destructive command
+AGY_DANGER=$(python3 -c "
+import json
+print(json.dumps({
+  'conversationId': 'eval-conv',
+  'workspacePaths': ['$AGY_SB'],
+  'toolCall': {
+    'name': 'run_command',
+    'args': {'CommandLine': 'rm' + ' -' + 'rf' + ' ' + '/'}
+  }
+}))")
+AGY_OUT=$(printf '%s' "$AGY_DANGER" | env CLAUDE_PROJECT_DIR="$AGY_SB" CLAUDE_PLUGIN_ROOT="$ROOT" \
+  bash .agents/hooks/run.sh hook guard-dangerous.sh 2>/dev/null)
+if echo "$AGY_OUT" | grep -q '"decision": "deny"'; then
+  pass "antigravity PreToolUse blocks dangerous command with deny decision"
+else
+  fail "antigravity PreToolUse failed to deny: $AGY_OUT"
+fi
+
+# PreToolUse allow on safe command
+AGY_SAFE=$(python3 -c "
+import json
+print(json.dumps({
+  'conversationId': 'eval-conv',
+  'workspacePaths': ['$AGY_SB'],
+  'toolCall': {
+    'name': 'run_command',
+    'args': {'CommandLine': 'git status'}
+  }
+}))")
+AGY_ALLOW=$(printf '%s' "$AGY_SAFE" | env CLAUDE_PROJECT_DIR="$AGY_SB" CLAUDE_PLUGIN_ROOT="$ROOT" \
+  bash .agents/hooks/run.sh hook guard-dangerous.sh 2>/dev/null)
+if echo "$AGY_ALLOW" | grep -q '"decision": "allow"'; then
+  pass "antigravity PreToolUse allows benign command"
+else
+  fail "antigravity PreToolUse failed to allow: $AGY_ALLOW"
+fi
+
+# PreInvocation synthesizes session banner when invocationNum == 0
+AGY_INV0=$(python3 -c "
+import json
+print(json.dumps({
+  'conversationId': 'eval-conv',
+  'invocationNum': 0,
+  'workspacePaths': ['$AGY_SB']
+}))")
+AGY_INV_OUT=$(printf '%s' "$AGY_INV0" | env CLAUDE_PROJECT_DIR="$AGY_SB" CLAUDE_PLUGIN_ROOT="$ROOT" \
+  bash .agents/hooks/run.sh pre-invocation 2>/dev/null)
+if echo "$AGY_INV_OUT" | grep -q '"ephemeralMessage"'; then
+  pass "antigravity PreInvocation invocationNum=0 synthesizes banner"
+else
+  fail "antigravity PreInvocation banner failed: $AGY_INV_OUT"
+fi
+
+# Stop outputs {}
+AGY_STOP=$(printf '%s' "$AGY_INV0" | env CLAUDE_PROJECT_DIR="$AGY_SB" CLAUDE_PLUGIN_ROOT="$ROOT" \
+  bash .agents/hooks/run.sh stop 2>/dev/null)
+if [ "$AGY_STOP" = "{}" ]; then
+  pass "antigravity stop returns empty JSON"
+else
+  fail "antigravity stop failed to return {}: $AGY_STOP"
+fi
+
+rm -rf "$AGY_SB"
+
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "Results: $PASS passed, $FAIL failed"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 [ "$FAIL" -eq 0 ]
+

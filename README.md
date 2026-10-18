@@ -551,17 +551,25 @@ mutating tool.
 
 ---
 
-## Option I — Antigravity CLI (`agy`) — **not yet supported**
+## Option I — Antigravity CLI / IDE (`agy`)
+
+```bash
+git clone https://github.com/musicofthings/context-engineering-kit.git my-project
+cd my-project
+python3 scripts/generate_runtime_hooks.py   # emits .agents/hooks.json
+agy                                         # Antigravity CLI, or open in Antigravity IDE
+```
+
+- Entry: `.agents/hooks/run.sh` → `.claude/hooks/*`
+- Config: `.agents/hooks.json` (workspace) or `~/.gemini/config/hooks.json` (global)
+- Verify: `bash scripts/eval_phase_c.sh`
 
 Google sunset **Gemini CLI on 2026-06-18** with no grace period and replaced it
-with Antigravity CLI. If you came here looking for Gemini CLI support: that
-runtime no longer exists, and this kit never shipped an adapter for it.
+with Antigravity CLI. Antigravity support is implemented as a thin adapter in
+`.agents/hooks/run.sh` that normalises protojson camelCase payloads and PascalCase
+arguments, manages Antigravity's JSON stdout contracts, and dispatches to the
+shared logic core.
 
-Antigravity support is **planned but not implemented** —
-[`docs/PLAN_v4_universal_runtime.md`](docs/PLAN_v4_universal_runtime.md) Phase 3.
-Nothing in this repo loads under `agy` today. The rest of this section is what
-an adapter can and cannot deliver, so you can judge whether it is worth waiting
-for.
 
 ### What Antigravity can do
 

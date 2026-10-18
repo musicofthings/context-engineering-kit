@@ -1,6 +1,6 @@
 # v4.0 — Universal runtime support
 
-**Status:** Phases 0–2 and 4 shipped (v3.1.1, v3.1.2, v3.2.0, v3.3.0, v3.4.0); Phases 3, 5, 6 open
+**Status:** Phases 0–4 shipped (v3.1.1, v3.1.2, v3.2.0, v3.3.0, v3.4.0, v3.5.0); Phases 5, 6 open
 **Date:** 2026-09-17 (revised same day — see the Antigravity correction in Part 2)
 **Baseline:** v3.4.0 (pushed to `origin/main`)
 **Supersedes:** the open items in `session_handover.md` (Phases 0–3 of the v3.0.0
@@ -346,7 +346,7 @@ whose events genuinely differ, rather than one that merely renames Claude's.
   local-directory path working too.
 - Ship as **v3.3.0**
 
-**Phase 3 — Antigravity CLI** *(partial parity, honestly scoped)*
+**Phase 3 — Antigravity CLI** — ✅ **shipped as v3.5.0**, see [`RELEASE_NOTES_3.5.0.md`](RELEASE_NOTES_3.5.0.md)
 - `.agents/hooks/run.sh` adapter, `CEK_RUNTIME=antigravity`, event name passed
   as argv (Antigravity omits it from the payload)
 - Payload normaliser: camelCase → snake_case, **plus** `toolCall.name`/`.args`

@@ -1,7 +1,7 @@
 {
   "name": "context-engineering-kit",
-  "version": "3.4.0",
-  "description": "Automated context preservation for Claude Code, Cursor, Codex, Grok, and opencode across sessions, devices, worktrees, and subscriptions. Hooks execute real handovers at usage thresholds; multi-runtime adapters share one logic core.",
+  "version": "3.5.0",
+  "description": "Automated context preservation for Claude Code, Cursor, Codex, Grok, opencode, and Antigravity across sessions, devices, worktrees, and subscriptions. Hooks execute real handovers at usage thresholds; multi-runtime adapters share one logic core.",
   "author": {
     "name": "musicofthings",
     "url": "https://github.com/musicofthings/context-engineering-kit"

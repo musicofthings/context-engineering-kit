@@ -71,11 +71,13 @@ The re-verification did surface three things this document had wrong or missing:
    detaches its work; the session-start chain has not been profiled against
    that ceiling.
 
-Why Gemini CLI is not in this table: Google shut it off on **2026-06-18** with no
-grace period, replaced by Antigravity CLI (`agy`). This kit never shipped a
-Gemini adapter, and Antigravity support is planned, not built — see
-`PLAN_v4_universal_runtime.md` Phase 3 for its five-event surface and the
-session/compaction gaps that follow from it.
+**Antigravity CLI (`agy`) support:** Google shut off Gemini CLI on **2026-06-18**
+with no grace period, replaced by Antigravity CLI (`agy`). Antigravity support
+is implemented in `.agents/hooks/run.sh` with `.agents/hooks.json` generated.
+Because Antigravity emits 5 events only (no session or compaction hooks),
+SessionStart is synthesized on `PreInvocation` (invocationNum=0), and compaction
+context preservation is handled on-demand via `cek-mcp`.
+
 
 ---
 
@@ -84,39 +86,39 @@ session/compaction gaps that follow from it.
 <!-- BEGIN GENERATED: event-support -->
 <!-- regenerate: python scripts/generate_runtime_hooks.py -->
 
-| Event | Claude Code | Cursor | Codex | Grok Build | opencode | Kit hook / chain |
-|-------|:------:|:------:|:------:|:------:|:------:|------------------|
-| Setup | ✅ | ❌ | ❌ | ❌ | ❌ | `native-event-log.sh` (Claude only) |
-| SessionStart | ✅ | ✅ | ✅ | ✅ | ✅ | `session-start` chain + `compact-restore.sh` + `session-title.sh` |
-| SessionEnd | ✅ | ✅ | ✅ | ✅ | ✅ | `session-end.sh` |
-| UserPromptSubmit | ✅ | ✅ | ✅ | ✅ | ❌ | `usage-sentinel.sh` |
-| UserPromptExpansion | ✅ | ❌ | ❌ | ❌ | ❌ | `native-event-log.sh` (Claude only) |
-| PreToolUse | ✅ | ✅ | ✅ | ✅ | ✅ | `guard-dangerous.sh` |
-| PostToolUse | ✅ | ✅ | ✅ | ✅ | ✅ | `track-changes.sh` |
-| PostToolUseFailure | ✅ | ✅ | ❌ | ✅ | ❌ | `post-tool-failure.sh` |
-| PostToolBatch | ✅ | ❌ | ❌ | ❌ | ❌ | `native-event-log.sh` (Claude only) |
-| PermissionRequest | ✅ | ❌ | ✅ | ❌ | ❌ | `auto-approve-permissions.sh` |
-| PermissionDenied | ✅ | ❌ | ❌ | ✅ | ❌ | `permission-denied.sh` |
-| Stop | ✅ | ✅ | ✅ | ✅ | ✅ | `stop` chain |
-| StopFailure | ✅ | ❌ | ❌ | ✅ | ✅ | `stop-failure.sh` |
-| Notification | ✅ | ❌ | ❌ | ✅ | ❌ | `notify.sh` |
-| TaskCreated | ✅ | ❌ | ❌ | ❌ | ❌ | `native-event-log.sh` (Claude only) |
-| TaskCompleted | ✅ | ❌ | ❌ | ❌ | ❌ | `native-event-log.sh` (Claude only) |
-| TeammateIdle | ✅ | ❌ | ❌ | ❌ | ❌ | `native-event-log.sh` (Claude only) |
-| SubagentStart | ✅ | ✅ | ✅ | ✅ | ❌ | `subagent-start` chain |
-| SubagentStop | ✅ | ✅ | ✅ | ✅ | ❌ | `subagent-stop` chain |
-| PreCompact | ✅ | ✅ | ✅ | ✅ | ✅ | `pre-compact.sh` |
-| PostCompact | ✅ | ❌ | ✅ | ✅ | ✅ | `post-compact.sh` |
-| PreModelSwitch | ✅ | ❌ | ❌ | ❌ | ❌ | `native-event-log.sh` (Claude only) |
-| PostModelSwitch | ✅ | ❌ | ❌ | ❌ | ❌ | `native-event-log.sh` (Claude only) |
-| InstructionsLoaded | ✅ | ❌ | ❌ | ❌ | ❌ | `instructions-loaded.sh` (Claude only) |
-| ConfigChange | ✅ | ❌ | ❌ | ❌ | ❌ | `native-event-log.sh` (Claude only) |
-| CwdChanged | ✅ | ❌ | ❌ | ❌ | ❌ | `native-event-log.sh` (Claude only) |
-| DirectoryAdded | ✅ | ❌ | ❌ | ❌ | ❌ | `native-event-log.sh` (Claude only) |
-| WorktreeCreate | ✅ | ❌ | ❌ | ❌ | ❌ | **deliberately not wired** — see below |
-| WorktreeRemove | ✅ | ❌ | ❌ | ❌ | ❌ | `native-event-log.sh` (Claude only) |
-| FileChanged | ✅ | ❌ | ❌ | ❌ | ❌ | `config-changed.sh` (Claude only) |
-| Interrupt | ❌ | ❌ | ✅ | ❌ | ❌ | `native-event-log.sh` |
+| Event | Claude Code | Cursor | Codex | Grok Build | opencode | Antigravity CLI | Kit hook / chain |
+|-------|:------:|:------:|:------:|:------:|:------:|:------:|------------------|
+| Setup | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | `native-event-log.sh` (Claude only) |
+| SessionStart | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | `session-start` chain + `compact-restore.sh` + `session-title.sh` |
+| SessionEnd | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | `session-end.sh` |
+| UserPromptSubmit | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | `usage-sentinel.sh` |
+| UserPromptExpansion | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | `native-event-log.sh` (Claude only) |
+| PreToolUse | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | `guard-dangerous.sh` |
+| PostToolUse | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | `track-changes.sh` |
+| PostToolUseFailure | ✅ | ✅ | ❌ | ✅ | ❌ | ❌ | `post-tool-failure.sh` |
+| PostToolBatch | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | `native-event-log.sh` (Claude only) |
+| PermissionRequest | ✅ | ❌ | ✅ | ❌ | ❌ | ❌ | `auto-approve-permissions.sh` |
+| PermissionDenied | ✅ | ❌ | ❌ | ✅ | ❌ | ❌ | `permission-denied.sh` |
+| Stop | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | `stop` chain |
+| StopFailure | ✅ | ❌ | ❌ | ✅ | ✅ | ❌ | `stop-failure.sh` |
+| Notification | ✅ | ❌ | ❌ | ✅ | ❌ | ❌ | `notify.sh` |
+| TaskCreated | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | `native-event-log.sh` (Claude only) |
+| TaskCompleted | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | `native-event-log.sh` (Claude only) |
+| TeammateIdle | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | `native-event-log.sh` (Claude only) |
+| SubagentStart | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | `subagent-start` chain |
+| SubagentStop | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | `subagent-stop` chain |
+| PreCompact | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | `pre-compact.sh` |
+| PostCompact | ✅ | ❌ | ✅ | ✅ | ✅ | ❌ | `post-compact.sh` |
+| PreModelSwitch | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | `native-event-log.sh` (Claude only) |
+| PostModelSwitch | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | `native-event-log.sh` (Claude only) |
+| InstructionsLoaded | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | `instructions-loaded.sh` (Claude only) |
+| ConfigChange | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | `native-event-log.sh` (Claude only) |
+| CwdChanged | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | `native-event-log.sh` (Claude only) |
+| DirectoryAdded | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | `native-event-log.sh` (Claude only) |
+| WorktreeCreate | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | **deliberately not wired** — see below |
+| WorktreeRemove | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | `native-event-log.sh` (Claude only) |
+| FileChanged | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | `config-changed.sh` (Claude only) |
+| Interrupt | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ | `native-event-log.sh` |
 
 Cursor-native events with no canonical equivalent, wired anyway:
 
@@ -125,6 +127,12 @@ Cursor-native events with no canonical equivalent, wired anyway:
 | `afterAgentResponse` | `on-agent-response.sh` |
 | `beforeReadFile` | `guard-read.sh` |
 
+Antigravity-native events with no canonical equivalent, wired anyway:
+
+| Antigravity event | Action |
+|---|---|
+| `PreInvocation` | `pre-invocation` |
+
 | Runtime | Source | Verified |
 |---|---|---|
 | Claude Code | https://code.claude.com/docs/en/hooks | 2026-09-17 |
@@ -132,6 +140,7 @@ Cursor-native events with no canonical equivalent, wired anyway:
 | Codex | https://learn.chatgpt.com/docs/hooks | 2026-09-17 |
 | Grok Build | https://docs.x.ai/build/features/hooks | 2026-09-17 |
 | opencode | https://opencode.ai/docs/plugins/ | 2026-09-17 |
+| Antigravity CLI | https://antigravity.google/docs/hooks/ | 2026-10-18 |
 
 <!-- END GENERATED: event-support -->
 
