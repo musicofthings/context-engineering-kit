@@ -1,5 +1,5 @@
 # Session Handover
-_Generated: 2026-09-17T19:05:59Z_
+_Generated: 2026-10-19T16:33:48Z_
 _Branch: main_
 _Trigger: session-end | Context at compact: unknown%_
 _Compact count this project: 0_
@@ -8,36 +8,22 @@ _Compact count this project: 0_
 
 ## 🎯 Active Task
 **What we're building/fixing:**
-v4.0 universal runtime support — All Phases (0–6) complete; v4.0.0 Universal Runtime Release shipped
+v4.0 universal runtime support — Phase 4 (cek-mcp universal floor) shipped as v3.4.0
 
-**Phase:** Phases 0-6 complete; v4.0.0 shipped
-**Next action:** Maintenance, monitoring runtime vendor doc evolution, community adoption
+**Phase:** Phases 0-2 and 4 complete; Phase 5 (Warp AGENTS.md) or Phase 3 (Antigravity) next
+**Next action:** Decide: Phase 5 Warp (AGENTS.md generator, small — cek-mcp already reaches Warp) or Phase 3 Antigravity adapter (larger, partial parity, closed source)
 
 ---
 
 ## ✅ Completed This Session
-- [x] Git sync — pushed to origin/main
-- [x] Full-repo code review — 6 findings, 3 reproduced (docs/PLAN_v4_universal_runtime.md Part 1)
-- [x] Verified runtime surfaces against vendor docs; **corrected**: Gemini CLI was sunset 2026-06-18, live runtime is Antigravity CLI
-- [x] **Phase 0** shipped as v3.1.1 — handover accretion, lock placement, containment, StopFailure fields, PermissionDenied wiring
-- [x] Re-verified Codex + Grok (no event drift) → found + fixed a live Grok/Cursor double-fire, shipped as v3.1.2
-- [x] README Option G — Antigravity compatibility and limitations
-- [x] **Phase 1** shipped as v3.2.0 — one runtime registry (config/runtime_events.json); generator, cek_runtime_supports() and the matrix table all read it; .cursor/hooks.json now generated
-- [x] **Phase 2** shipped as v3.3.0 — opencode adapter (.opencode/plugins/cek.ts + hooks/run.sh); handover injected into the compaction prompt via experimental.session.compacting
-- [x] **Phase 4** shipped as v3.4.0 — cek-mcp stdio MCP server (stdlib-only), reaches Warp/Cline/Continue/Goose/Zed/Antigravity; verified with the official MCP inspector
-- [x] **Phase 3** shipped as v3.5.0 — Antigravity CLI / IDE adapter (.agents/hooks/run.sh + .agents/hooks.json); payload normalizer, JSON decision handling (exit 2 -> deny), PreInvocation banner synthesis; evals 46 -> 54
-- [x] **Phase 5** shipped as v3.6.0 — Warp AGENTS.md / WARP.md rules generator (scripts/generate_agents_rules.py), uppercase standard enforcement, honest 3-tier capability classification in README & rules, 6 new negative-controlled assertions in eval_phase_c.sh (evals 54 -> 60)
-- [x] **Phase 6** shipped as v4.0.0 — Per-runtime packaging bundles (`package_plugin.py --runtime {all,universal,claude,codex,antigravity,opencode,cursor}`), end-to-end Antigravity install test suite (`scripts/eval_antigravity_install.sh`), master test runner (`scripts/eval_all_runtimes.sh`), manifests bumped to 4.0.0
-- [x] Evals: 8 complete test suites passing (224+ assertions across all runtimes)
-
----
+- [ ] (track completed items here)
 
 ---
 
 ## 🔄 In Progress (Exact Resume Point)
 **Branch:** `main`
-**Last commit:** `feat: Phase 6 — v4.0.0 universal runtime release`
-**Next immediate action:** Monitor runtime updates and vendor hook APIs
+**Last commit:** `b802ba4 fix: re-verify every runtime claim against its live doc (v4.0.1)`
+**Next immediate action:** Decide: Phase 5 Warp (AGENTS.md generator, small — cek-mcp already reaches Warp) or Phase 3 Antigravity adapter (larger, partial parity, closed source)
 
 ---
 
@@ -54,7 +40,11 @@ v4.0 universal runtime support — All Phases (0–6) complete; v4.0.0 Universal
 
 ---
 
+---
+
 ## 🏗 Architecture Decisions Made
+| Decision | Rationale | Date |
+|----------|-----------|------|
 | Decision | Rationale | Date |
 |----------|-----------|------|
 | Decision | Rationale | Date |
@@ -73,17 +63,19 @@ v4.0 universal runtime support — All Phases (0–6) complete; v4.0.0 Universal
 
 ---
 
+---
+
 ## 🔧 Commands to Resume
 
 **This exact conversation** (SDK/CLI transcript resume):
 ```bash
 # Same machine AND same directory it started in:
-claude --resume 88b4e1b5-a3ff-4af2-8117-cfe59f96e6c7
+claude --resume e18916b5-1da4-46e1-8905-98f576501394
 ```
-- Session ID    : `88b4e1b5-a3ff-4af2-8117-cfe59f96e6c7`
-- Transcript    : `/Users/theranosis_dx/.claude/projects/-Users-theranosis-dx-projects-context-engineering-kit/88b4e1b5-a3ff-4af2-8117-cfe59f96e6c7.jsonl`
-- Bound to cwd  : `/Users/theranosis_dx/projects/context-engineering-kit`
-- Stored at     : `~/.claude/projects/-Users-theranosis-dx-projects-context-engineering-kit/88b4e1b5-a3ff-4af2-8117-cfe59f96e6c7.jsonl`
+- Session ID    : `e18916b5-1da4-46e1-8905-98f576501394`
+- Transcript    : `/Users/theranosis_dx/.claude/projects/-Users-theranosis-dx-projects-context-engineering-kit/e18916b5-1da4-46e1-8905-98f576501394.jsonl`
+- Bound to cwd  : `/Users/theranosis_dx/projects/context-engineering-kit/.claude/worktrees/jolly-napier-2153f7`
+- Stored at     : `~/.claude/projects/-Users-theranosis-dx-projects-context-engineering-kit--claude-worktrees-jolly-napier-2153f7/e18916b5-1da4-46e1-8905-98f576501394.jsonl`
 
 > ⚠️ Transcript resume is **cwd-bound**. It only works from the same directory
 > on the same machine. If this session started in a git **worktree**, that
@@ -114,7 +106,6 @@ bash scripts/session_sync.sh --load
 | `.claude/hooks/stop-failure.sh` | modified |
 | `.claude/hooks/usage-sentinel.sh` | modified |
 | `.cursor/hooks/_common.sh` | modified |
-| `.cursor/hooks/guard-read.sh` | modified |
 | `.cursor/hooks/on-precompact.sh` | modified |
 | `.opencode/hooks/run.sh` | modified |
 | `.opencode/plugins/cek.ts` | modified |
@@ -123,25 +114,25 @@ bash scripts/session_sync.sh --load
 | `/private/tmp/claude-501/-Users-theranosis-dx-projects-context-engineering-kit/4e5d9f07-548f-435b-8ad3-c430a8ea2480/scratchpad/test_reason.sh` | modified |
 | `/private/tmp/claude-501/-Users-theranosis-dx-projects-context-engineering-kit/88b4e1b5-a3ff-4af2-8117-cfe59f96e6c7/scratchpad/add_oc_evals.py` | modified |
 | `/private/tmp/claude-501/-Users-theranosis-dx-projects-context-engineering-kit/88b4e1b5-a3ff-4af2-8117-cfe59f96e6c7/scratchpad/capability_parity.sh` | modified |
-| _(+36 more files not shown)_ | — |
+| `/private/tmp/claude-501/-Users-theranosis-dx-projects-context-engineering-kit/88b4e1b5-a3ff-4af2-8117-cfe59f96e6c7/scratchpad/containment_probe.sh` | modified |
+| _(+35 more files not shown)_ | — |
 
 ---
 
 ## 🌿 Git Context
 ```
 Branch  : main
-Commit  : d0a21c6 feat: Phase 4 — cek-mcp, the universal floor (v3.4.0)
-Status  : M api_docs.md
-?? session_handover.md.lock
+Commit  : b802ba4 fix: re-verify every runtime claim against its live doc (v4.0.1)
+Status  : ?? session_handover.md.lock
 ```
 
 Recent commits:
 ```
-d0a21c6 feat: Phase 4 — cek-mcp, the universal floor (v3.4.0)
-2ba3e2b feat: Phase 2 — opencode support (v3.3.0)
-3c806c8 feat: Phase 1 — one runtime registry, generated everywhere (v3.2.0)
-090fb4c fix: Grok ran the Cursor hooks too — double-fire (v3.1.2)
-7d32c21 docs: correct the plan — Gemini CLI is dead, Antigravity CLI replaced it
+b802ba4 fix: re-verify every runtime claim against its live doc (v4.0.1)
+46cc9c7 feat: Phase 6 — v4.0.0 universal runtime release
+542ac23 feat: Phase 5 — Warp AGENTS.md rules generator (v3.6.0)
+03954df feat: Phase 3 — Antigravity CLI / IDE adapter (v3.5.0)
+efa0970 chore(context): save session state — v4.0 universal runtime support — Phase 4 (cek-mcp universal floor) shipped as v3.4.0 [2026-09-17T19:05:59Z]
 ```
 
 ---
@@ -153,6 +144,8 @@ d0a21c6 feat: Phase 4 — cek-mcp, the universal floor (v3.4.0)
 - **Do not trust WebFetch for Claude Code hook field names** — it truncates and the summariser fabricates. Use the extracted PDF text.
 - Verify subagent findings against the source before acting; two agents contradicted each other on `FileChanged` and one was wrong
 - `state.json` is gitignored by design — do not re-add it to any `git add` list
+
+---
 
 ---
 
