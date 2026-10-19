@@ -7,6 +7,7 @@
   "schema_version": 1,
   "_totals_format": "`documented_event_total` is how many lifecycle events the runtime's OWN doc lists. It is NOT len(events): outside Claude Code, `events` holds only what the kit maps. README's \"N of M events\" column takes M from here and N from the shipped hook config, and generate_runtime_hooks.py --check asserts both.",
   "_events_format": "`events` maps CANONICAL event name -> the name THIS runtime uses. They are equal where the runtime follows Claude Code's naming. A canonical name absent from the map means the runtime does not emit that event. `native_extra` lists events with no canonical equivalent that the kit deliberately uses anyway.",
+  "_declined_format": "`declined` lists events the runtime's own doc DOES document and the kit deliberately does not use \u2014 the 'Deliberately unused' list in docs/runtime-capability-matrix.md, made machine-readable. Together, `events` + `native_extra` + `declined` must account for every event on the vendor page, and `documented_event_total` must equal that union's size. That invariant is what scripts/check_runtime_doc_drift.py checks: anything the page lists and this registry does not mention is, by construction, an event nobody has looked at. Antigravity's SessionStart sat in that gap for a month.",
   "runtimes": {
     "claude": {
       "display_name": "Claude Code",
@@ -57,7 +58,8 @@
         "WorktreeRemove": "WorktreeRemove",
         "FileChanged": "FileChanged"
       },
-      "native_extra": []
+      "native_extra": [],
+      "declined": []
     },
     "cursor": {
       "display_name": "Cursor",
@@ -88,6 +90,17 @@
       "native_extra": [
         "afterAgentResponse",
         "beforeReadFile"
+      ],
+      "declined": [
+        "preToolUse",
+        "postToolUse",
+        "beforeMCPExecution",
+        "afterShellExecution",
+        "afterMCPExecution",
+        "beforeTabFileRead",
+        "afterTabFileEdit",
+        "afterAgentThought",
+        "workspaceOpen"
       ]
     },
     "codex": {
@@ -123,7 +136,8 @@
         "Stop": "Stop",
         "Interrupt": "Interrupt"
       },
-      "native_extra": []
+      "native_extra": [],
+      "declined": []
     },
     "grok": {
       "display_name": "Grok Build",
@@ -161,13 +175,14 @@
         "StopFailure": "StopFailure",
         "Notification": "Notification"
       },
-      "native_extra": []
+      "native_extra": [],
+      "declined": []
     },
     "opencode": {
       "display_name": "opencode",
       "source": "https://opencode.ai/docs/plugins/",
-      "documented_event_total": 25,
-      "_documented_event_total_note": "approximate: opencode documents an event bus, not a fixed lifecycle set",
+      "documented_event_total": 28,
+      "_documented_event_total_basis": "28 = the 27 bus events listed under 'Events' on the plugins page, plus `experimental.session.compacting`, which that page documents only as a hook signature in its 'Compaction hooks' example and never lists as an event. Both surfaces count: the kit binds from both.",
       "verified": "2026-10-19",
       "payload_case": "n/a \u2014 the adapter constructs Claude-shaped snake_case JSON in cek.ts",
       "supports_async": false,
@@ -192,6 +207,27 @@
       },
       "native_extra": [
         "file.edited"
+      ],
+      "declined": [
+        "command.executed",
+        "file.watcher.updated",
+        "installation.updated",
+        "lsp.client.diagnostics",
+        "lsp.updated",
+        "message.part.removed",
+        "message.part.updated",
+        "message.removed",
+        "message.updated",
+        "permission.asked",
+        "permission.replied",
+        "server.connected",
+        "session.diff",
+        "session.status",
+        "session.updated",
+        "shell.env",
+        "tui.prompt.append",
+        "tui.command.execute",
+        "tui.toast.show"
       ]
     },
     "antigravity": {
@@ -217,7 +253,8 @@
       "native_extra": [
         "PreInvocation",
         "PostInvocation"
-      ]
+      ],
+      "declined": []
     }
   }
 }

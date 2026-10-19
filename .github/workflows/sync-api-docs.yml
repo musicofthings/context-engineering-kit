@@ -26,7 +26,55 @@ jobs:
         env:
           CLAUDE_PROJECT_DIR: ${{ github.workspace }}
 
+      # The fetch above is only half the job. Until v4.1.0 nothing compared a
+      # fetched page against the capability claims that cite it, which is how
+      # Antigravity's native SessionStart stayed unnoticed for a month with
+      # every check in the repo green.
+      #
+      # Exit codes are handled separately on purpose:
+      #   1 DEFECT    a committed claim is false or inconsistent -> fail the job
+      #   2 ADVISORY  a vendor added or dropped an event -> annotate, do not fail
+      #   3 UNKNOWN   a page could not be fetched or parsed -> annotate
+      # A vendor shipping an event is not a defect in this repo, and a weekly
+      # job that goes red for it is a job that gets muted — but it must never be
+      # silent either, so 2 and 3 are written to the step summary as well.
+      - name: Check runtime capability claims against the live docs
+        id: drift
+        run: |
+          set +e
+          python scripts/check_runtime_doc_drift.py > "$RUNNER_TEMP/drift.txt" 2>&1
+          rc=$?
+          set -e
+          cat "$RUNNER_TEMP/drift.txt"
+          {
+            echo "## Runtime doc drift"
+            echo
+            echo '```'
+            cat "$RUNNER_TEMP/drift.txt"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          case "$rc" in
+            0) echo "no drift" ;;
+            1)
+              grep -E '^  DEFECT' "$RUNNER_TEMP/drift.txt" | while read -r line; do
+                echo "::error title=Runtime capability claim is false::${line#  DEFECT    }"
+              done
+              exit 1
+              ;;
+            *)
+              grep -E '^  (ADVISORY|UNKNOWN)' "$RUNNER_TEMP/drift.txt" | while read -r line; do
+                echo "::warning title=Runtime doc moved ahead of the registry::${line}"
+              done
+              ;;
+          esac
+        env:
+          CLAUDE_PROJECT_DIR: ${{ github.workspace }}
+
+      # always(): a drift DEFECT above fails the job, but the refreshed
+      # api_docs.md and the PR carrying the drift report are exactly what a
+      # human needs in order to act on it.
       - name: Commit updated docs via PR branch
+        if: always()
         run: |
           git config user.name  "api-doc-bot"
           git config user.email "bot@context-engineering-kit"
@@ -48,9 +96,18 @@ jobs:
             # Requires repo setting: Actions → "Allow GitHub Actions to create
             # and approve pull requests". Fail loudly if PR creation breaks —
             # a pushed branch with no PR is invisible.
+            {
+              echo "Automated weekly refresh of api_docs.md — bot-generated, review before merging."
+              echo
+              echo "### Runtime doc drift at the time of this refresh"
+              echo
+              echo '```'
+              cat "$RUNNER_TEMP/drift.txt" 2>/dev/null || echo "(drift check did not run)"
+              echo '```'
+            } > "$RUNNER_TEMP/pr-body.md"
             gh pr create \
               --title "chore(docs): weekly API doc refresh $(date -u +%Y-%m-%d)" \
-              --body "Automated weekly refresh of api_docs.md — bot-generated, review before merging." \
+              --body-file "$RUNNER_TEMP/pr-body.md" \
               --base main --head "$BRANCH"
           else
             echo "Open PR for $BRANCH already exists — branch updated in place"

@@ -11,6 +11,7 @@
 #   6. scripts/eval_codex_install.sh    (Codex plugin package & install)
 #   7. scripts/eval_antigravity_install.sh (Antigravity plugin package & install)
 #   8. scripts/eval_opencode.mjs        (opencode plugin & compaction prompt)
+#   9. scripts/eval_doc_drift.py        (runtime claims vs the docs they cite)
 #
 # Usage: bash scripts/eval_all_runtimes.sh
 
@@ -80,6 +81,9 @@ if command -v node >/dev/null 2>&1; then
 else
   echo "SKIP: eval_opencode (node not found)"
 fi
+
+# 9. Runtime capability claims vs the vendor docs they cite (offline fixtures)
+run_suite "eval_doc_drift" "python3 scripts/eval_doc_drift.py"
 
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "Master Suite Summary: $suites_passed / $suites_total suites passed ($suites_failed failed)"

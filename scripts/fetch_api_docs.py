@@ -15,6 +15,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
 PROJECT_DIR = Path(os.environ.get("CLAUDE_PROJECT_DIR", "."))
 PLUGIN_ROOT = Path(os.environ.get("CLAUDE_PLUGIN_ROOT", str(PROJECT_DIR)))
 
@@ -71,7 +73,7 @@ def markdown_candidates(url: str):
     yield url
 
 
-def _get(url: str) -> str:
+def _get(url: str, max_chars: int = MAX_FETCH_CHARS) -> str:
     req = urllib.request.Request(
         url,
         headers={
@@ -80,19 +82,24 @@ def _get(url: str) -> str:
         },
     )
     with urllib.request.urlopen(req, timeout=TIMEOUT) as resp:
-        return resp.read().decode("utf-8", errors="replace")[:MAX_FETCH_CHARS]
+        return resp.read().decode("utf-8", errors="replace")[:max_chars]
 
 
-def fetch_url(url: str) -> str:
-    """Return markdown/plaintext content, or a '[fetch failed: ...]' marker.
+def fetch_url_raw(url: str, max_chars: int = MAX_FETCH_CHARS) -> str:
+    """Markdown/plaintext content, or raise OSError naming the last attempt.
 
     An HTML response is treated as a miss, never returned: committing an SPA
     shell to api_docs.md is worse than committing a visible failure marker.
+
+    `max_chars` is a parameter because the two callers want different budgets.
+    api_docs.md is injected into the model's context and keeps 120k;
+    check_runtime_doc_drift.py needs the whole page, since a list clipped
+    mid-way reads as "the vendor removed these events".
     """
     last_err = "no candidates tried"
     for candidate in markdown_candidates(url):
         try:
-            content = _get(candidate)
+            content = _get(candidate, max_chars)
         except (urllib.error.URLError, OSError, ValueError) as e:
             last_err = f"{candidate}: {e}"
             continue
@@ -102,7 +109,62 @@ def fetch_url(url: str) -> str:
         if candidate != url:
             print(f"  using markdown variant: {candidate}", file=sys.stderr)
         return content
-    return f"[fetch failed: {last_err}]"
+    raise OSError(last_err)
+
+
+def fetch_url(url: str) -> str:
+    """Return markdown/plaintext content, or a '[fetch failed: ...]' marker.
+
+    Fail-open by design: this runs inside the SessionStart hook (backgrounded
+    with nohup), so a slow or dead vendor site must never block or fail session
+    start. The marker is written into one section; main() separately refuses to
+    overwrite api_docs.md when every source failed.
+    """
+    try:
+        return fetch_url_raw(url)
+    except OSError as e:
+        return f"[fetch failed: {e}]"
+
+
+def runtime_doc_apis() -> list[dict]:
+    """The six runtime hook docs, as api_sources-shaped entries.
+
+    Their URLs are NOT copied into config/api_sources.json. Each one lives once,
+    as `source` on its runtime in config/runtime_events.json, next to the
+    `verified` date and the event list it backs — so there is exactly one place
+    to change when a vendor moves its docs, and exactly one place that can be
+    wrong. config/api_sources.json keeps the sources that are not runtime docs.
+
+    Fail-open: if the registry is missing or unreadable, the configured sources
+    still refresh. This runs in a latency-sensitive hook, and five extra doc
+    sections are worth less than a session that starts.
+    """
+    try:
+        import runtime_doc_events
+    except Exception as e:  # pragma: no cover - import guard for partial installs
+        print(f"  runtime docs skipped: {e}", file=sys.stderr)
+        return []
+    try:
+        docs = runtime_doc_events.runtime_docs()
+    except Exception as e:
+        print(f"  runtime docs skipped: {e}", file=sys.stderr)
+        return []
+
+    apis = []
+    for doc in docs:
+        if not doc["url"]:
+            continue
+        # The anchor comes from the same table the drift detector parses, so the
+        # section that lands in api_docs.md is the event list itself rather than
+        # whichever 6000 characters happen to come first.
+        anchor = doc["anchor"].lstrip("#").strip()
+        apis.append({
+            "name": f"runtime-{doc['runtime']}-hooks",
+            "description": f"{doc['display_name']} hook events — backs runtimes.{doc['runtime']} in config/runtime_events.json",
+            "base_url": doc["url"],
+            "extract_sections": [anchor] if anchor else [],
+        })
+    return apis
 
 
 def extract_sections(content: str, sections: list[str]) -> str:
@@ -135,7 +197,7 @@ def main():
         sys.exit(1)
 
     config = json.loads(CONFIG_FILE.read_text(encoding="utf-8"))
-    apis = config.get("apis", [])
+    apis = config.get("apis", []) + runtime_doc_apis()
     timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
     # Config path is shown by NAME only. Printing the full path leaked an

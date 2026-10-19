@@ -55,7 +55,11 @@ context-engineering-kit/
 │   ├── generate_session_handover.py ← called by pre-compact hook
 │   ├── update_context_files.py      ← updates README, CLAUDE.md, specs
 │   ├── session_sync.sh              ← cross-device / cross-subscription sync
-│   └── fetch_api_docs.py            ← weekly API doc refresh (CI)
+│   ├── fetch_api_docs.py            ← weekly API doc refresh (CI) + the six runtime hook docs
+│   ├── runtime_doc_events.py        ← where each runtime's doc states its events, and how to read it
+│   ├── check_runtime_doc_drift.py   ← registry claims vs the vendor pages they cite
+│   ├── eval_doc_drift.py            ← drift suite (offline fixtures)
+│   └── fixtures/runtime-docs/       ← trimmed vendor page excerpts (*.page.md, never *.md)
 ├── config/
 │   ├── model_thresholds.json        ← auto-switch trigger points
 │   ├── rate_limits.json             ← token budgets per model
@@ -74,7 +78,7 @@ Anthropic's API caches the system prompt prefix automatically. CLAUDE.md is inje
 as the system prompt, so cache efficiency depends on how stable the file's top is.
 
 Rules for this file:
-- **Lines 1–66 (project structure)** — never prepend dynamic content here; this is the cached prefix
+- **Lines 1–73 (project structure)** — never prepend dynamic content here; this is the cached prefix
 - **"Active work context" section** — always at the bottom; this is the only part that changes
 - Do not add timestamps, commit SHAs, or task state above the "Active work context" marker
 - Keep total CLAUDE.md under 500 lines; beyond that the system prompt grows past the cache window

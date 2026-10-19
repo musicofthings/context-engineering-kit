@@ -24,6 +24,8 @@ Three things read it, and nothing else carries a second copy:
 |---|---|
 | `scripts/generate_runtime_hooks.py` | emits `.codex/hooks.json`, `hooks/codex-hooks.json`, `.grok/hooks/cek-hooks.json`, `.cursor/hooks.json`, and the table below |
 | `cek_runtime_supports()` in `scripts/cek_runtime.sh` | runtime no-ops at hook time |
+| `scripts/fetch_api_docs.py` | the six `source` URLs, appended to the weekly doc refresh |
+| `scripts/check_runtime_doc_drift.py` | compares each runtime's event set against the page its `source` cites |
 | this document | the generated block below |
 
 ```bash
@@ -37,6 +39,60 @@ match the generator, so `.codex/hooks.json` shipped `PostToolUseFailure`,
 `StopFailure` and `Notification` — none of which Codex has — while staying
 green. Timeout ceilings are enforced the same way (Codex caps `SessionEnd` and
 `Interrupt` at 3s).
+
+## What `--check` still cannot tell you, and what does
+
+Everything above is internally consistent by construction. `--check` proves the
+generated configs match the registry; `check_sync.sh` proves the wiring is
+single-sourced. Neither reads a vendor page, so a registry entry that has
+drifted away from the doc in its own `source` field stays green indefinitely —
+which is exactly what happened. Antigravity shipped a native `SessionStart`,
+the registry did not mention it, the kit went on synthesizing the event on
+`PreInvocation` for a month, and every check in this repo passed throughout.
+v4.0.1 found it by hand.
+
+`scripts/check_runtime_doc_drift.py` is the check that would have found it:
+
+```bash
+python scripts/check_runtime_doc_drift.py              # fetch all six, compare
+python scripts/check_runtime_doc_drift.py --offline     # no network, bookkeeping only
+python scripts/check_runtime_doc_drift.py --runtime cursor
+python scripts/eval_doc_drift.py                        # offline fixtures, incl. the v4.0.1 case
+```
+
+For each runtime it extracts the event names the vendor page documents and
+compares that set against `events` + `native_extra` + `declined`. Because those
+three lists must account for **every** event on the page, anything the page
+lists and the registry does not mention is, by construction, an event nobody
+has looked at.
+
+| Finding | Meaning | Exit |
+|---|---|---|
+| `DEFECT` | the registry claims an event its own cited doc no longer lists, or its bookkeeping is self-inconsistent | 1 |
+| `ADVISORY` | the doc lists an event the registry does not mention, a `declined` event has vanished, or `verified` is over 30 days old | 2 |
+| `UNKNOWN` | a page could not be fetched or could not be parsed — **nothing was verified**, which is not the same as nothing being wrong | 3 |
+
+The codes are distinct on purpose. A false claim in a committed file is this
+repo's defect and fails CI. A vendor shipping an event is not, and a weekly job
+that goes red every time one does is a job that gets muted — which is how
+v4.0.1 happened in the first place. So 2 and 3 are loud and non-fatal:
+annotations plus a step summary in the weekly workflow, and the drift report is
+pasted into the body of the doc-refresh PR so it arrives where someone reviews
+it. `--strict` collapses 2 and 3 into 1 for callers that want a hard gate.
+
+Where a page is too irregular to parse, every extractor raises rather than
+returning a partial set: a wrong answer here is indistinguishable from "no
+drift", and a false clean bill of health is the failure being fixed.
+
+The extractors live in `scripts/runtime_doc_events.py` — one declarative entry
+per runtime naming the anchor heading and the shape of the list under it
+(`headings`, `table`, `bullets`), because no two vendors present their events
+the same way. `scripts/fixtures/runtime-docs/*.page.md` holds a trimmed excerpt
+of each live page so the suite never needs the network. Those files are named
+`<runtime>.page.md` and not `<runtime>.md` deliberately: a fixture called
+`claude.md` is picked up by Claude Code's own `CLAUDE.md` discovery on a
+case-insensitive filesystem, which would load a page of untrusted fetched vendor
+text as project instructions.
 
 **Cursor is now inside that boundary.** `.cursor/hooks.json` was hand-written
 until v3.2.0 and Cursor appeared in no allow-list, so the guard that caught the
@@ -206,7 +262,12 @@ the kit banner that way, so Cursor sessions start with the same handover state
 Claude Code sessions get. Raw stdout is *not* injected — the JSON shape is
 required.
 
-**Deliberately unused, not overlooked.** On Cursor: `preToolUse` / `postToolUse`
+**Deliberately unused, not overlooked** — and since v4.1.0 recorded as such in
+the registry, as `declined` on each runtime. "Not overlooked" used to be a claim
+in this paragraph and nowhere else; the drift detector now reports any
+documented event that is in neither `events`, `native_extra` nor `declined`, so
+the distinction between a decision and an oversight is checked rather than
+asserted. On Cursor: `preToolUse` / `postToolUse`
 duplicate coverage the kit already gets from `beforeShellExecution` and
 `afterFileEdit`; `beforeMCPExecution` and `afterShellExecution` are governance
 surfaces this kit has no policy for; `workspaceOpen` fires outside any session,
@@ -258,6 +319,15 @@ in place — so the evidence lives here rather than in anyone's memory.
 | `/hooks` | Codex | `learn.chatgpt.com/docs/hooks` |
 | `/hooks-trust`, `--trust` | Grok | `docs.x.ai/build/features/hooks` |
 | `/hooks` tab (extensions modal) | Grok | same |
+
+Repo commands used by CI and by hand:
+
+```bash
+bash scripts/check_sync.sh                          # wiring + registry bookkeeping
+python scripts/generate_runtime_hooks.py --check    # generated configs match the registry
+python scripts/check_runtime_doc_drift.py           # registry matches the live vendor docs
+bash scripts/eval_all_runtimes.sh                   # all nine suites
+```
 
 **Asserted before and now removed as undocumented:**
 

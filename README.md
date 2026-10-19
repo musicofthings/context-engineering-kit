@@ -9,9 +9,26 @@ Works in **Claude Cowork**, **Claude Code Desktop**, **Claude Code CLI**, **Curs
 🌐 **[Landing page & full docs →](https://musicofthings.github.io/context-engineering-kit/)**  
 📦 **[Download plugin zip (v3.4.0) →](https://github.com/musicofthings/context-engineering-kit/releases/latest)** — for Cowork or Desktop Plugin upload  
 📐 **[Runtime capability matrix →](docs/runtime-capability-matrix.md)**  
-📝 **[Release notes (v4.0.1) →](docs/RELEASE_NOTES_4.0.1.md)** — every runtime claim re-verified · [v4.0.0](docs/RELEASE_NOTES_4.0.0.md) · [v3.6.0](docs/RELEASE_NOTES_3.6.0.md) · [v3.5.0](docs/RELEASE_NOTES_3.5.0.md) · [v3.4.0](docs/RELEASE_NOTES_3.4.0.md) · [v3.3.0](docs/RELEASE_NOTES_3.3.0.md) · [v3.2.0](docs/RELEASE_NOTES_3.2.0.md) · [v3.1.2](docs/RELEASE_NOTES_3.1.2.md) · [v3.1.1](docs/RELEASE_NOTES_3.1.1.md) · [v3.1.0](docs/RELEASE_NOTES_3.1.0.md) · [v3.0.1](docs/RELEASE_NOTES_3.0.1.md) · [v3.0.0](docs/RELEASE_NOTES_3.0.0.md)
+📝 **[Release notes (v4.1.0) →](docs/RELEASE_NOTES_4.1.0.md)** — runtime claims now re-checked against the docs they cite · [v4.0.1](docs/RELEASE_NOTES_4.0.1.md) · [v4.0.0](docs/RELEASE_NOTES_4.0.0.md) · [v3.6.0](docs/RELEASE_NOTES_3.6.0.md) · [v3.5.0](docs/RELEASE_NOTES_3.5.0.md) · [v3.4.0](docs/RELEASE_NOTES_3.4.0.md) · [v3.3.0](docs/RELEASE_NOTES_3.3.0.md) · [v3.2.0](docs/RELEASE_NOTES_3.2.0.md) · [v3.1.2](docs/RELEASE_NOTES_3.1.2.md) · [v3.1.1](docs/RELEASE_NOTES_3.1.1.md) · [v3.1.0](docs/RELEASE_NOTES_3.1.0.md) · [v3.0.1](docs/RELEASE_NOTES_3.0.1.md) · [v3.0.0](docs/RELEASE_NOTES_3.0.0.md)
 
 ---
+
+## What's new in v4.1.0
+
+**The kit now re-reads the vendor pages its capability claims cite.** v4.0.1
+found a month-old error in those claims by hand; every automated check in the
+repo had been green throughout, because all of them were internally consistent
+by construction and none ever looked outside it.
+`python scripts/check_runtime_doc_drift.py` fetches all six runtime hook docs,
+extracts the events each one documents, and compares that set against
+`config/runtime_events.json` — reporting both events the registry invented and
+events a vendor shipped that nobody has looked at. The five missing runtime docs
+joined the weekly refresh pipeline, reading their URLs from the registry so each
+one keeps a single home. A false claim fails CI; a vendor moving ahead of us is
+loud but not red, because a job that reddens for that is a job that gets muted.
+Offline fixtures, including a replay of the v4.0.1 Antigravity case, are suite 9
+of `eval_all_runtimes.sh`.
+See [`docs/RELEASE_NOTES_4.1.0.md`](docs/RELEASE_NOTES_4.1.0.md).
 
 ## What's new in v3.4.0
 
@@ -177,7 +194,7 @@ The kit categorises agent runtimes into three distinct capability tiers based on
 | **Cursor IDE** | Tier 1 | Open repo (`.cursor/`) ([Option D](#option-d--cursor-ide-project-hooks)) | Chat / scripts | ✅ 12 of 21 events | Cursor agents |
 | **Grok Build** | Tier 1 | Clone; `/hooks-trust` ([Option E](#option-e--grok-build)) | Skills if mirrored | ✅ 14 of 14 events | Grok TUI |
 | **Codex** | Tier 1 | Open repo (`.codex/`) ([Option F](#option-f--codex)) | `$handover` / `/skills` | ✅ 12 of 12 events | Codex CLI |
-| **opencode** | Tier 1 | Clone repo (`.opencode/`) ([Option G](#option-g--opencode)) | Injected in compaction | ✅ 9 of ~25 events | Open-source terminal |
+| **opencode** | Tier 1 | Clone repo (`.opencode/`) ([Option G](#option-g--opencode)) | Injected in compaction | ✅ 9 of 28 events | Open-source terminal |
 | **Antigravity CLI / IDE** | Tier 2 | `generate_runtime_hooks.py` ([Option I](#option-i--antigravity-cli--ide-agy)) | MCP tools / prose | ⚠️ 5 of 6 events | Google Antigravity |
 | **Warp & MCP Clients** | Tier 3 | `cek_mcp.py` + rules ([Option H](#option-h--any-mcp-client-warp-cline-continue-goose-zed-)) | `cek-mcp:*` tools | ❌ None (Rules + MCP) | Warp terminal & IDEs |
 
@@ -187,8 +204,10 @@ Full event support table: [`docs/runtime-capability-matrix.md`](docs/runtime-cap
 > M lifecycle events that runtime documents — not that the runtime has N. The
 > unbound ones are listed, with reasons, under *Deliberately unused* in the
 > capability matrix. `bash scripts/check_sync.sh` asserts every N against
-> the shipped hook configs, so these cannot drift silently. Only opencode's M
-> is approximate: it documents an event bus, not a fixed lifecycle set.
+> the shipped hook configs, so these cannot drift silently. Since v4.1.0
+> `python scripts/check_runtime_doc_drift.py` additionally re-reads each
+> runtime's own doc and asserts M against it, so neither N nor M rests on a
+> claim nobody has re-checked.
 
 > **Cowork vs. Claude Code:** the same zip works for both Cowork and Claude Code Desktop because the plugin format is identical. The difference is what runs — Cowork executes the **skills** (`/handover`, `/token-status`, etc.) but doesn't run the **hooks** (which need a shell environment). Claude Code runs both.
 
@@ -1047,6 +1066,9 @@ context-engineering-kit/
 │   ├── usage-tracker.py
 │   ├── eval_usage_lifecycle.sh      ← Phase A/B scenarios
 │   ├── eval_phase_c.sh              ← multi-runtime wiring checks
+│   ├── runtime_doc_events.py        ← per-runtime doc event extractors
+│   ├── check_runtime_doc_drift.py   ← registry claims vs the live vendor docs
+│   ├── eval_doc_drift.py            ← drift suite (offline fixtures)
 │   └── check_sync.sh
 ├── config/                          ← plugin_settings, usage_budget, …
 ├── .github/workflows/cek-quality.yml
@@ -1107,9 +1129,16 @@ Resuming on another device
 ### Verify / release checks
 
 ```bash
-bash scripts/eval_all_runtimes.sh   # runs all 8 runtime test suites
-python scripts/package_plugin.py    # → context-engineering-kit-4.0.0.zip
+bash scripts/eval_all_runtimes.sh          # runs all 9 runtime test suites
+python scripts/check_runtime_doc_drift.py # re-read the six vendor docs (network)
+python scripts/package_plugin.py          # → context-engineering-kit-4.1.0.zip
 ```
+
+`check_runtime_doc_drift.py` is the only check here that leaves the machine. It
+exits `1` when a committed capability claim is false, `2` when a vendor doc has
+moved ahead of the registry, and `3` when a page could not be read — so a vendor
+site being down never reads as a pass. `check_sync.sh` runs it with `--offline`,
+which checks the registry's own bookkeeping without touching the network.
 
 ---
 

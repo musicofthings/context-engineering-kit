@@ -6,6 +6,7 @@
 #   skills/ and agents/ are the ONLY copies (.claude/ duplicates must not return)
 #   .claude/settings.json declares NO hooks (hooks/hooks.json is the single source)
 #   generate_runtime_hooks.py --check         (Codex/Grok hooks.json)
+#   check_runtime_doc_drift.py --offline      (runtime registry bookkeeping)
 #   .codex-plugin/plugin.json exists and does NOT inherit hooks/hooks.json
 #   no absolute machine paths in runtime JSON
 #
@@ -63,6 +64,40 @@ if [ -f scripts/generate_agents_rules.py ]; then
   fi
 fi
 
+# v4.1.0: runtime capability claims vs the vendor pages they cite.
+#
+# Run OFFLINE here. check_sync.sh is a fast, frequently-run local gate and must
+# not depend on six vendor sites being reachable. Offline the detector still
+# checks the repo's own bookkeeping: every runtime carries a `source` URL and a
+# `verified` date, has an extractor, and accounts for every documented event
+# across events + native_extra + declined. Those invariants are what make the
+# live check meaningful — an event missing from all three lists is an event
+# nobody has looked at.
+#
+# Exit codes are distinguished on purpose: 1 means the repo states something
+# false or inconsistent (fail), 2 means a vendor moved ahead of us and 3 means a
+# page could not be read (report, do not fail — neither is a repo defect, and a
+# gate that goes red when a vendor ships an event is a gate people mute).
+# Live drift is checked by the weekly workflow and by running the command below.
+if [ -f scripts/check_runtime_doc_drift.py ] && [ -n "${PY:-}" ]; then
+  drift_out=$("$PY" scripts/check_runtime_doc_drift.py --offline 2>&1)
+  drift_rc=$?
+  case "$drift_rc" in
+    0)
+      echo "OK: runtime registry bookkeeping (run without --offline to check the live docs)"
+      ;;
+    1)
+      echo "ERROR: runtime registry bookkeeping failed:"
+      printf '%s\n' "$drift_out" | grep -E '^  (DEFECT|ADVISORY)' || printf '%s\n' "$drift_out"
+      status=1
+      ;;
+    *)
+      echo "WARN: runtime doc check reported exit $drift_rc (not a repo defect) — run  python scripts/check_runtime_doc_drift.py"
+      printf '%s\n' "$drift_out" | grep -E '^  (ADVISORY|UNKNOWN)' || true
+      ;;
+  esac
+fi
+
 # v3.0.0: hooks/hooks.json (auto-discovered plugin manifest) is the SINGLE hook
 # source. The repo's .claude/settings.json used to declare the same 16 events a
 # second time and Claude Code does not dedupe across plugin/project scope —
@@ -117,7 +152,8 @@ done
 # Required adapter entrypoints
 for f in scripts/cek_runtime.sh .codex/hooks/run.sh .grok/hooks/run.sh .cursor/hooks/_common.sh \
          .agents/hooks/run.sh scripts/generate_agents_rules.py AGENTS.md \
-         scripts/eval_antigravity_install.sh scripts/eval_all_runtimes.sh docs/runtime-capability-matrix.md; do
+         scripts/eval_antigravity_install.sh scripts/eval_all_runtimes.sh docs/runtime-capability-matrix.md \
+         scripts/runtime_doc_events.py scripts/check_runtime_doc_drift.py scripts/eval_doc_drift.py; do
   if [ -f "$f" ]; then
     echo "OK: $f"
   else
