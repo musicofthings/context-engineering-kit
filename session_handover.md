@@ -1,5 +1,5 @@
 # Session Handover
-_Generated: 2026-10-19T16:33:49Z_
+_Generated: 2026-10-19T18:18:20Z_
 _Branch: main_
 _Trigger: session-end | Context at compact: unknown%_
 _Compact count this project: 0_
@@ -20,11 +20,9 @@ v4.0 universal runtime support — Phase 4 (cek-mcp universal floor) shipped as 
 
 ---
 
----
-
 ## 🔄 In Progress (Exact Resume Point)
 **Branch:** `main`
-**Last commit:** `a88d8e7 chore(context): save session state — v4.0 universal runtime support — Phase 4 (cek-mcp universal floor) shipped as v3.4.0 [2026-10-19T16:33:48Z]`
+**Last commit:** `e61768e fix: keep lint caches and runtime lock files out of the plugin zip`
 **Next immediate action:** Decide: Phase 5 Warp (AGENTS.md generator, small — cek-mcp already reaches Warp) or Phase 3 Antigravity adapter (larger, partial parity, closed source)
 
 ---
@@ -40,19 +38,7 @@ v4.0 universal runtime support — Phase 4 (cek-mcp universal floor) shipped as 
 
 ---
 
----
-
----
-
----
-
 ## 🏗 Architecture Decisions Made
-| Decision | Rationale | Date |
-|----------|-----------|------|
-| Decision | Rationale | Date |
-|----------|-----------|------|
-| Decision | Rationale | Date |
-|----------|-----------|------|
 | Decision | Rationale | Date |
 |----------|-----------|------|
 | `state.json` stays untracked/machine-local | Confirmed deliberate via `90545c6 "chore: ignore Claude session state"`; `session_handover.md` is the portable cross-device anchor | 2026-08-30 |
@@ -67,23 +53,17 @@ v4.0 universal runtime support — Phase 4 (cek-mcp universal floor) shipped as 
 
 ---
 
----
-
----
-
----
-
 ## 🔧 Commands to Resume
 
 **This exact conversation** (SDK/CLI transcript resume):
 ```bash
 # Same machine AND same directory it started in:
-claude --resume e18916b5-1da4-46e1-8905-98f576501394
+claude --resume 9abf59e2-6929-4fec-a9db-6e96ef33d0a8
 ```
-- Session ID    : `e18916b5-1da4-46e1-8905-98f576501394`
-- Transcript    : `/Users/theranosis_dx/.claude/projects/-Users-theranosis-dx-projects-context-engineering-kit/e18916b5-1da4-46e1-8905-98f576501394.jsonl`
+- Session ID    : `9abf59e2-6929-4fec-a9db-6e96ef33d0a8`
+- Transcript    : `/Users/theranosis_dx/.claude/projects/-Users-theranosis-dx-projects-context-engineering-kit--claude-worktrees-jolly-napier-2153f7/9abf59e2-6929-4fec-a9db-6e96ef33d0a8.jsonl`
 - Bound to cwd  : `/Users/theranosis_dx/projects/context-engineering-kit/.claude/worktrees/jolly-napier-2153f7`
-- Stored at     : `~/.claude/projects/-Users-theranosis-dx-projects-context-engineering-kit--claude-worktrees-jolly-napier-2153f7/e18916b5-1da4-46e1-8905-98f576501394.jsonl`
+- Stored at     : `~/.claude/projects/-Users-theranosis-dx-projects-context-engineering-kit--claude-worktrees-jolly-napier-2153f7/9abf59e2-6929-4fec-a9db-6e96ef33d0a8.jsonl`
 
 > ⚠️ Transcript resume is **cwd-bound**. It only works from the same directory
 > on the same machine. If this session started in a git **worktree**, that
@@ -130,17 +110,17 @@ bash scripts/session_sync.sh --load
 ## 🌿 Git Context
 ```
 Branch  : main
-Commit  : a88d8e7 chore(context): save session state — v4.0 universal runtime support — Phase 4 (cek-mcp universal floor) shipped as v3.4.0 [2026-10-19T16:33:48Z]
-Status  : ?? session_handover.md.lock
+Commit  : e61768e fix: keep lint caches and runtime lock files out of the plugin zip
+Status  : clean
 ```
 
 Recent commits:
 ```
+e61768e fix: keep lint caches and runtime lock files out of the plugin zip
+11c8243 feat: check runtime capability claims against the docs they cite (v4.1.0)
+61b4747 chore(context): save session state — v4.0 universal runtime support — Phase 4 (cek-mcp universal floor) shipped as v3.4.0 [2026-10-19T16:33:48Z]
 a88d8e7 chore(context): save session state — v4.0 universal runtime support — Phase 4 (cek-mcp universal floor) shipped as v3.4.0 [2026-10-19T16:33:48Z]
 b802ba4 fix: re-verify every runtime claim against its live doc (v4.0.1)
-46cc9c7 feat: Phase 6 — v4.0.0 universal runtime release
-542ac23 feat: Phase 5 — Warp AGENTS.md rules generator (v3.6.0)
-03954df feat: Phase 3 — Antigravity CLI / IDE adapter (v3.5.0)
 ```
 
 ---
@@ -152,12 +132,6 @@ b802ba4 fix: re-verify every runtime claim against its live doc (v4.0.1)
 - **Do not trust WebFetch for Claude Code hook field names** — it truncates and the summariser fabricates. Use the extracted PDF text.
 - Verify subagent findings against the source before acting; two agents contradicted each other on `FileChanged` and one was wrong
 - `state.json` is gitignored by design — do not re-add it to any `git add` list
-
----
-
----
-
----
 
 ---
 
