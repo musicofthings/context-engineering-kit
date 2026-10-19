@@ -29,6 +29,9 @@ credentials/
 
 # Python
 __pycache__/
+.ruff_cache/
+.pytest_cache/
+.mypy_cache/
 *.py[cod]
 *.egg-info/
 .venv/
@@ -67,6 +70,7 @@ briefs/
 .claude/session/.hookfire_*
 
 # state.json concurrency locks (machine-local, never commit)
+session_handover.md.lock
 .claude/session/*.lock
 .claude/session/*.lockd
 .claude/session/*.lockd/

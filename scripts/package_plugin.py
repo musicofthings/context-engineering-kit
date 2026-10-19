@@ -29,6 +29,9 @@ EXCLUDE_DIRS = {
     "briefs",
     "node_modules",
     "__pycache__",
+    ".ruff_cache",
+    ".pytest_cache",
+    ".mypy_cache",
     ".venv",
     "venv",
     ".idea",
@@ -52,6 +55,13 @@ EXCLUDE_GLOBS = [
     "*.swp",
     "*.zip",
     "*.tar.gz",
+    # Runtime lock files. state_write() locks under .claude/session/ were
+    # already excluded by directory, but an interrupted hook leaves
+    # session_handover.md.lock at the repo root, where nothing caught it — so
+    # it shipped inside the plugin zip. No lock file is tracked in this repo,
+    # so excluding them by basename is unconditionally safe.
+    "*.lock",
+    "*.lockd",
     # EXCLUDE_FILES matches whole relative paths, so a bare ".DS_Store" entry
     # only ever caught the one at the repo root; nested copies shipped.
     # EXCLUDE_GLOBS matches the basename, which catches them all.
