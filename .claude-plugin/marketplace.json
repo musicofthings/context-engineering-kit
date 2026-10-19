@@ -12,7 +12,7 @@
       "name": "context-engineering-kit",
       "source": "./",
       "description": "Automated context preservation for Claude Code, Cursor, Codex, Grok, opencode, Antigravity, and Warp across sessions, devices, worktrees, and subscriptions. Lifecycle hooks & MCP bridges share one logic core.",
-      "version": "4.0.0",
+      "version": "4.0.1",
       "author": {
         "name": "musicofthings"
       },

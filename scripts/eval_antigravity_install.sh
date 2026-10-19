@@ -7,7 +7,7 @@
 #   3. Verify required files are packaged (.agents/hooks/run.sh, .agents/hooks.json, etc.)
 #   4. Execute hooks from an unrelated working directory and nested subdirectory
 #   5. Verify PreToolUse dangerous command denial and safe command allowance (JSON contracts)
-#   6. Verify PreInvocation banner synthesis
+#   6. Verify the native SessionStart banner, and PreInvocation with no invocationNum
 #   7. Verify Stop handler cleanly returns {}
 #   8. Verify state isolation: all state written into host project, not plugin root
 #
@@ -121,7 +121,42 @@ else
   bad "installed hook failed to allow safe command" "output: $ALLOW_OUT"
 fi
 
-# Test 3c: PreInvocation synthesizes banner on invocationNum == 0
+# Test 3c: native SessionStart returns the banner via injectSteps. Its payload
+# carries no invocationNum — the field that used to gate banner synthesis.
+SESSION_PAYLOAD=$("$PYTHON" -c "
+import json
+print(json.dumps({
+  'conversationId': 'eval-conv-installed',
+  'workspacePaths': ['$PROJECT'],
+  'modelName': 'gemini-3.6-flash-medium'
+}))")
+
+SS_OUT=$(printf '%s' "$SESSION_PAYLOAD" | (
+  cd "$PROJECT/nested/sub/dir"
+  env CLAUDE_PLUGIN_ROOT="$PLUGIN_ROOT" bash "$PLUGIN_ROOT/.agents/hooks/run.sh" session-start 2>/dev/null
+))
+
+if echo "$SS_OUT" | grep -q '"ephemeralMessage"'; then
+  ok "native SessionStart returns session banner via injectSteps"
+else
+  bad "SessionStart banner failed" "output: $SS_OUT"
+fi
+
+# Test 3c2: a payload with no invocationNum must not produce a shell error.
+# The normaliser used to write a JSON null there, which reached bash as the
+# string "None" and tripped `[ "$inv_num" -eq 0 ]`.
+INV_ERR=$(printf '%s' "$SESSION_PAYLOAD" | (
+  cd "$PROJECT/nested/sub/dir"
+  env CLAUDE_PLUGIN_ROOT="$PLUGIN_ROOT" bash "$PLUGIN_ROOT/.agents/hooks/run.sh" pre-invocation 2>&1 >/dev/null
+))
+
+if echo "$INV_ERR" | grep -qi 'integer expression expected'; then
+  bad "PreInvocation errored on a payload without invocationNum" "stderr: $INV_ERR"
+else
+  ok "PreInvocation tolerates a payload with no invocationNum"
+fi
+
+# Test 3c3: PreInvocation still emits a well-formed injectSteps envelope.
 INV0_PAYLOAD=$("$PYTHON" -c "
 import json
 print(json.dumps({
@@ -135,10 +170,10 @@ INV_OUT=$(printf '%s' "$INV0_PAYLOAD" | (
   env CLAUDE_PLUGIN_ROOT="$PLUGIN_ROOT" bash "$PLUGIN_ROOT/.agents/hooks/run.sh" pre-invocation 2>/dev/null
 ))
 
-if echo "$INV_OUT" | grep -q '"ephemeralMessage"'; then
-  ok "PreInvocation synthesizes session banner via injectSteps"
+if echo "$INV_OUT" | "$PYTHON" -c "import json,sys; d=json.load(sys.stdin); sys.exit(0 if isinstance(d.get('injectSteps'), list) else 1)"; then
+  ok "PreInvocation emits a valid injectSteps envelope"
 else
-  bad "PreInvocation banner synthesis failed" "output: $INV_OUT"
+  bad "PreInvocation envelope malformed" "output: $INV_OUT"
 fi
 
 # Test 3d: Stop cleanly returns {}

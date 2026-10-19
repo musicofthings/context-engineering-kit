@@ -76,7 +76,7 @@ EVENTS: list[dict] = [
         "event": "SessionStart",
         "matcher": "",
         "chain": "session-start",
-        "runtimes": ["codex", "grok", "cursor", "opencode"],
+        "runtimes": ["codex", "grok", "cursor", "opencode", "antigravity"],
         "async": False,
         "cursor": {"adapter": "on-session-start.sh"},
     },
@@ -124,7 +124,7 @@ EVENTS: list[dict] = [
         "hook": "track-changes.sh",
         "runtimes": ["codex", "grok", "cursor", "opencode", "antigravity"],
         "cursor": {"adapter": "track-edit.sh"},
-        "antigravity": {"matcher": "write_to_file|replace_file_content"},
+        "antigravity": {"matcher": "write_to_file|replace_file_content|multi_replace_file_content"},
     },
     {
         "event": "PostToolUseFailure",
@@ -338,9 +338,11 @@ def build_antigravity() -> dict:
     """Antigravity CLI hooks.json format: {"cek": { PreToolUse: [...], ... }}.
 
     Tool events (PreToolUse, PostToolUse) use matcher wrappers: [{matcher, hooks: [{...}]}].
-    Invocation and Stop events use flat hook object lists: [{type, command, timeout}].
+    SessionStart, the invocation events and Stop ignore `matcher`, so they take the
+    flat hook object list form: [{type, command, timeout}].
     """
     prefix = RUNTIMES["antigravity"]["command_prefix"]
+    default_timeout = RUNTIMES["antigravity"]["timeout_default_sec"]
     cek_hooks: dict[str, list] = {}
 
     for entry in EVENTS:
@@ -349,7 +351,7 @@ def build_antigravity() -> dict:
         evt = entry["event"]
         emitted = native_event("antigravity", evt)
         cmd = f"{prefix}{entry['chain']}" if "chain" in entry else f"{prefix}hook {entry['hook']}"
-        hook_obj = {"type": "command", "command": cmd, "timeout": 30}
+        hook_obj = {"type": "command", "command": cmd, "timeout": default_timeout}
         if emitted in ("PreToolUse", "PostToolUse"):
             matcher = entry.get("antigravity", {}).get("matcher", entry.get("matcher", "*"))
             block = {"matcher": matcher, "hooks": [hook_obj]}
@@ -363,7 +365,7 @@ def build_antigravity() -> dict:
                 f"antigravity: ANTIGRAVITY_NATIVE declares {entry['native_event']}, which is "
                 f"not listed in config/runtime_events.json under runtimes.antigravity.native_extra"
             )
-        hook_obj = {"type": "command", "command": f"{prefix}{entry['action']}", "timeout": 30}
+        hook_obj = {"type": "command", "command": f"{prefix}{entry['action']}", "timeout": default_timeout}
         cek_hooks.setdefault(entry["native_event"], []).append(hook_obj)
 
     return {"cek": cek_hooks}
@@ -508,6 +510,80 @@ def validate_claude_manifest() -> list[str]:
     return problems
 
 
+# README's "N of M events" column is a hand-written claim about generated files.
+# It drifted: Cursor read "18 events" against 12 bound and 21 documented, and
+# opencode "25+ events" against 9 bound. Count N from the shipped config and
+# take M from the registry, then hold the README to both.
+README_PATH = ROOT / "README.md"
+
+# Which config actually carries each runtime's bindings, and where the event
+# keys live inside it.
+BOUND_EVENT_SOURCES: dict[str, tuple[str, tuple[str, ...]]] = {
+    "claude": ("hooks/hooks.json", ("hooks",)),
+    "cursor": (".cursor/hooks.json", ("hooks",)),
+    "codex": (".codex/hooks.json", ("hooks",)),
+    "grok": (".grok/hooks/cek-hooks.json", ("hooks",)),
+    "antigravity": (".agents/hooks.json", ("cek",)),
+    # opencode's bindings live in cek.ts, not a JSON manifest, so the registry's
+    # own mapping is the count: canonical events plus the native extras wired.
+    "opencode": (None, ()),
+}
+
+# The runtime labels as the README's tier table spells them.
+README_ROW_LABELS: dict[str, tuple[str, ...]] = {
+    "claude": ("Claude Code Desktop", "Claude Code CLI"),
+    "cursor": ("Cursor IDE",),
+    "grok": ("Grok Build",),
+    "codex": ("Codex",),
+    "opencode": ("opencode",),
+    "antigravity": ("Antigravity CLI / IDE",),
+}
+
+
+def bound_event_count(runtime: str) -> int:
+    rel, path_keys = BOUND_EVENT_SOURCES[runtime]
+    if rel is None:
+        entry = RUNTIMES[runtime]
+        return len(entry["events"]) + len(entry["native_extra"])
+    data = json.loads((ROOT / rel).read_text(encoding="utf-8"))
+    for key in path_keys:
+        data = data[key]
+    return len(data)
+
+
+def validate_readme_counts() -> list[str]:
+    problems: list[str] = []
+    if not README_PATH.exists():
+        return [f"missing {README_PATH.relative_to(ROOT)}"]
+    readme = README_PATH.read_text(encoding="utf-8")
+
+    for runtime, labels in README_ROW_LABELS.items():
+        bound = bound_event_count(runtime)
+        total = RUNTIMES[runtime]["documented_event_total"]
+        if bound > total:
+            problems.append(
+                f"{runtime}: binds {bound} events but the registry's "
+                f"documented_event_total is {total} — one of them is wrong "
+                f"({RUNTIMES[runtime]['source']})"
+            )
+        approx = "~" if RUNTIMES[runtime].get("_documented_event_total_note") else ""
+        expected = f"{bound} of {approx}{total} events"
+        for label in labels:
+            row = next(
+                (ln for ln in readme.splitlines() if ln.startswith(f"| **{label}**")),
+                None,
+            )
+            if row is None:
+                problems.append(f"README.md has no tier-table row for **{label}**")
+            elif expected not in row:
+                problems.append(
+                    f"README.md row **{label}** should read \"{expected}\" "
+                    f"(bound counted from {BOUND_EVENT_SOURCES[runtime][0] or 'the registry'}, "
+                    f"total from config/runtime_events.json)"
+                )
+    return problems
+
+
 def write_text(path: Path, text: str) -> str:
     path.parent.mkdir(parents=True, exist_ok=True)
     old = path.read_text(encoding="utf-8") if path.exists() else None
@@ -548,6 +624,10 @@ def main() -> int:
             print(f"{write_text(path, text)}: {rel}")
 
     for problem in validate_claude_manifest():
+        print(f"ERROR: {problem}")
+        status = 1
+
+    for problem in validate_readme_counts():
         print(f"ERROR: {problem}")
         status = 1
 

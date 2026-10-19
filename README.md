@@ -9,7 +9,7 @@ Works in **Claude Cowork**, **Claude Code Desktop**, **Claude Code CLI**, **Curs
 🌐 **[Landing page & full docs →](https://musicofthings.github.io/context-engineering-kit/)**  
 📦 **[Download plugin zip (v3.4.0) →](https://github.com/musicofthings/context-engineering-kit/releases/latest)** — for Cowork or Desktop Plugin upload  
 📐 **[Runtime capability matrix →](docs/runtime-capability-matrix.md)**  
-📝 **[Release notes (v3.4.0) →](docs/RELEASE_NOTES_3.4.0.md)** — `cek-mcp`, the universal floor · [v3.3.0](docs/RELEASE_NOTES_3.3.0.md) · [v3.2.0](docs/RELEASE_NOTES_3.2.0.md) · [v3.1.2](docs/RELEASE_NOTES_3.1.2.md) · [v3.1.1](docs/RELEASE_NOTES_3.1.1.md) · [v3.1.0](docs/RELEASE_NOTES_3.1.0.md) · [v3.0.1](docs/RELEASE_NOTES_3.0.1.md) · [v3.0.0](docs/RELEASE_NOTES_3.0.0.md)
+📝 **[Release notes (v4.0.1) →](docs/RELEASE_NOTES_4.0.1.md)** — every runtime claim re-verified · [v4.0.0](docs/RELEASE_NOTES_4.0.0.md) · [v3.6.0](docs/RELEASE_NOTES_3.6.0.md) · [v3.5.0](docs/RELEASE_NOTES_3.5.0.md) · [v3.4.0](docs/RELEASE_NOTES_3.4.0.md) · [v3.3.0](docs/RELEASE_NOTES_3.3.0.md) · [v3.2.0](docs/RELEASE_NOTES_3.2.0.md) · [v3.1.2](docs/RELEASE_NOTES_3.1.2.md) · [v3.1.1](docs/RELEASE_NOTES_3.1.1.md) · [v3.1.0](docs/RELEASE_NOTES_3.1.0.md) · [v3.0.1](docs/RELEASE_NOTES_3.0.1.md) · [v3.0.0](docs/RELEASE_NOTES_3.0.0.md)
 
 ---
 
@@ -172,16 +172,23 @@ The kit categorises agent runtimes into three distinct capability tiers based on
 | Runtime | Tier | How to Install | Skills / Commands | Lifecycle Hooks | Best For |
 |---------|:----:|----------------|-------------------|-----------------|----------|
 | **Claude Cowork** | Tier 3 | Upload zip ([Option A](#option-a--download-the-plugin-zip-cowork-or-desktop)) | `/context-engineering-kit:*` | Skills only (no shell) | Chat context |
-| **Claude Code Desktop** | Tier 1 | Upload zip ([Option A](#option-a--download-the-plugin-zip-cowork-or-desktop)) | `/context-engineering-kit:*` | ✅ Full (30+ events) | Always-on desktop |
-| **Claude Code CLI** | Tier 1 | Clone + `setup.sh` ([Option B](#option-b--claude-code-cli-installed-plugin-full-hooks)) | `/handover` etc. | ✅ Full (30+ events) | Terminal workflows |
-| **Cursor IDE** | Tier 1 | Open repo (`.cursor/`) ([Option D](#option-d--cursor-ide-project-hooks)) | Chat / scripts | ✅ Full adapter (18 events) | Cursor agents |
-| **Grok Build** | Tier 1 | Clone; `/hooks-trust` ([Option E](#option-e--grok-build)) | Skills if mirrored | ✅ `.grok/hooks` (14 events) | Grok TUI |
-| **Codex** | Tier 1 | Open repo (`.codex/`) ([Option F](#option-f--codex)) | `$handover` / `/skills` | ✅ `.codex/hooks` (12 events) | Codex CLI |
-| **opencode** | Tier 1 | Clone repo (`.opencode/`) ([Option G](#option-g--opencode)) | Injected in compaction | ✅ Full plugin (25+ events) | Open-source terminal |
-| **Antigravity CLI / IDE** | Tier 2 | `generate_runtime_hooks.py` ([Option I](#option-i--antigravity-cli--ide-agy)) | MCP tools / prose | ⚠️ Partial adapter (5 events) | Google Antigravity |
+| **Claude Code Desktop** | Tier 1 | Upload zip ([Option A](#option-a--download-the-plugin-zip-cowork-or-desktop)) | `/context-engineering-kit:*` | ✅ 29 of 33 events | Always-on desktop |
+| **Claude Code CLI** | Tier 1 | Clone + `setup.sh` ([Option B](#option-b--claude-code-cli-installed-plugin-full-hooks)) | `/handover` etc. | ✅ 29 of 33 events | Terminal workflows |
+| **Cursor IDE** | Tier 1 | Open repo (`.cursor/`) ([Option D](#option-d--cursor-ide-project-hooks)) | Chat / scripts | ✅ 12 of 21 events | Cursor agents |
+| **Grok Build** | Tier 1 | Clone; `/hooks-trust` ([Option E](#option-e--grok-build)) | Skills if mirrored | ✅ 14 of 14 events | Grok TUI |
+| **Codex** | Tier 1 | Open repo (`.codex/`) ([Option F](#option-f--codex)) | `$handover` / `/skills` | ✅ 12 of 12 events | Codex CLI |
+| **opencode** | Tier 1 | Clone repo (`.opencode/`) ([Option G](#option-g--opencode)) | Injected in compaction | ✅ 9 of ~25 events | Open-source terminal |
+| **Antigravity CLI / IDE** | Tier 2 | `generate_runtime_hooks.py` ([Option I](#option-i--antigravity-cli--ide-agy)) | MCP tools / prose | ⚠️ 5 of 6 events | Google Antigravity |
 | **Warp & MCP Clients** | Tier 3 | `cek_mcp.py` + rules ([Option H](#option-h--any-mcp-client-warp-cline-continue-goose-zed-)) | `cek-mcp:*` tools | ❌ None (Rules + MCP) | Warp terminal & IDEs |
 
 Full event support table: [`docs/runtime-capability-matrix.md`](docs/runtime-capability-matrix.md).
+
+> **Reading the Lifecycle Hooks column.** `N of M` means the kit binds N of the
+> M lifecycle events that runtime documents — not that the runtime has N. The
+> unbound ones are listed, with reasons, under *Deliberately unused* in the
+> capability matrix. `bash scripts/check_sync.sh` asserts every N against
+> the shipped hook configs, so these cannot drift silently. Only opencode's M
+> is approximate: it documents an event bus, not a fixed lifecycle set.
 
 > **Cowork vs. Claude Code:** the same zip works for both Cowork and Claude Code Desktop because the plugin format is identical. The difference is what runs — Cowork executes the **skills** (`/handover`, `/token-status`, etc.) but doesn't run the **hooks** (which need a shell environment). Claude Code runs both.
 
@@ -596,16 +603,21 @@ shared logic core.
 
 ### What Antigravity can do
 
-Five lifecycle events, verified against `antigravity.google/docs/hooks` on
-2026-09-17:
+Six lifecycle events, verified against `antigravity.google/docs/hooks` on
+2026-10-19. The kit binds five:
 
 | Event | Matcher target | Kit use |
 |---|---|---|
+| `SessionStart` | — (ignored) | `session-start` chain + morning brief |
 | `PreToolUse` | tool name | `guard-dangerous.sh` |
 | `PostToolUse` | tool name | `track-changes.sh` |
-| `PreInvocation` | — | session-start synthesis, usage sentinel |
-| `PostInvocation` | — | injection point for threshold notices |
-| `Stop` | — | end-of-turn state write |
+| `PreInvocation` | — (ignored) | usage sentinel (no `UserPromptSubmit` exists) |
+| `PostInvocation` | — (ignored) | **not wired** — `Stop` already covers end-of-turn |
+| `Stop` | — (ignored) | end-of-turn state write |
+
+Releases v3.5.0–v4.0.0 read this surface as five events and synthesized
+`SessionStart` on `PreInvocation` when `invocationNum == 0`. It is native; the
+chain binds to it directly as of v4.0.1.
 
 Config lives in `.agents/hooks.json` (workspace) or `~/.gemini/config/hooks.json`
 (global), and plugin bundles under `.agents/plugins/<name>/`. The bundle format

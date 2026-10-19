@@ -74,9 +74,21 @@ The re-verification did surface three things this document had wrong or missing:
 **Antigravity CLI (`agy`) support:** Google shut off Gemini CLI on **2026-06-18**
 with no grace period, replaced by Antigravity CLI (`agy`). Antigravity support
 is implemented in `.agents/hooks/run.sh` with `.agents/hooks.json` generated.
-Because Antigravity emits 5 events only (no session or compaction hooks),
-SessionStart is synthesized on `PreInvocation` (invocationNum=0), and compaction
-context preservation is handled on-demand via `cek-mcp`.
+Antigravity emits **six** events: `SessionStart`, `PreToolUse`, `PostToolUse`,
+`PreInvocation`, `PostInvocation`, `Stop`. There are no compaction events, so
+compaction context preservation is handled on-demand via `cek-mcp`.
+
+**Corrected 2026-10-19 — `SessionStart` is native.** v3.5.0 through v4.0.0 read
+this doc as a five-event surface and synthesized SessionStart on `PreInvocation`
+when `invocationNum == 0`. The event exists, fires once before the first model
+invocation, and returns `injectSteps` like `PreInvocation` does, so the
+`session-start` chain now binds to it directly. `PreInvocation` keeps the usage
+sentinel alone — Antigravity has no `UserPromptSubmit`, so that is the only
+pre-model point where the thresholds can be evaluated. The synthesis also hid a
+latent bug: the adapter's normaliser wrote a JSON `null` into `invocation_num`
+whenever the payload lacked `invocationNum`, which reached the shell as the
+string `"None"` and failed the numeric comparison, silently taking the
+non-session branch. The normaliser now omits absent keys instead.
 
 
 ---
@@ -89,7 +101,7 @@ context preservation is handled on-demand via `cek-mcp`.
 | Event | Claude Code | Cursor | Codex | Grok Build | opencode | Antigravity CLI | Kit hook / chain |
 |-------|:------:|:------:|:------:|:------:|:------:|:------:|------------------|
 | Setup | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | `native-event-log.sh` (Claude only) |
-| SessionStart | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | `session-start` chain + `compact-restore.sh` + `session-title.sh` |
+| SessionStart | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | `session-start` chain + `compact-restore.sh` + `session-title.sh` |
 | SessionEnd | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | `session-end.sh` |
 | UserPromptSubmit | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | `usage-sentinel.sh` |
 | UserPromptExpansion | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | `native-event-log.sh` (Claude only) |
@@ -102,6 +114,7 @@ context preservation is handled on-demand via `cek-mcp`.
 | Stop | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | `stop` chain |
 | StopFailure | ✅ | ❌ | ❌ | ✅ | ✅ | ❌ | `stop-failure.sh` |
 | Notification | ✅ | ❌ | ❌ | ✅ | ❌ | ❌ | `notify.sh` |
+| MessageDisplay | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | _not wired_ |
 | TaskCreated | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | `native-event-log.sh` (Claude only) |
 | TaskCompleted | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | `native-event-log.sh` (Claude only) |
 | TeammateIdle | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | `native-event-log.sh` (Claude only) |
@@ -111,6 +124,8 @@ context preservation is handled on-demand via `cek-mcp`.
 | PostCompact | ✅ | ❌ | ✅ | ✅ | ✅ | ❌ | `post-compact.sh` |
 | PreModelSwitch | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | `native-event-log.sh` (Claude only) |
 | PostModelSwitch | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | `native-event-log.sh` (Claude only) |
+| Elicitation | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | _not wired_ |
+| ElicitationResult | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | _not wired_ |
 | InstructionsLoaded | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | `instructions-loaded.sh` (Claude only) |
 | ConfigChange | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | `native-event-log.sh` (Claude only) |
 | CwdChanged | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | `native-event-log.sh` (Claude only) |
@@ -135,12 +150,12 @@ Antigravity-native events with no canonical equivalent, wired anyway:
 
 | Runtime | Source | Verified |
 |---|---|---|
-| Claude Code | https://code.claude.com/docs/en/hooks | 2026-09-17 |
-| Cursor | https://cursor.com/docs/hooks | 2026-09-17 |
-| Codex | https://learn.chatgpt.com/docs/hooks | 2026-09-17 |
-| Grok Build | https://docs.x.ai/build/features/hooks | 2026-09-17 |
-| opencode | https://opencode.ai/docs/plugins/ | 2026-09-17 |
-| Antigravity CLI | https://antigravity.google/docs/hooks/ | 2026-10-18 |
+| Claude Code | https://code.claude.com/docs/en/hooks | 2026-10-19 |
+| Cursor | https://cursor.com/docs/hooks | 2026-10-19 |
+| Codex | https://learn.chatgpt.com/docs/hooks | 2026-10-19 |
+| Grok Build | https://docs.x.ai/build/features/hooks | 2026-10-19 |
+| opencode | https://opencode.ai/docs/plugins/ | 2026-10-19 |
+| Antigravity CLI | https://antigravity.google/docs/hooks/ | 2026-10-19 |
 
 <!-- END GENERATED: event-support -->
 
@@ -179,6 +194,12 @@ table above:
 | `beforeReadFile` | `guard-read.sh` (`failClosed: true`) | Enforces the `.env` rule in `.claude/rules/security.md`. Claude Code gets this from `deny: Read(./.env)` in settings.json; Cursor has no equivalent config, so the rule was documentation only |
 | `preCompact` | `on-precompact.sh` | Supplies `context_usage_percent`, `context_tokens` and `context_window_size`. `pre-compact.sh` prefers that over its own estimate — snapshots used to be stamped `ctx=unknown%` on every runtime. The adapter returns the kit banner as `{"user_message": …}`, which Cursor shows when compaction fires; it used to go to stderr, where only the Hooks output channel saw it |
 
+**Cursor caps stop-hook reinvocation.** The per-script `loop_limit` field
+defaults to **5** for Cursor hooks (and `null`, meaning no limit, for Claude Code
+hooks), and applies to `stop` and `subagentStop`. The kit's `stop` chain writes
+state and returns; it does not ask Cursor to continue, so the cap is never
+reached. It would bind on any future handler that returns a continue decision.
+
 Cursor's `sessionStart` also accepts a JSON response with `additional_context`,
 which is added to the conversation's initial system context. The adapter returns
 the kit banner that way, so Cursor sessions start with the same handover state
@@ -189,8 +210,9 @@ required.
 duplicate coverage the kit already gets from `beforeShellExecution` and
 `afterFileEdit`; `beforeMCPExecution` and `afterShellExecution` are governance
 surfaces this kit has no policy for; `workspaceOpen` fires outside any session,
-where there is no session state to maintain; the Tab hooks cover inline
-completions, which never touch context state. On Claude Code: `MessageDisplay`
+where there is no session state to maintain; `afterAgentThought` fires per
+reasoning step, far below the granularity any handover needs; the Tab hooks
+cover inline completions, which never touch context state. On Claude Code: `MessageDisplay`
 (10s budget on a per-message event), `Elicitation` / `ElicitationResult` (MCP
 input, not context), and `WorktreeCreate` (see below). Wiring any of these would
 add per-event cost for no handover benefit.

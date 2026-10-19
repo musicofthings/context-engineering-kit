@@ -37,7 +37,11 @@ native hook adapter support for Antigravity in `.agents/hooks/run.sh` with
    - Runs `usage-sentinel.sh` on subsequent turns, surfacing usage alerts via `injectSteps`.
 
 4. **Honest capability disclosure & limitations:**
-   - Antigravity emits 5 events only; it has **no native session start/end or compaction events**.
+   - ~~Antigravity emits 5 events only; it has **no native session start/end or compaction events**.~~
+     **Erratum (v4.0.1, 2026-10-19):** Antigravity emits **six** events and `SessionStart` is
+     native. The synthesis described above was a workaround for a misreading of
+     `antigravity.google/docs/hooks`; the chain binds the real event as of v4.0.1. The absence
+     of session **end** and compaction events still holds.
    - Compaction context preservation is not triggerable via hooks on Antigravity; on-demand
      compaction handover recovery is handled via `cek-mcp` (`handover_write` / `handover_read`).
 

@@ -1,5 +1,12 @@
 {
   "cek": {
+    "SessionStart": [
+      {
+        "type": "command",
+        "command": "bash .agents/hooks/run.sh session-start",
+        "timeout": 30
+      }
+    ],
     "PreToolUse": [
       {
         "matcher": "run_command",
@@ -14,7 +21,7 @@
     ],
     "PostToolUse": [
       {
-        "matcher": "write_to_file|replace_file_content",
+        "matcher": "write_to_file|replace_file_content|multi_replace_file_content",
         "hooks": [
           {
             "type": "command",

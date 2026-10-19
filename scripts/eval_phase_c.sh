@@ -405,10 +405,15 @@ if cek_runtime_supports PreToolUse && cek_runtime_supports PostToolUse && cek_ru
 else
   fail "antigravity should support PreToolUse, PostToolUse, Stop"
 fi
-if ! cek_runtime_supports SessionStart && ! cek_runtime_supports PreCompact; then
-  pass "antigravity correctly reports no native SessionStart or PreCompact"
+if cek_runtime_supports SessionStart; then
+  pass "antigravity reports native SessionStart"
 else
-  fail "antigravity should not claim native SessionStart or PreCompact"
+  fail "antigravity should report native SessionStart (antigravity.google/docs/hooks)"
+fi
+if ! cek_runtime_supports PreCompact && ! cek_runtime_supports PostCompact; then
+  pass "antigravity correctly reports no compaction events"
+else
+  fail "antigravity should not claim compaction events"
 fi
 
 AGY_SB=$(mktemp -d "${TMPDIR:-/tmp}/cek-agy.XXXXXX")
@@ -452,7 +457,34 @@ else
   fail "antigravity PreToolUse failed to allow: $AGY_ALLOW"
 fi
 
-# PreInvocation synthesizes session banner when invocationNum == 0
+# Native SessionStart carries the banner. Its payload has no invocationNum.
+AGY_SS=$(python3 -c "
+import json
+print(json.dumps({
+  'conversationId': 'eval-conv',
+  'workspacePaths': ['$AGY_SB'],
+  'modelName': 'gemini-3.6-flash-medium'
+}))")
+AGY_SS_OUT=$(printf '%s' "$AGY_SS" | env CLAUDE_PROJECT_DIR="$AGY_SB" CLAUDE_PLUGIN_ROOT="$ROOT" \
+  bash .agents/hooks/run.sh session-start 2>/dev/null)
+if echo "$AGY_SS_OUT" | grep -q '"ephemeralMessage"'; then
+  pass "antigravity SessionStart injects the session banner"
+else
+  fail "antigravity SessionStart banner failed: $AGY_SS_OUT"
+fi
+
+# A payload without invocationNum must not trip the shell. The normaliser used
+# to write a JSON null there, which arrived as the string "None".
+AGY_INV_ERR=$(printf '%s' "$AGY_SS" | env CLAUDE_PROJECT_DIR="$AGY_SB" CLAUDE_PLUGIN_ROOT="$ROOT" \
+  bash .agents/hooks/run.sh pre-invocation 2>&1 >/dev/null)
+if echo "$AGY_INV_ERR" | grep -qi 'integer expression expected'; then
+  fail "antigravity PreInvocation errored without invocationNum: $AGY_INV_ERR"
+else
+  pass "antigravity PreInvocation tolerates a missing invocationNum"
+fi
+
+# PreInvocation runs the usage sentinel, which is silent below the thresholds,
+# so assert the envelope is well formed rather than that it carries a message.
 AGY_INV0=$(python3 -c "
 import json
 print(json.dumps({
@@ -462,10 +494,10 @@ print(json.dumps({
 }))")
 AGY_INV_OUT=$(printf '%s' "$AGY_INV0" | env CLAUDE_PROJECT_DIR="$AGY_SB" CLAUDE_PLUGIN_ROOT="$ROOT" \
   bash .agents/hooks/run.sh pre-invocation 2>/dev/null)
-if echo "$AGY_INV_OUT" | grep -q '"ephemeralMessage"'; then
-  pass "antigravity PreInvocation invocationNum=0 synthesizes banner"
+if echo "$AGY_INV_OUT" | python3 -c "import json,sys; d=json.load(sys.stdin); sys.exit(0 if isinstance(d.get('injectSteps'), list) else 1)"; then
+  pass "antigravity PreInvocation emits a valid injectSteps envelope"
 else
-  fail "antigravity PreInvocation banner failed: $AGY_INV_OUT"
+  fail "antigravity PreInvocation envelope malformed: $AGY_INV_OUT"
 fi
 
 # Stop outputs {}

@@ -3,15 +3,20 @@
 # Portable entrypoint: no machine-absolute paths. Sets CEK_RUNTIME=antigravity
 # and dispatches to the single logic core under .claude/hooks/.
 #
-# Antigravity emits 5 events only: PreToolUse, PostToolUse, PreInvocation,
-# PostInvocation, Stop. It omits session/compaction events and passes camelCase
-# payloads with nested PascalCase tool arguments.
+# Antigravity emits 6 events: SessionStart, PreToolUse, PostToolUse,
+# PreInvocation, PostInvocation, Stop. It has no compaction events, and passes
+# camelCase payloads with nested PascalCase tool arguments.
+#
+# SessionStart is native and fires once before the first model invocation, so the
+# session-start chain binds to it directly. PreInvocation carries the usage
+# sentinel on every invocation, including the first.
 #
 # Handlers return JSON contracts on stdout:
-# - PreToolUse: {"decision": "allow" | "deny", "reason": "..."}
-# - PostToolUse: {}
+# - SessionStart:  {"injectSteps": [{"ephemeralMessage": "..."}]}
+# - PreToolUse:    {"decision": "allow" | "deny", "reason": "..."}
+# - PostToolUse:   {}
 # - PreInvocation: {"injectSteps": [{"ephemeralMessage": "..."}]}
-# - Stop: {}
+# - Stop:          {}
 set -uo pipefail
 
 CEK_ADAPTER_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -70,21 +75,30 @@ for k, v in args.items():
         tool_input[k] = v
 
 norm = dict(data)
-norm["session_id"] = data.get("conversationId") or data.get("session_id")
-norm["conversation_id"] = norm["session_id"]
+
+
+def put(key, value):
+    """Set key only when there is a value. A null here would shadow every
+    downstream `.get(key, default)` and reach the shell as the string "None"."""
+    if value is not None:
+        norm[key] = value
+
+
+put("session_id", data.get("conversationId") or data.get("session_id"))
+put("conversation_id", norm.get("session_id"))
 ws = data.get("workspacePaths", [])
 if ws and isinstance(ws, list) and len(ws) > 0:
-    norm["cwd"] = ws[0]
-    norm["workspace_root"] = ws[0]
-norm["transcript_path"] = data.get("transcriptPath") or data.get("transcript_path")
-norm["artifact_dir"] = data.get("artifactDirectoryPath") or data.get("artifact_dir")
-norm["tool_name"] = tool_name
+    put("cwd", ws[0])
+    put("workspace_root", ws[0])
+put("transcript_path", data.get("transcriptPath") or data.get("transcript_path"))
+put("artifact_dir", data.get("artifactDirectoryPath") or data.get("artifact_dir"))
+put("tool_name", tool_name)
 norm["tool_input"] = tool_input
-norm["file_path"] = tool_input.get("file_path") or data.get("filePath")
-norm["invocation_num"] = data.get("invocationNum", data.get("invocation_num"))
-norm["step_idx"] = data.get("stepIdx", data.get("step_idx"))
-norm["fully_idle"] = data.get("fullyIdle", data.get("fully_idle"))
-norm["stop_reason"] = data.get("terminationReason", data.get("stop_reason"))
+put("file_path", tool_input.get("file_path") or data.get("filePath"))
+put("invocation_num", data.get("invocationNum", data.get("invocation_num")))
+put("step_idx", data.get("stepIdx", data.get("step_idx")))
+put("fully_idle", data.get("fullyIdle", data.get("fully_idle")))
+put("stop_reason", data.get("terminationReason", data.get("stop_reason")))
 
 print(json.dumps(norm))
 ' <<< "$RAW_INPUT" 2>/dev/null || printf '%s' "$RAW_INPUT"
@@ -100,18 +114,8 @@ fi
 
 # ── Handlers ─────────────────────────────────────────────────────────────────
 
-# PreInvocation: synthesize SessionStart when invocationNum == 0,
-# or run usage-sentinel on subsequent turns. Inject output via injectSteps.
-handle_pre_invocation() {
-  local inv_num banner=""
-  inv_num=$("$PYTHON" -c "import json,sys; print(json.loads(sys.argv[1]).get('invocation_num', 0))" "$NORM_INPUT" 2>/dev/null || echo "0")
-  if [ "$inv_num" -eq 0 ]; then
-    banner=$(printf '%s' "$NORM_INPUT" | cek_run_hook session-start.sh 2>&1 || true)
-    cek_run_hook morning-brief-auto.sh </dev/null >/dev/null 2>&1 || true
-  else
-    banner=$(printf '%s' "$NORM_INPUT" | cek_run_hook usage-sentinel.sh 2>&1 || true)
-  fi
-
+# Emit an injectSteps envelope, the only way Antigravity accepts context.
+emit_inject_steps() {
   "$PYTHON" -c '
 import json, sys
 msg = sys.argv[1].strip()
@@ -119,7 +123,25 @@ if msg:
     print(json.dumps({"injectSteps": [{"ephemeralMessage": msg}]}))
 else:
     print(json.dumps({"injectSteps": []}))
-' "$banner"
+' "$1"
+}
+
+# SessionStart: native, fires once before the first model invocation. Runs the
+# session-start chain and injects its banner.
+handle_session_start() {
+  local banner=""
+  banner=$(printf '%s' "$NORM_INPUT" | cek_run_hook session-start.sh 2>&1 || true)
+  cek_run_hook morning-brief-auto.sh </dev/null >/dev/null 2>&1 || true
+  emit_inject_steps "$banner"
+}
+
+# PreInvocation: usage sentinel, every invocation. Antigravity has no
+# UserPromptSubmit, so this is the only place the thresholds get evaluated
+# before the model is called.
+handle_pre_invocation() {
+  local banner=""
+  banner=$(printf '%s' "$NORM_INPUT" | cek_run_hook usage-sentinel.sh 2>&1 || true)
+  emit_inject_steps "$banner"
 }
 
 # Stop: extract state, record tokens, run stop chain. Allow stop.
@@ -163,6 +185,9 @@ handle_post_tool_use() {
 }
 
 case "$ACTION" in
+  session-start)
+    handle_session_start
+    ;;
   pre-invocation)
     handle_pre_invocation
     ;;
