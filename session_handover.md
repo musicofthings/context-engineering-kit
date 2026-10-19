@@ -1,5 +1,5 @@
 # Session Handover
-_Generated: 2026-10-19T16:33:48Z_
+_Generated: 2026-10-19T16:33:49Z_
 _Branch: main_
 _Trigger: session-end | Context at compact: unknown%_
 _Compact count this project: 0_
@@ -20,9 +20,11 @@ v4.0 universal runtime support — Phase 4 (cek-mcp universal floor) shipped as 
 
 ---
 
+---
+
 ## 🔄 In Progress (Exact Resume Point)
 **Branch:** `main`
-**Last commit:** `b802ba4 fix: re-verify every runtime claim against its live doc (v4.0.1)`
+**Last commit:** `a88d8e7 chore(context): save session state — v4.0 universal runtime support — Phase 4 (cek-mcp universal floor) shipped as v3.4.0 [2026-10-19T16:33:48Z]`
 **Next immediate action:** Decide: Phase 5 Warp (AGENTS.md generator, small — cek-mcp already reaches Warp) or Phase 3 Antigravity adapter (larger, partial parity, closed source)
 
 ---
@@ -42,7 +44,11 @@ v4.0 universal runtime support — Phase 4 (cek-mcp universal floor) shipped as 
 
 ---
 
+---
+
 ## 🏗 Architecture Decisions Made
+| Decision | Rationale | Date |
+|----------|-----------|------|
 | Decision | Rationale | Date |
 |----------|-----------|------|
 | Decision | Rationale | Date |
@@ -58,6 +64,8 @@ v4.0 universal runtime support — Phase 4 (cek-mcp universal floor) shipped as 
 | `hooks/hooks.json` is the single hook source; drop settings.json hooks | Both declare all 16 events at the same scripts and Claude Code does not dedupe across plugin/project scope | 2026-08-30 (planned) |
 | SessionEnd work moves to `Stop` `async: true` | A plugin cannot raise its own 1.5s SessionEnd budget; this is not fixable with a bigger timeout | 2026-08-30 (planned) |
 | No `agent`-type hooks | Documented experimental; inappropriate for a distributed plugin | 2026-08-30 (planned) |
+
+---
 
 ---
 
@@ -122,17 +130,17 @@ bash scripts/session_sync.sh --load
 ## 🌿 Git Context
 ```
 Branch  : main
-Commit  : b802ba4 fix: re-verify every runtime claim against its live doc (v4.0.1)
+Commit  : a88d8e7 chore(context): save session state — v4.0 universal runtime support — Phase 4 (cek-mcp universal floor) shipped as v3.4.0 [2026-10-19T16:33:48Z]
 Status  : ?? session_handover.md.lock
 ```
 
 Recent commits:
 ```
+a88d8e7 chore(context): save session state — v4.0 universal runtime support — Phase 4 (cek-mcp universal floor) shipped as v3.4.0 [2026-10-19T16:33:48Z]
 b802ba4 fix: re-verify every runtime claim against its live doc (v4.0.1)
 46cc9c7 feat: Phase 6 — v4.0.0 universal runtime release
 542ac23 feat: Phase 5 — Warp AGENTS.md rules generator (v3.6.0)
 03954df feat: Phase 3 — Antigravity CLI / IDE adapter (v3.5.0)
-efa0970 chore(context): save session state — v4.0 universal runtime support — Phase 4 (cek-mcp universal floor) shipped as v3.4.0 [2026-09-17T19:05:59Z]
 ```
 
 ---
@@ -144,6 +152,8 @@ efa0970 chore(context): save session state — v4.0 universal runtime support �
 - **Do not trust WebFetch for Claude Code hook field names** — it truncates and the summariser fabricates. Use the extracted PDF text.
 - Verify subagent findings against the source before acting; two agents contradicted each other on `FileChanged` and one was wrong
 - `state.json` is gitignored by design — do not re-add it to any `git add` list
+
+---
 
 ---
 
