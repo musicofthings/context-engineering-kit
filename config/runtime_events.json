@@ -181,9 +181,9 @@
     "opencode": {
       "display_name": "opencode",
       "source": "https://opencode.ai/docs/plugins/",
-      "documented_event_total": 28,
-      "_documented_event_total_basis": "28 = the 27 bus events listed under 'Events' on the plugins page, plus `experimental.session.compacting`, which that page documents only as a hook signature in its 'Compaction hooks' example and never lists as an event. Both surfaces count: the kit binds from both.",
-      "verified": "2026-10-19",
+      "documented_event_total": 29,
+      "_documented_event_total_basis": "29 = the 28 bus events listed under 'Events' on the plugins page, plus `experimental.session.compacting`, which that page documents only as a hook signature in its 'Compaction hooks' example and never lists as an event. Both surfaces count: the kit binds from both. The 28th bus event, `todo.updated`, appeared under a new 'Todo Events' heading after the 2026-10-19 pass and is declined.",
+      "verified": "2026-10-25",
       "payload_case": "n/a \u2014 the adapter constructs Claude-shaped snake_case JSON in cek.ts",
       "supports_async": false,
       "generated_config": null,
@@ -225,6 +225,7 @@
         "session.status",
         "session.updated",
         "shell.env",
+        "todo.updated",
         "tui.prompt.append",
         "tui.command.execute",
         "tui.toast.show"

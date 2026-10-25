@@ -210,7 +210,7 @@ Antigravity-native events with no canonical equivalent, wired anyway:
 | Cursor | https://cursor.com/docs/hooks | 2026-10-19 |
 | Codex | https://learn.chatgpt.com/docs/hooks | 2026-10-19 |
 | Grok Build | https://docs.x.ai/build/features/hooks | 2026-10-19 |
-| opencode | https://opencode.ai/docs/plugins/ | 2026-10-19 |
+| opencode | https://opencode.ai/docs/plugins/ | 2026-10-25 |
 | Antigravity CLI | https://antigravity.google/docs/hooks/ | 2026-10-19 |
 
 <!-- END GENERATED: event-support -->
@@ -275,7 +275,10 @@ where there is no session state to maintain; `afterAgentThought` fires per
 reasoning step, far below the granularity any handover needs; the Tab hooks
 cover inline completions, which never touch context state. On Claude Code: `MessageDisplay`
 (10s budget on a per-message event), `Elicitation` / `ElicitationResult` (MCP
-input, not context), and `WorktreeCreate` (see below). Wiring any of these would
+input, not context), and `WorktreeCreate` (see below). On opencode: the bus
+carries a `todo.updated` event, added under a new "Todo Events" heading after
+the 2026-10-19 pass, which reports the agent's own task list rather than any
+session or context state the handover records. Wiring any of these would
 add per-event cost for no handover benefit.
 
 ### Why `WorktreeCreate` is not wired

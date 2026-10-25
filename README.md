@@ -194,7 +194,7 @@ The kit categorises agent runtimes into three distinct capability tiers based on
 | **Cursor IDE** | Tier 1 | Open repo (`.cursor/`) ([Option D](#option-d--cursor-ide-project-hooks)) | Chat / scripts | ✅ 12 of 21 events | Cursor agents |
 | **Grok Build** | Tier 1 | Clone; `/hooks-trust` ([Option E](#option-e--grok-build)) | Skills if mirrored | ✅ 14 of 14 events | Grok TUI |
 | **Codex** | Tier 1 | Open repo (`.codex/`) ([Option F](#option-f--codex)) | `$handover` / `/skills` | ✅ 12 of 12 events | Codex CLI |
-| **opencode** | Tier 1 | Clone repo (`.opencode/`) ([Option G](#option-g--opencode)) | Injected in compaction | ✅ 9 of 28 events | Open-source terminal |
+| **opencode** | Tier 1 | Clone repo (`.opencode/`) ([Option G](#option-g--opencode)) | Injected in compaction | ✅ 9 of 29 events | Open-source terminal |
 | **Antigravity CLI / IDE** | Tier 2 | `generate_runtime_hooks.py` ([Option I](#option-i--antigravity-cli--ide-agy)) | MCP tools / prose | ⚠️ 5 of 6 events | Google Antigravity |
 | **Warp & MCP Clients** | Tier 3 | `cek_mcp.py` + rules ([Option H](#option-h--any-mcp-client-warp-cline-continue-goose-zed-)) | `cek-mcp:*` tools | ❌ None (Rules + MCP) | Warp terminal & IDEs |
 
