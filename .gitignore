@@ -52,10 +52,14 @@ desktop.ini
 .idea/
 *.swp
 
-# API docs — a local `scripts/fetch_api_docs.py` run writes this file but it
-# stays invisible to git (expected, not a bug). It is committed ONLY by the
-# sync-api-docs CI workflow, which force-adds it (git add -f) on a bot PR branch.
-api_docs.md
+# API docs — `api_docs.md` at the repo root is TRACKED, and the sync-api-docs
+# workflow is the only thing that writes it. It is deliberately NOT listed here:
+# it used to be, which did nothing at all, because .gitignore has no effect on a
+# path git already tracks. The entry claimed the file "stays invisible to git"
+# while every stale session rewrote it in place, so sessions opened with a dirty
+# tree — the perpetually-dirty tree the state.json note above designs against.
+# The machine-local refresh now writes .claude/session/api_docs.md, which that
+# directory's own `*` .gitignore already covers.
 
 # Daily morning briefs (generated locally, not committed)
 briefs/

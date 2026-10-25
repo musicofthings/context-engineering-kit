@@ -1016,16 +1016,25 @@ Set in Claude Code settings under `"env"`, or export in your shell:
 | `.claude/session/state.json.lock` / `.lockd` | Concurrency locks for `state_write()` | No (gitignored) |
 | `session_handover.md` | Structured task handover (human-readable) | Yes |
 | `CLAUDE.md` | Living project context document | Yes |
-| `api_docs.md` | Weekly API-doc snapshot from `fetch_api_docs.py` | No (gitignored) |
+| `api_docs.md` | Shared API-doc snapshot, written by the `sync-api-docs` workflow | Yes (CI only) |
+| `.claude/session/api_docs.md` | Machine-local refresh from the session-start sentinel | No |
 
 > In a git **worktree**, these files resolve to the **main checkout** by
 > default (`state.scope: auto`) so they survive the worktree being removed.
 
-> **`api_docs.md` is gitignored on purpose.** Running `scripts/fetch_api_docs.py`
-> locally produces a file that `git status` will not show — this is expected, not
-> a bug. The file is committed **only** by the `sync-api-docs` CI workflow, which
-> force-adds it (`git add -f`) onto a bot-authored PR branch for review. Don't try
-> to commit a locally generated copy.
+> **The API-doc snapshot has two copies, and only one is yours to commit.**
+> `api_docs.md` at the repo root is tracked and written **only** by the
+> `sync-api-docs` workflow, which opens a bot-authored PR for review; it is the
+> shared fallback a fresh clone starts from. The session-start sentinel refreshes
+> `.claude/session/api_docs.md` instead, which is machine-local and invisible to
+> git. So `scripts/fetch_api_docs.py` writes the local copy by default and needs
+> an explicit `--out api_docs.md` to touch the tracked one. Don't commit a
+> locally generated snapshot.
+>
+> Before this split, the root file was *both* tracked *and* listed in
+> `.gitignore`, which does nothing — git ignores nothing about a path it already
+> tracks. Every stale session rewrote the tracked file in place, so sessions
+> opened with a dirty tree while the docs claimed the file was invisible.
 
 ---
 

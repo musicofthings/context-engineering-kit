@@ -22,7 +22,10 @@ jobs:
           python-version: '3.11'
 
       - name: Fetch API documentation
-        run: python scripts/fetch_api_docs.py
+        # --out is required: the script defaults to the machine-local
+        # .claude/session/ copy, so that a stray local run cannot touch the
+        # tracked snapshot. This workflow is the one writer of that snapshot.
+        run: python scripts/fetch_api_docs.py --out api_docs.md
         env:
           CLAUDE_PROJECT_DIR: ${{ github.workspace }}
 
@@ -82,7 +85,9 @@ jobs:
           # branch/PR instead of accumulating dated branches.
           BRANCH="chore/api-docs-refresh"
           git checkout -b "$BRANCH"
-          git add -f api_docs.md
+          # Plain `git add`: api_docs.md is tracked and no longer carries a
+          # (no-op) .gitignore entry, so there is nothing to force past.
+          git add api_docs.md
           # -I: ignore the volatile header lines (fetch timestamp, runner
           # path) so a refresh with identical doc content is a no-op instead
           # of a weekly timestamp-only PR.

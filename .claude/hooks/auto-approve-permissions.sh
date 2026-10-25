@@ -103,11 +103,13 @@ if [[ "$TOOL_NAME" == "Write" || "$TOOL_NAME" == "Edit" || "$TOOL_NAME" == "Mult
   # wider than this hook's stated purpose ("files the kit itself writes") and
   # this hook ships to every project the plugin is installed in. Dropping them
   # only restores the normal permission prompt — nothing breaks.
+  # api_docs.md left for the same reason: the kit writes the machine-local
+  # .claude/session/api_docs.md (already covered by the rule below), never the
+  # tracked snapshot at the repo root, which belongs to the CI workflow.
   APPROVED_PATHS=(
     "session_handover.md"
     "CLAUDE.md"
     "AGENTS.md"
-    "api_docs.md"
     ".claude/session/state.json"
     ".claude/session/history.jsonl"
     ".claude/session/turn-ledger.jsonl"

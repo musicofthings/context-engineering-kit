@@ -310,6 +310,31 @@ MODE1=$(stat -f '%Lp' "$STATE" 2>/dev/null || stat -c '%a' "$STATE" 2>/dev/null)
 printf '%s' "{$BASE,\"hook_event_name\":\"Stop\"}" | python3 "$KIT/scripts/usage-tracker.py" >/dev/null 2>&1
 MODE2=$(stat -f '%Lp' "$STATE" 2>/dev/null || stat -c '%a' "$STATE" 2>/dev/null)
 [ "$MODE1" = "$MODE2" ] && ok "state.json mode stable across writers ($MODE1)" || bad "state.json mode" "$MODE1 -> $MODE2"
+# A local docs refresh must never target the TRACKED api_docs.md at the repo
+# root: that file belongs to the sync-api-docs workflow, and .gitignore cannot
+# shield a path git already tracks, so a default-path regression puts every
+# stale session back to opening with a dirty tree. Offline on purpose — this
+# asserts the destination, not the fetch.
+# Compared relative to PROJECT_DIR: $SANDBOX carries TMPDIR's trailing slash,
+# so it holds a `//` that pathlib normalises away — an absolute-string compare
+# fails on macOS for that reason alone.
+DEFOUT=$(CLAUDE_PROJECT_DIR="$SANDBOX" python3 -I -c "
+import sys; sys.path.insert(0, '$KIT/scripts')
+import fetch_api_docs as f
+print(f.resolve_out(None).relative_to(f.PROJECT_DIR).as_posix())
+" 2>/dev/null)
+[ "$DEFOUT" = ".claude/session/api_docs.md" ] \
+  && ok "docs refresh defaults to the machine-local copy" \
+  || bad "docs refresh default destination" "got '$DEFOUT'"
+# ...and the workflow's explicit --out still reaches the tracked snapshot.
+CIOUT=$(CLAUDE_PROJECT_DIR="$SANDBOX" python3 -I -c "
+import sys; sys.path.insert(0, '$KIT/scripts')
+import fetch_api_docs as f
+print(f.resolve_out('api_docs.md').relative_to(f.PROJECT_DIR).as_posix())
+" 2>/dev/null)
+[ "$CIOUT" = "api_docs.md" ] \
+  && ok "--out api_docs.md resolves against PROJECT_DIR" \
+  || bad "--out resolution" "got '$CIOUT'"
 
 # ── Containment ──────────────────────────────────────────────────────────────
 head_ "Containment (spillover guard)"

@@ -187,10 +187,18 @@ else
 fi
 
 # ── Docs freshness sentinel ───────────────────────────────────────────────────
-# Keep api_docs.md current so the model never codes against outdated API
+# Keep the docs snapshot current so the model never codes against outdated API
 # syntax. Missing or older than refresh_ttl_hours → re-fetch in the background.
 # Never blocks session start; a failed fetch leaves the previous file in place
 # (fetch_api_docs.py refuses to write HTML or all-failed output).
+#
+# The refresh lands in $STATE_DIR, never on the tracked api_docs.md at the repo
+# root: that snapshot belongs to the sync-api-docs workflow. A local refresh
+# used to modify the tracked file on every stale session, which `.gitignore`
+# cannot suppress on an already-tracked path — every session opened with a
+# dirty tree. --out is passed explicitly because STATE_DIR resolves to the MAIN
+# checkout inside a worktree, while the fetcher's own default is relative to
+# PROJECT_DIR; passing it keeps the freshness check and the write in one place.
 DOCS_STATUS="not configured (no config/api_sources.json)"
 DOCS_CFG="$PROJECT_DIR/config/api_sources.json"
 [ -f "$DOCS_CFG" ] || DOCS_CFG="${CLAUDE_PLUGIN_ROOT:-$PROJECT_DIR}/config/api_sources.json"
@@ -198,14 +206,15 @@ DOCS_FETCHER="${CLAUDE_PLUGIN_ROOT:-$PROJECT_DIR}/scripts/fetch_api_docs.py"
 if [ -f "$DOCS_CFG" ] && [ -f "$DOCS_FETCHER" ]; then
   DOCS_TTL=$(jq -r '.refresh_ttl_hours // 24' "$DOCS_CFG" 2>/dev/null || echo 24)
   case "$DOCS_TTL" in ''|*[!0-9]*) DOCS_TTL=24 ;; esac
-  DOCS_FILE="$PROJECT_DIR/api_docs.md"
+  DOCS_FILE="$STATE_DIR/api_docs.md"
   if [ ! -f "$DOCS_FILE" ] || [ -n "$(find "$DOCS_FILE" -mmin +"$(( DOCS_TTL * 60 ))" 2>/dev/null)" ]; then
     # $PYTHON resolved once at top of this script via find_python.sh
     if [ -n "${PYTHON:-}" ] && command -v "$PYTHON" >/dev/null 2>&1 \
          && { ! declare -f cek_state_ok >/dev/null 2>&1 || cek_state_ok; }; then
       ( CLAUDE_PROJECT_DIR="$PROJECT_DIR" \
         CLAUDE_PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$PROJECT_DIR}" \
-        nohup "$PYTHON" "$DOCS_FETCHER" >> "$STATE_DIR/docs-refresh.log" 2>&1 & ) 2>/dev/null
+        nohup "$PYTHON" "$DOCS_FETCHER" --out "$DOCS_FILE" \
+          >> "$STATE_DIR/docs-refresh.log" 2>&1 & ) 2>/dev/null
       DOCS_STATUS="stale (>${DOCS_TTL}h) — background refresh started"
     else
       DOCS_STATUS="stale — no Python 3 on PATH, refresh skipped"

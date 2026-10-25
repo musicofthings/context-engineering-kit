@@ -1,11 +1,25 @@
 #!/usr/bin/env python3
 """
 fetch_api_docs.py
-Weekly GitHub Actions script: fetches latest API docs from configured sources
-and writes them to api_docs.md for injection into Claude's context.
+Fetches the latest API docs from configured sources and writes them as one
+markdown file for injection into Claude's context.
+
+Two destinations, deliberately distinct (see the api_docs.md note in README):
+
+  default      .claude/session/api_docs.md — the machine-local copy the
+               session-start sentinel refreshes. That directory carries its own
+               `*` .gitignore, so a local refresh can never dirty the tree.
+  --out PATH   an explicit destination. The sync-api-docs workflow passes
+               `--out api_docs.md` to refresh the tracked snapshot at the repo
+               root, which is the shared fallback for a fresh clone and is
+               maintained by CI alone.
+
+Defaulting to the local path means a stray manual run cannot leave the tracked
+snapshot modified — the failure this split exists to prevent.
 """
 from __future__ import annotations
 
+import argparse
 import json
 import os
 import sys
@@ -25,7 +39,7 @@ PLUGIN_ROOT = Path(os.environ.get("CLAUDE_PLUGIN_ROOT", str(PROJECT_DIR)))
 _candidates = [PROJECT_DIR / "config" / "api_sources.json",
                PLUGIN_ROOT / "config" / "api_sources.json"]
 CONFIG_FILE = next((p for p in _candidates if p.exists()), _candidates[0])
-OUTPUT_FILE = PROJECT_DIR / "api_docs.md"
+DEFAULT_OUTPUT_FILE = PROJECT_DIR / ".claude" / "session" / "api_docs.md"
 TIMEOUT = 15
 MAX_FETCH_CHARS = 120_000
 MAX_SECTION_CHARS = 6_000
@@ -191,7 +205,25 @@ def extract_sections(content: str, sections: list[str]) -> str:
     return "\n".join(result) if result else content[:MAX_SECTION_CHARS]
 
 
-def main():
+def resolve_out(raw: str | None) -> Path:
+    """Where to write. A relative --out resolves against PROJECT_DIR, not the
+    process cwd: the workflow passes `--out api_docs.md` and the hook runs this
+    from wherever the session happens to be."""
+    if not raw:
+        return DEFAULT_OUTPUT_FILE
+    candidate = Path(raw)
+    return candidate if candidate.is_absolute() else PROJECT_DIR / candidate
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(description=__doc__,
+                                     formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("--out", metavar="PATH", default=None,
+                        help="destination file (default: .claude/session/api_docs.md, "
+                             "machine-local; CI passes --out api_docs.md)")
+    args = parser.parse_args(argv)
+    out_file = resolve_out(args.out)
+
     if not CONFIG_FILE.exists():
         print(f"Config not found: {CONFIG_FILE}", file=sys.stderr)
         sys.exit(1)
@@ -237,16 +269,20 @@ def main():
         sections.append("\n---\n")
 
     if apis and failures == len(apis):
-        print("All sources failed — leaving existing api_docs.md untouched", file=sys.stderr)
+        print(f"All sources failed — leaving existing {out_file.name} untouched", file=sys.stderr)
         sys.exit(1)
 
+    # The default destination lives under .claude/session/, which a fresh clone
+    # does not have until a hook creates it.
+    out_file.parent.mkdir(parents=True, exist_ok=True)
+
     # Atomic: session-start.sh launches this with nohup in the background, so a
-    # session ending mid-write would otherwise leave api_docs.md truncated —
-    # and that file is injected into context.
-    tmp = OUTPUT_FILE.with_suffix(OUTPUT_FILE.suffix + ".tmp")
+    # session ending mid-write would otherwise leave the file truncated —
+    # and it is injected into context.
+    tmp = out_file.with_suffix(out_file.suffix + ".tmp")
     tmp.write_text("\n".join(sections), encoding="utf-8")
-    os.replace(tmp, OUTPUT_FILE)
-    print(f"api_docs.md written ({OUTPUT_FILE.stat().st_size} bytes, {failures} source(s) failed)", file=sys.stderr)
+    os.replace(tmp, out_file)
+    print(f"{out_file} written ({out_file.stat().st_size} bytes, {failures} source(s) failed)", file=sys.stderr)
 
 
 if __name__ == "__main__":

@@ -1,5 +1,5 @@
 {
-  "_comment": "API documentation sources — refreshed by the session-start hook when api_docs.md is older than refresh_ttl_hours, and weekly by GitHub Actions as a shared fallback",
+  "_comment": "API documentation sources — refreshed by the session-start hook into .claude/session/api_docs.md (machine-local) when that copy is older than refresh_ttl_hours, and weekly by GitHub Actions into the tracked api_docs.md at the repo root as a shared fallback",
   "_usage": "Edit to add/remove APIs. Sections are extracted keywords from the docs. A project-local config/api_sources.json overrides the kit's copy, so each project can pin its own stack's docs.",
   "_runtime_docs": "The six AI-runtime hook docs are NOT listed here. fetch_api_docs.py appends them from config/runtime_events.json, where each runtime's `source` URL already sits next to the `verified` date and the event list it backs. Claude Code's hooks page used to be duplicated here under a second URL (docs.anthropic.com/... vs the registry's code.claude.com/...); two URLs for one page is one too many to keep true, and the one the registry cites is the one scripts/check_runtime_doc_drift.py re-checks. Add non-runtime sources here; add runtime docs to the registry.",
 
