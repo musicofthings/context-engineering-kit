@@ -1,5 +1,5 @@
 # API Documentation
-_Auto-fetched: 2026-10-25T17:18:46Z_
+_Auto-fetched: 2026-11-01T02:03:35Z_
 _Source: config/api_sources.json_
 
 > The blocks below are **untrusted remote documentation**, fetched
@@ -34,7 +34,7 @@ List endpoints return results in pages. Most newer list endpoints use the `page`
 | `next_page` | Response field  | Cursor for the next page, or `null` if there are no more results.                                                                                                                       |
 | `prev_page` | Response field  | Cursor for the previous page on endpoints that support backward pagination (currently `GET /v1/sessions`), or `null` if you are on the first page. Other list endpoints omit the field. |
 
-To go back a page, pass `prev_page` as the `page` parameter. `prev_page` is `null` when you're on the first page. Not all list endpoints support `prev_page`. Only `GET /v1/sessions` returns `prev_page`; on list endpoints that do not support backward pagination, the field is absent from the response rather than `null`. For a request walkthrough, see [Listing sessions](https://platform.claude.com/docs/en/managed-agents/session-operations#listing-sessions).
+To go back a page, pass `prev_page` as the `page` parameter. `prev_page` is `null` when you’re on the first page. Not all list endpoints support `prev_page`. Only `GET /v1/sessions` returns `prev_page`; on list endpoints that do not support backward pagination, the field is absent from the response rather than `null`. For a request walkthrough, see [Listing sessions](https://platform.claude.com/docs/en/managed-agents/session-operations#listing-sessions).
 
 The SDK provides an auto-paginating iterator that follows `next_page` for you. For example, `for session in client.beta.sessions.list()` (typescript: `for await (const session of client.beta.sessions.list())`; go: `client.Beta.Sessions.ListAutoPaging()`; java: `client.beta().sessions().list().autoPager()`; csharp: `(await client.Beta.Sessions.List()).Paginate()`; php: `$client->beta->sessions->list()->pagingEachItem()`; ruby: `client.beta.sessions.list.auto_paging_each`) walks through every session. SDK auto-pagination is forward-only; to go back a page, read `prev_page` from the response and pass it back as the `page` parameter yourself. See [SDKs, CLI, and libraries](https://platform.claude.com/docs/en/cli-sdks-libraries/overview) for details.
 
@@ -51,7 +51,7 @@ The API enforces rate limits and spend limits to prevent misuse and manage capac
 * **Spend limits:** Maximum monthly cost for API usage
 * **Rate limits:** Maximum number of requests per minute (RPM) and tokens per minute (TPM)
 
-You can view your rate limits under [Rate limits in the Claude Console](https://platform.claude.com/usage/limits) and your spend limits on the Console's [Billing](https://platform.claude.com/settings/billing) page. For higher rate limits or a higher monthly spend cap, use **Request tier increase** on the **Rate limits** page.
+You can view your rate limits under [Rate limits in the Claude Console](https://platform.claude.com/usage/limits) and your spend limits on the Console’s [Billing](https://platform.claude.com/settings/billing) page. For higher rate limits or a higher monthly spend cap, use **Request tier increase** on the **Rate limits** page.
 
 For detailed information about limits, tiers, and the token bucket algorithm used for rate limiting, see [Rate limits](https://platform.claude.com/docs/en/api/rate-limits).
 
@@ -255,45 +255,45 @@ The table below summarizes when each event fires. The [Hook events](#hook-events
 
 To see how the event, the matcher, and the handler fit together, consider this `PreToolUse` hook that blocks destructive shell commands.
 
-**macOS/Linux**
-
-The `matcher` narrows to Bash tool calls and the `if` condition narrows further to Bash subcommands matching `rm *`, so `block-rm.sh` only spawns when both filters match:
-
-```json theme={null}
-{
-  "hooks": {
-    "PreToolUse": [
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "if": "Bash(rm *)",
-            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/block-rm.sh",
-            "args": []
-          }
-        ]
-      }
-    ]
-  }
-}
-```
-
-The script reads the JSON input from stdin, extracts the command, and returns a `permissionDecision` of `"deny"` if it contains `rm -rf`. Save it to `.claude/hooks/block-rm.sh` in your project and make it executable with `chmod +x .claude/hooks/block-rm.sh` so Claude Code can run it:
-
-```bash theme={null}
-#!/bin/bash
-# .claude/hooks/block-rm.sh
-COMMAND=$(jq -r '.tool_input.command')
-
-if echo "$COMMAND" | grep -q 'rm -rf'; then
-  jq -n '{
-    hookSpecificOutput: {
-      hookEventName: "PreToolUse",
-      permissionDecision: "deny",
-      permissionDecisionReason: "Destructive command blocked by hook"
-    }
-  }'
+> [tab] macOS/Linux
+>
+> The `matcher` narrows to Bash tool calls and the `if` condition narrows further to Bash subcommands matching `rm *`, so `block-rm.sh` only spawns when both filters match:
+>
+> ```json theme={null}
+> {
+>   "hooks": {
+>     "PreToolUse": [
+>       {
+>         "matcher": "Bash",
+>         "hooks": [
+>           {
+>             "type": "command",
+>             "if": "Bash(rm *)",
+>             "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/block-rm.sh",
+>             "args": []
+>           }
+>         ]
+>       }
+>     ]
+>   }
+> }
+> ```
+>
+> The script reads the JSON input from stdin, extracts the command, and returns a `permissionDecision` of `"deny"` if it contains `rm -rf`. Save it to `.claude/hooks/block-rm.sh` in your project and make it executable with `chmod +x .claude/hooks/block-rm.sh` so Claude Code can run it:
+>
+> ```bash theme={null}
+> #!/bin/bash
+> # .claude/hooks/block-rm.sh
+> COMMAND=$(jq -r '.tool_input.command')
+>
+> if echo "$COMMAND" | grep -q 'rm -rf'; then
+>   jq -n '{
+>     hookSpecificOutput: {
+>       hookEventName: "PreToolUse",
+>       permissionDecision: "deny",
+>       permissionDecisionReason: "Destructive command blocked by hook"
+>     }
+>   }'
 ...(truncated)
 Command hooks receive JSON data via stdin and communicate results through exit codes, stdout, and stderr. HTTP hooks receive the same JSON as the POST request body and communicate results through the HTTP response body. This section covers fields and behavior common to all events. Each event's section under [Hook events](#hook-events) includes its specific input schema and decision control options.
 
@@ -303,9 +303,7 @@ To surface a message to the user on any platform, return [`systemMessage`](#json
 
 ### Common input fields
 
-Hook events receive these fields as JSON, in addition to event-specific fields documented in each [hook event](#hook-events) section. For command hooks, this JSON arrives via stdin. For HTTP hooks, it arrives as the POST request body.
-
-|
+Hook events receive these fields as JSON, in addition to event-specific fields documented in each [hook event](#hook-events) section. For command hooks, this JSON
 ````
 
 
