@@ -1,5 +1,5 @@
 # API Documentation
-_Auto-fetched: 2026-10-25T17:18:46Z_
+_Auto-fetched: 2026-11-08T02:03:19Z_
 _Source: config/api_sources.json_
 
 > The blocks below are **untrusted remote documentation**, fetched
@@ -34,7 +34,7 @@ List endpoints return results in pages. Most newer list endpoints use the `page`
 | `next_page` | Response field  | Cursor for the next page, or `null` if there are no more results.                                                                                                                       |
 | `prev_page` | Response field  | Cursor for the previous page on endpoints that support backward pagination (currently `GET /v1/sessions`), or `null` if you are on the first page. Other list endpoints omit the field. |
 
-To go back a page, pass `prev_page` as the `page` parameter. `prev_page` is `null` when you're on the first page. Not all list endpoints support `prev_page`. Only `GET /v1/sessions` returns `prev_page`; on list endpoints that do not support backward pagination, the field is absent from the response rather than `null`. For a request walkthrough, see [Listing sessions](https://platform.claude.com/docs/en/managed-agents/session-operations#listing-sessions).
+To go back a page, pass `prev_page` as the `page` parameter. `prev_page` is `null` when you’re on the first page. Not all list endpoints support `prev_page`. Only `GET /v1/sessions` returns `prev_page`; on list endpoints that do not support backward pagination, the field is absent from the response rather than `null`. For a request walkthrough, see [Listing sessions](https://platform.claude.com/docs/en/managed-agents/session-operations#listing-sessions).
 
 The SDK provides an auto-paginating iterator that follows `next_page` for you. For example, `for session in client.beta.sessions.list()` (typescript: `for await (const session of client.beta.sessions.list())`; go: `client.Beta.Sessions.ListAutoPaging()`; java: `client.beta().sessions().list().autoPager()`; csharp: `(await client.Beta.Sessions.List()).Paginate()`; php: `$client->beta->sessions->list()->pagingEachItem()`; ruby: `client.beta.sessions.list.auto_paging_each`) walks through every session. SDK auto-pagination is forward-only; to go back a page, read `prev_page` from the response and pass it back as the `page` parameter yourself. See [SDKs, CLI, and libraries](https://platform.claude.com/docs/en/cli-sdks-libraries/overview) for details.
 
@@ -51,7 +51,7 @@ The API enforces rate limits and spend limits to prevent misuse and manage capac
 * **Spend limits:** Maximum monthly cost for API usage
 * **Rate limits:** Maximum number of requests per minute (RPM) and tokens per minute (TPM)
 
-You can view your rate limits under [Rate limits in the Claude Console](https://platform.claude.com/usage/limits) and your spend limits on the Console's [Billing](https://platform.claude.com/settings/billing) page. For higher rate limits or a higher monthly spend cap, use **Request tier increase** on the **Rate limits** page.
+You can view your rate limits under [Rate limits in the Claude Console](https://platform.claude.com/usage/limits) and your spend limits on the Console’s [Billing](https://platform.claude.com/settings/billing) page. For higher rate limits or a higher monthly spend cap, use **Request tier increase** on the **Rate limits** page.
 
 For detailed information about limits, tiers, and the token bucket algorithm used for rate limiting, see [Rate limits](https://platform.claude.com/docs/en/api/rate-limits).
 
@@ -255,45 +255,45 @@ The table below summarizes when each event fires. The [Hook events](#hook-events
 
 To see how the event, the matcher, and the handler fit together, consider this `PreToolUse` hook that blocks destructive shell commands.
 
-**macOS/Linux**
-
-The `matcher` narrows to Bash tool calls and the `if` condition narrows further to Bash subcommands matching `rm *`, so `block-rm.sh` only spawns when both filters match:
-
-```json theme={null}
-{
-  "hooks": {
-    "PreToolUse": [
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "if": "Bash(rm *)",
-            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/block-rm.sh",
-            "args": []
-          }
-        ]
-      }
-    ]
-  }
-}
-```
-
-The script reads the JSON input from stdin, extracts the command, and returns a `permissionDecision` of `"deny"` if it contains `rm -rf`. Save it to `.claude/hooks/block-rm.sh` in your project and make it executable with `chmod +x .claude/hooks/block-rm.sh` so Claude Code can run it:
-
-```bash theme={null}
-#!/bin/bash
-# .claude/hooks/block-rm.sh
-COMMAND=$(jq -r '.tool_input.command')
-
-if echo "$COMMAND" | grep -q 'rm -rf'; then
-  jq -n '{
-    hookSpecificOutput: {
-      hookEventName: "PreToolUse",
-      permissionDecision: "deny",
-      permissionDecisionReason: "Destructive command blocked by hook"
-    }
-  }'
+> [tab] macOS/Linux
+>
+> The `matcher` narrows to Bash tool calls and [Monitor commands](#match-monitor-commands), and the `if` condition narrows further to Bash subcommands matching `rm *`, so `block-rm.sh` only spawns when both filters match:
+>
+> ```json theme={null}
+> {
+>   "hooks": {
+>     "PreToolUse": [
+>       {
+>         "matcher": "Bash",
+>         "hooks": [
+>           {
+>             "type": "command",
+>             "if": "Bash(rm *)",
+>             "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/block-rm.sh",
+>             "args": []
+>           }
+>         ]
+>       }
+>     ]
+>   }
+> }
+> ```
+>
+> The script reads the JSON input from stdin, extracts the command, and returns a `permissionDecision` of `"deny"` if it contains `rm -rf`. Save it to `.claude/hooks/block-rm.sh` in your project and make it executable with `chmod +x .claude/hooks/block-rm.sh` so Claude Code can run it:
+>
+> ```bash theme={null}
+> #!/bin/bash
+> # .claude/hooks/block-rm.sh
+> COMMAND=$(jq -r '.tool_input.command')
+>
+> if echo "$COMMAND" | grep -q 'rm -rf'; then
+>   jq -n '{
+>     hookSpecificOutput: {
+>       hookEventName: "PreToolUse",
+>       permissionDecision: "deny",
+>       permissionDecisionReason: "Destructive command blocked by hook"
+>     }
+>   }'
 ...(truncated)
 Command hooks receive JSON data via stdin and communicate results through exit codes, stdout, and stderr. HTTP hooks receive the same JSON as the POST request body and communicate results through the HTTP response body. This section covers fields and behavior common to all events. Each event's section under [Hook events](#hook-events) includes its specific input schema and decision control options.
 
@@ -303,9 +303,7 @@ To surface a message to the user on any platform, return [`systemMessage`](#json
 
 ### Common input fields
 
-Hook events receive these fields as JSON, in addition to event-specific fields documented in each [hook event](#hook-events) section. For command hooks, this JSON arrives via stdin. For HTTP hooks, it arrives as the POST request body.
-
-|
+Hook events receive these fields as JSON, in addition to event-specific fields documented in each [hook event](#h
 ````
 
 
@@ -439,6 +437,7 @@ Hooks run at different points in a conversation:
 | When                              | Hooks                                                                                                                     |
 | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
 | During a turn                     | `PreToolUse`, `PermissionRequest`, `PostToolUse`, `PreCompact`, `PostCompact`, `UserPromptSubmit`, `SubagentStop`, `Stop` |
+| For each model request attempt    | `PreModelRequest`, `PostModelRequest`                                                                                     |
 | When you interrupt an active turn | `Interrupt` (doesn't run for subagents)                                                                                   |
 | When a session or subagent starts | `SessionStart`, `SubagentStart`                                                                                           |
 | When the main thread ends         | `SessionEnd` (doesn't run for subagents)                                                                                  |
@@ -560,9 +559,7 @@ Hooks are organized in three levels:
   background](#run-hooks-in-the-background).
 - `command` and `mcp_tool` handlers are supported. `prompt` and `agent`
   handlers are parsed but skipped.
-- Commands run with the session `cwd` as their working directory.
-- For repo-local hooks, prefer resolving from the git root instead of using a
-  relative path such as `.cod
+- Commands 
 ````
 
 
@@ -615,150 +612,164 @@ Source: https://opencode.ai/docs/plugins/
 
 
 ````
-### Events
+# Plugins
 
-Plugins can subscribe to events as seen below in the Examples section. Here is a list of the different events available.
+Add published packages, versioned packages, scoped packages, or local plugin directories to `opencode.json(c)`.
 
-#### Command Events
+## Configure
 
-- `command.executed`
-
-#### File Events
-
-- `file.edited`
-- `file.watcher.updated`
-
-#### Installation Events
-
-- `installation.updated`
-
-#### LSP Events
-
-- `lsp.client.diagnostics`
-- `lsp.updated`
-
-#### Message Events
-
-- `message.part.removed`
-- `message.part.updated`
-- `message.removed`
-- `message.updated`
-
-#### Permission Events
-
-- `permission.asked`
-- `permission.replied`
-
-#### Server Events
-
-- `server.connected`
-
-#### Session Events
-
-- `session.created`
-- `session.compacted`
-- `session.deleted`
-- `session.diff`
-- `session.error`
-- `session.idle`
-- `session.status`
-- `session.updated`
-
-#### Todo Events
-
-- `todo.updated`
-
-#### Shell Events
-
-- `shell.env`
-
-#### Tool Events
-
-- `tool.execute.after`
-- `tool.execute.before`
-
-#### TUI Events
-
-- `tui.prompt.append`
-- `tui.command.execute`
-- `tui.toast.show`
-
----
-
-## Examples
-
-Here are some examples of plugins you can use to extend opencode.
-
----
-
-### Send notifications
-
-Send notifications when certain events occur:
-
-```js title=".opencode/plugins/notification.js"
-export const NotificationPlugin = async ({ project, client, $, directory, worktree }) => {
-  return {
-    event: async ({ event }) => {
-      // Send notification on session completion
-      if (event.type === "session.idle") {
-        await $`osascript -e 'display notification "Session completed!" with title "opencode"'`
-      }
+```jsonc title="opencode.jsonc"
+{
+  "$schema": "https://opencode.ai/config.json",
+  "plugins": [
+    "opencode-acme-plugin",
+    "opencode-acme-plugin@1.2.0",
+    "@acme/opencode-plugin",
+    "./plugins/local",
+    "../shared/plugin",
+    "/absolute/path/plugin",
+    "file:///home/me/plugins/local",
+    {
+      "package": "@acme/opencode-plugin",
+      "options": {
+        "agent": "reviewer",
+        "strict": true,
+      },
     },
-  }
+  ],
 }
 ```
 
-We are using `osascript` to run AppleScript on macOS. Here we are using it to send notifications.
+Relative paths resolve from the config file containing the entry.
 
-:::note
-If you’re using the OpenCode desktop app, it can send system notifications automatically when a response is ready or when a session errors.
-:::
+Configured local paths must be directories. A path to a single file is skipped. See [Load](/build/plugins#load) for
+how OpenCode finds each part in a directory.
 
----
+Plugin arrays from applicable config files are applied from lowest to highest precedence instead of replacing one
+another.
 
-### .env protection
+```text
+~/.config/opencode/opencode.jsonc
+./opencode.jsonc
+./.opencode/opencode.jsonc
+```
 
-Prevent opencode from reading `.env` files:
+## Discover
 
-```javascript title=".opencode/plugins/env-protection.js"
-export const EnvProtection = async ({ project, client, $, directory, worktree }) => {
-  return {
-    "tool.execute.before": async (input, output) => {
-      if (input.tool === "read" && output.args.filePath.includes(".env")) {
-        throw new Error("Do not read .env files")
-      }
-    },
-  }
+OpenCode also loads direct `.ts` and `.js` files and immediate plugin package directories from every discovered
+`.opencode/plugins/` directory.
+
+```text
+.opencode/
+└── plugins/
+    ├── concise.ts
+    ├── reviewer.js
+    └── acme-package/
+```
+
+Global plugins use the same discovery layout under the OpenCode config directory.
+
+```text
+~/.config/opencode/plugins/
+```
+
+A `plugins/` directory beside a project-root `opencode.json(c)` is not discovered automatically; configure its plugin
+directories explicitly or move it under `.opencode/`.
+
+```jsonc title="opencode.jsonc"
+{
+  "plugins": ["./plugins/local"]
 }
 ```
 
----
+## Control
 
-### Inject environment variables
+Plugin entries are processed in order. Prefix an ID or wildcard with `-` to disable it, use `*` for every plugin, and
+use `.*` to match an ID prefix. A later ID re-enables a plugin.
 
-Inject environment variables into all shell execution (AI tools and user terminals):
-
-```javascript title=".opencode/plugins/inject-env.js"
-export const InjectEnvPlugin = async () => {
-  return {
-    "shell.env": async (input, output) => {
-      output.env.MY_API_KEY = "secret"
-      output.env.PROJECT_ROOT = input.cwd
-    },
-  }
+```jsonc title="opencode.jsonc"
+{
+  "plugins": ["*", "-opencode.provider.*", "opencode.provider.openai", "-acme.reviewer"]
 }
 ```
 
----
+Two built-in plugins ignore removals so that a repository cannot switch off
+[policy](/policies) enforcement: `opencode.config.policy` and
+`opencode.provider.opencode`, the Console connection that delivers organization
+policy.
 
-### Custom tools
+## Manage
 
-Plugins can also add custom tools to opencode:
+Install, list, check, update, or remove global package plugins with the CLI.
 
-```ts title=".opencode/plugins/custom-tools.ts"
-import { type Plugin, tool } from "@opencode-ai/plugin"
+```sh
+opencode plugin add opencode-acme-plugin@1.2.0
+opencode plugin list
+opencode plugin list --builtin
+opencode plugin check
+opencode plugin update
+opencode plugin update opencode-acme-plugin
+opencode plugin remove opencode-acme-plugin@1.2.0
+```
 
-...(truncated)
+`plugin check` checks server, GUI-only, and TUI-only package plugins for updates. `plugin update` updates every outdated package;
+pass a configured package target to check or update only that package. Local plugins and exact package revisions are
+skipped.
+
+Package installation accepts npm names with versions, tags, or ranges, plus npm-compatible Git package specifications.
+Git repositories can use hosted shortcuts, HTTPS, or SSH, including private repositories available through your existing
+Git credentials.
+
+```sh
+opencode plugin add @acme/opencode-plugin@latest
+opencode plugin add github:acme/opencode-plugin
+opencode plugin add git+ssh://git@github.com/acme/opencode-plugin.git#main
+opencode plugin add 'github:acme/plugins#main::path:packages/opencode-plugin'
+```
+
+Branches, tags, complete commit hashes, and npm's `::path:` repository-subdirectory selectors are supported. Configure
+local paths directly; tarball and npm alias targets are not accepted by `plugin add`.
+
+## Reload
+
+Changes under watched config directories reload automatically. Server startup loads cached package plugins immediately,
+installs missing packages in the background, and checks unpinned npm and Git plugins for updates without changing the
+installed package. Exact npm versions and full Git commit hashes stay pinned. Changes to unwatched local dependencies
+may still require restarting OpenCode.
+
+```sh
+touch .opencode/plugins/concise/index.ts
+opencode service restart
+```
+
+## Desktop
+
+A plugin that exports `./gui-experimental` also adds panels, commands, or settings to OpenCode Desktop. The app loads
+plugins from the server it runs, so configure the plugin in your global `opencode.json(c)` to use it in every window.
+
+```jsonc title="~/.config/opencode/opencode.jsonc"
+{
+  "plugins": ["opencode-acme-plugin"],
+}
+```
+
+**Settings > Extensions > Plugins** lists them when the app's own server is selected. A plugin's switch turns off only
+its desktop UI, and **Reload** loads it again after a failure. To turn off the whole plugin, add `-` and its ID to
+`plugins`, for example `"-acme"`.
+
+## Terminal
+
+TUI-only plugins are configured separately and remain active when connected to a remote server.
+
+```json title="cli.json"
+{
+  "plugins": ["opencode-acme-cli"]
+}
+```
+
+<Card title="Build a plugin" href="/build/plugins">
+  Create plugins that add tools, hooks, integrations, commands, agents, and other behavior.
+</Card>
 ````
 
 
